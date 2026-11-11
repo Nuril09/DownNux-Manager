@@ -20,23 +20,23 @@ mkdir -p "$ROOT_DIR/apps/daemon/dist"
   --bundle --platform=node --format=esm --target=node22 \
   --outfile="$ROOT_DIR/apps/daemon/dist/main.mjs" \
   --external:node:sqlite \
-  --alias:@unduh/shared="$ROOT_DIR/packages/shared/src/index.ts" \
-  --alias:@unduh/shared/node="$ROOT_DIR/packages/shared/src/node/index.ts"
+  --alias:@downnux/shared="$ROOT_DIR/packages/shared/src/index.ts" \
+  --alias:@downnux/shared/node="$ROOT_DIR/packages/shared/src/node/index.ts"
 
-echo "[*] Building native messaging host..."
+echo "[*] Building browser integration bridge..."
 mkdir -p "$ROOT_DIR/apps/native-host/dist"
 "$ESBUILD" "$ROOT_DIR/apps/native-host/src/main.ts" \
   --bundle --platform=node --format=esm --target=node22 \
   --outfile="$ROOT_DIR/apps/native-host/dist/host.mjs" \
-  --alias:@unduh/shared="$ROOT_DIR/packages/shared/src/index.ts" \
-  --alias:@unduh/shared/node="$ROOT_DIR/packages/shared/src/node/index.ts"
+  --alias:@downnux/shared="$ROOT_DIR/packages/shared/src/index.ts" \
+  --alias:@downnux/shared/node="$ROOT_DIR/packages/shared/src/node/index.ts"
 
 cat > "$ROOT_DIR/apps/native-host/dist/downnux-native-host" <<EOF
 #!/bin/sh
 exec /usr/bin/node "$ROOT_DIR/apps/native-host/dist/host.mjs" "\$@"
 EOF
 chmod +x "$ROOT_DIR/apps/native-host/dist/downnux-native-host"
-echo "[✓] Native host built at: $ROOT_DIR/apps/native-host/dist/downnux-native-host"
+echo "[✓] Browser integration built at: $ROOT_DIR/apps/native-host/dist/downnux-native-host"
 
 # 3. Create CLI wrapper
 mkdir -p "$HOME/.local/bin"
@@ -47,7 +47,7 @@ EOF
 chmod +x "$HOME/.local/bin/downnux"
 echo "[✓] CLI installed: $HOME/.local/bin/downnux"
 
-# 4. Install Native Messaging Manifests for Chrome, Brave, Chromium, Edge, and Firefox
+# 4. Install Browser Integration Manifests for Chrome, Brave, Chromium, Edge, and Firefox
 HOST_PATH="$ROOT_DIR/apps/native-host/dist/downnux-native-host"
 
 # Chromium-based Manifest
@@ -89,7 +89,7 @@ done
 
 mkdir -p "$HOME/.mozilla/native-messaging-hosts"
 echo "$FIREFOX_MANIFEST" > "$HOME/.mozilla/native-messaging-hosts/com.creativemichiz.downnux.native_host.json"
-echo "[✓] Registered Native Messaging Manifests for Chrome, Brave, Edge, Chromium, and Firefox"
+echo "[✓] Registered Browser Integration Manifests for Chrome, Brave, Edge, Chromium, and Firefox"
 
 # 5. Create Systemd User Service
 mkdir -p "$HOME/.config/systemd/user"

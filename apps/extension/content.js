@@ -129,3 +129,4 @@
   const observer = new MutationObserver(() => scanVideos());
   observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
 })();
+

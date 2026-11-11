@@ -64,3 +64,4 @@ fi
 
 echo -e "${GREEN}[✓] Installation completed successfully!${RESET}"
 echo -e "Run ${BOLD}downnux ping${RESET} or ${BOLD}downnux --help${RESET} to get started."
+
