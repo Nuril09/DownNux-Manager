@@ -9,12 +9,12 @@
     "node": ">=22"
   },
   "scripts": {
-    "daemon": "pnpm --filter @downnux/daemon start",
-    "cli": "pnpm --silent --filter @downnux/daemon cli",
-    "gui": "pnpm --filter @downnux/gui dev",
-    "gui:build": "pnpm --filter @downnux/gui build",
+    "daemon": "tsx apps/daemon/src/main.ts",
+    "cli": "tsx apps/daemon/src/cli.ts",
+    "gui": "npm --prefix apps/gui run dev",
+    "gui:build": "npm --prefix apps/gui run build",
     "range-server": "tsx tools/range-server/server.ts",
-    "test": "pnpm -r test",
+    "test": "node --import tsx --test apps/daemon/test/*.test.ts",
     "typecheck": "tsc -p .",
     "measure-mem": "tsx scripts/measure-mem.ts",
     "install-dev": "bash scripts/install-dev.sh"
