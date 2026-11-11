@@ -1,0 +1,4 @@
+#!/bin/sh
+DIR="$(cd "$(dirname "$0")" && pwd)"
+exec /usr/bin/node --import tsx "$DIR/apps/daemon/src/cli.ts" "$@"
+
