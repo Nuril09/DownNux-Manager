@@ -36,11 +36,12 @@ async function cookieHeaderFor(url) {
   }
 }
 
-async function sendToApp({ url, referrer, filename }) {
+async function sendToApp({ url, referrer, filename, format }) {
   const cookie = await cookieHeaderFor(url);
   const headers = { userAgent: navigator.userAgent };
   if (cookie) headers.cookie = cookie;
   if (referrer) headers.referer = referrer;
+  if (format) headers.format = format;
   const params = { url, headers, source: "browser" };
   if (filename) params.filename = filename;
   return callDaemon("task.add", params);
@@ -201,6 +202,7 @@ async function downloadVideo({ src, pageUrl, title, quality }, tabId) {
       url: pageUrl,
       referrer: pageUrl,
       filename,
+      format: quality === "audio" ? "audio" : "video",
     });
   }
 

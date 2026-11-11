@@ -110,6 +110,26 @@ export function App() {
   const [newUrl, setNewUrl] = useState("");
   const [newFilename, setNewFilename] = useState("");
   const [newConnections, setNewConnections] = useState(8);
+  const [downloadFormat, setDownloadFormat] = useState<"mp4" | "mp3">("mp4");
+
+  const isMediaUrl = /youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(newUrl);
+
+  const handleUrlChange = (val: string) => {
+    setNewUrl(val);
+    try {
+      const u = new URL(val);
+      if (/youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(u.hostname)) {
+        if (!newFilename || newFilename === "video.mp4" || newFilename === "audio.mp3") {
+          setNewFilename("");
+        }
+      } else {
+        const lastPart = u.pathname.split("/").filter(Boolean).pop();
+        if (lastPart && lastPart.includes(".")) {
+          setNewFilename(decodeURIComponent(lastPart));
+        }
+      }
+    } catch {}
+  };
 
   // Fetch dynamic OS info from daemon
   useEffect(() => {
@@ -163,11 +183,15 @@ export function App() {
       url: newUrl,
       filename: newFilename || undefined,
       connections: newConnections,
+      headers: {
+        format: downloadFormat === "mp3" ? "audio" : "video",
+      },
       start: true,
     });
     setIsAddOpen(false);
     setNewUrl("");
     setNewFilename("");
+    setDownloadFormat("mp4");
   };
 
   // Filter tasks
@@ -878,18 +902,65 @@ export function App() {
                 <label className="block text-[#6e7685] mb-1 font-medium">{t.enterUrl}</label>
                 <input
                   type="text"
-                  placeholder="https://example.com/file.iso"
+                  placeholder="https://example.com/file.iso or YouTube URL"
                   value={newUrl}
-                  onChange={(e) => setNewUrl(e.target.value)}
+                  onChange={(e) => handleUrlChange(e.target.value)}
                   className="w-full bg-[#f7f8fa] border border-[#e7e9ef] rounded-[6px] px-3 py-2 text-[#202631] focus:outline-none focus:border-[#6554c0]"
                 />
               </div>
+
+              {/* Format selection pills for online video / audio */}
+              {isMediaUrl && (
+                <div>
+                  <label className="block text-[#6e7685] mb-1 font-medium">{lang === "en" ? "Download Format:" : "Format Download:"}</label>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDownloadFormat("mp4");
+                        if (newFilename.endsWith(".mp3")) {
+                          setNewFilename(newFilename.replace(/\.mp3$/, ".mp4"));
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${
+                        downloadFormat === "mp4"
+                          ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
+                          : "bg-white text-[#202631] border-[#e7e9ef] hover:bg-[#f7f8fa]"
+                      }`}
+                    >
+                      🎬 Video (MP4)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDownloadFormat("mp3");
+                        if (newFilename.endsWith(".mp4")) {
+                          setNewFilename(newFilename.replace(/\.mp4$/, ".mp3"));
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${
+                        downloadFormat === "mp3"
+                          ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
+                          : "bg-white text-[#202631] border-[#e7e9ef] hover:bg-[#f7f8fa]"
+                      }`}
+                    >
+                      🎵 Audio Only (MP3)
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-[#6e7685] mb-1 font-medium">{t.customFilename}</label>
                 <input
                   type="text"
-                  placeholder="custom-name.iso"
+                  placeholder={
+                    isMediaUrl
+                      ? downloadFormat === "mp3"
+                        ? "(Auto detect title · .mp3)"
+                        : "(Auto detect title · .mp4)"
+                      : "filename.ext (optional)"
+                  }
                   value={newFilename}
                   onChange={(e) => setNewFilename(e.target.value)}
                   className="w-full bg-[#f7f8fa] border border-[#e7e9ef] rounded-[6px] px-3 py-2 text-[#202631] focus:outline-none focus:border-[#6554c0]"

@@ -79,3 +79,4 @@ export class HybridEngine extends EventEmitter<EngineEvents> implements Download
     await this.aria2.setGlobalSpeedLimit(bytesPerSec);
   }
 }
+

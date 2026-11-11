@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -71,13 +71,35 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
 
   async add(spec: JobSpec): Promise<string> {
     const jobId = `ytdlp-${crypto.randomUUID()}`;
+
+    const isAudioOnly = spec.headers?.format === "audio" || (spec.filename && spec.filename.endsWith(".mp3"));
+
+    // 1. Pre-query actual title from yt-dlp
+    let resolvedFilename = spec.filename || "";
+    if (!resolvedFilename || resolvedFilename === "video.mp4" || resolvedFilename === "audio.mp3") {
+      try {
+        const titleRes = execFileSync(this.binaryPath, [
+          "--js-runtimes", "node:/usr/bin/node",
+          "--print", "%(title)s",
+          "--no-playlist",
+          spec.url,
+        ], { encoding: "utf8", timeout: 8000 }).trim();
+        if (titleRes) {
+          const cleanTitle = titleRes.replace(/[\/\\?%*:|"<>]/g, "_").trim();
+          resolvedFilename = `${cleanTitle}.${isAudioOnly ? "mp3" : "mp4"}`;
+        }
+      } catch (err) {
+        log.warn("Could not pre-fetch yt-dlp filename:", err);
+      }
+    }
+
     const initialStatus: JobStatus = {
       state: "active",
       totalBytes: 0,
       completedBytes: 0,
       speed: 0,
       connections: 1,
-      path: path.join(spec.dir, spec.filename || "video.mp4"),
+      path: resolvedFilename ? path.join(spec.dir, resolvedFilename) : "",
       error: null,
     };
     this.statuses.set(jobId, initialStatus);
@@ -94,10 +116,13 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
       args.push("--ffmpeg-location", this.ffmpegPath);
     }
 
-    if (spec.filename) {
-      args.push("-o", spec.filename);
+    if (isAudioOnly) {
+      args.push("-x", "--audio-format", "mp3");
+      args.push("-o", resolvedFilename ? resolvedFilename : "%(title)s.%(ext)s");
     } else {
-      args.push("-o", "%(title)s.%(ext)s");
+      args.push("--merge-output-format", "mp4");
+      args.push("-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b");
+      args.push("-o", resolvedFilename ? resolvedFilename : "%(title)s.%(ext)s");
     }
 
     args.push(spec.url);
@@ -116,7 +141,7 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
       for (const line of lines) {
         const trimmed = line.trim();
         // Destination detection
-        const destMatch = trimmed.match(/Destination:\s*(.+)$/i);
+        const destMatch = trimmed.match(/(?:Destination|Merging formats into):\s*["']?([^"']+)["']?$/i);
         if (destMatch && destMatch[1]) {
           const filePath = destMatch[1].trim();
           initialStatus.path = filePath;

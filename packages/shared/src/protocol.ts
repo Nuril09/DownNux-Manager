@@ -23,6 +23,7 @@ export const MethodParams = {
   "task.remove": IdParams.extend({ deleteFile: z.boolean().default(false) }),
   "task.pauseAll": z.object({}).optional(),
   "task.resumeAll": z.object({}).optional(),
+  "task.openFolder": IdParams,
   subscribe: z.object({}).optional(),
   "settings.get": z.object({}).optional(),
   "settings.update": SettingsPatch,
@@ -51,6 +52,7 @@ export interface MethodResults {
   "task.remove": { ok: true };
   "task.pauseAll": { count: number };
   "task.resumeAll": { count: number };
+  "task.openFolder": { ok: true };
   subscribe: { ok: true };
   "settings.get": Settings;
   "settings.update": Settings;

@@ -46,6 +46,13 @@ def ensure_services():
             subprocess.run(["systemctl", "--user", "start", "downnux-daemon"], check=False)
         except Exception:
             pass
+        if not is_daemon_running():
+            daemon_script = os.path.join(APP_DIR, "apps/daemon/dist/main.mjs")
+            if os.path.exists(daemon_script):
+                subprocess.Popen(["/usr/bin/node", daemon_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            elif os.path.exists("/usr/lib/downnux-manager/apps/daemon/dist/main.mjs"):
+                subprocess.Popen(["/usr/bin/node", "/usr/lib/downnux-manager/apps/daemon/dist/main.mjs"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
     # 2. Start GUI server if not running
     try:
         urllib.request.urlopen("http://127.0.0.1:1420", timeout=1)
@@ -54,6 +61,14 @@ def ensure_services():
             subprocess.run(["systemctl", "--user", "start", "downnux-gui"], check=False)
         except Exception:
             pass
+        try:
+            urllib.request.urlopen("http://127.0.0.1:1420", timeout=1)
+        except Exception:
+            gui_script = os.path.join(APP_DIR, "scripts/serve-gui.mjs")
+            if os.path.exists(gui_script):
+                subprocess.Popen(["/usr/bin/node", gui_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            elif os.path.exists("/usr/lib/downnux-manager/scripts/serve-gui.mjs"):
+                subprocess.Popen(["/usr/bin/node", "/usr/lib/downnux-manager/scripts/serve-gui.mjs"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 class DownNuxNativeWindow(Gtk.Window):
     def __init__(self):
@@ -106,3 +121,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

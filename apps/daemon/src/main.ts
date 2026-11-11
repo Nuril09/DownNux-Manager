@@ -67,6 +67,7 @@ async function main(): Promise<void> {
     },
     "task.pauseAll": async () => ({ count: await manager.pauseAll() }),
     "task.resumeAll": () => ({ count: manager.resumeAll() }),
+    "task.openFolder": (p) => manager.openFolder(p.id),
     "settings.get": () => settings.get(),
     "settings.update": (p) => {
       const next = settings.update(p);

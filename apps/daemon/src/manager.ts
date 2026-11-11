@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import { EventEmitter } from "node:events";
+import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { AddTaskInput, type AddTaskInput as AddTaskInputT, type Task } from "@downnux/shared";
 import { toPublicTask, type StoredTask, type TaskStore } from "./db.ts";
@@ -102,6 +104,17 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
     const s = this.settings.get();
     const dir = resolveTargetDir(input.dir || this.settings.downloadDir());
     const now = Date.now();
+    let defaultReferer = "";
+    try {
+      defaultReferer = new URL(input.url).origin + "/";
+    } catch {}
+
+    const headers = {
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      referer: defaultReferer,
+      ...(input.headers || {}),
+    };
+
     const t: StoredTask = {
       id: crypto.randomUUID(),
       url: input.url,
@@ -112,7 +125,7 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
       completedBytes: 0,
       connections: input.connections ?? s.defaultConnections,
       source: input.source,
-      headers: input.headers ?? null,
+      headers: headers,
       retryCount: 0,
       error: null,
       createdAt: now,
@@ -203,6 +216,39 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
     return n;
   }
 
+  openFolder(id: string): { ok: true } {
+    const t = this.mustGet(id);
+    const targetDir = t.dir || path.join(process.env.HOME || "", "Downloads");
+    const targetFile = t.filename ? path.join(targetDir, t.filename) : "";
+
+    const env = { ...process.env };
+    if (!env.DISPLAY) env.DISPLAY = ":0";
+
+    try {
+      if (targetFile && fs.existsSync(targetFile)) {
+        // Try revealing file in file manager
+        const child = spawn("nautilus", ["--select", targetFile], {
+          detached: true,
+          stdio: "ignore",
+          env,
+        });
+        child.on("error", () => {
+          spawn("xdg-open", [targetDir], { detached: true, stdio: "ignore", env }).unref();
+        });
+        child.unref();
+      } else {
+        spawn("xdg-open", [targetDir], { detached: true, stdio: "ignore", env }).unref();
+      }
+    } catch {
+      try {
+        spawn("xdg-open", [targetDir], { detached: true, stdio: "ignore", env }).unref();
+      } catch (err) {
+        log.warn(`Gagal membuka folder untuk task ${id}:`, err);
+      }
+    }
+    return { ok: true };
+  }
+
   // ---------------------------------------------------------------------------
 
   private mustGet(id: string): StoredTask {
@@ -259,6 +305,15 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
         return;
       }
       r.jobId = jobId;
+      try {
+        const statuses = await this.engine.statusMany([jobId]);
+        const s = statuses.get(jobId);
+        if (s?.path && (!t.filename || t.filename === "video.mp4" || t.filename === "audio.mp3" || !t.filename.includes("."))) {
+          t.filename = path.basename(s.path);
+          this.store.upsert(t);
+          this.emitTask(t);
+        }
+      } catch {}
     } catch (err) {
       r.jobId = null;
       log.warn(`Gagal memulai ${t.id}`, err);
@@ -330,7 +385,7 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
       this.schedule();
       return;
     }
-    if (s.path && !t.filename) {
+    if (s.path && (!t.filename || t.filename === "video.mp4" || t.filename === "audio.mp3" || !t.filename.includes("."))) {
       t.filename = path.basename(s.path);
       this.store.upsert(t);
     }
