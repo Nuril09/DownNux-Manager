@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DownNux Manager</title>
+  <style>
+    :root {
+      --bg: #121418;
+      --card: #1c1f26;
+      --text: #f0f3f6;
+      --text-muted: #8b949e;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --border: #30363d;
+      --success: #238636;
+      --error: #da3633;
+    }
+    body {
+      margin: 0;
+      padding: 12px;
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .title {
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .badge.connected { background: rgba(35, 134, 54, 0.2); color: #3fb950; }
+    .badge.disconnected { background: rgba(218, 54, 51, 0.2); color: #f85149; }
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .media-list {
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .media-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .media-info {
+      overflow: hidden;
+      flex: 1;
+    }
+    .media-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 500;
+    }
+    .media-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: var(--primary-hover); }
+    .empty {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 24px 0;
+      font-size: 12px;
+    }
+    .footer {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">
+      <span>DownNux Manager</span>
+    </div>
+    <span id="statusBadge" class="badge disconnected">Checking...</span>
+  </div>
+
+  <div class="section-title">Detected Media on this Tab</div>
+  <div id="mediaList" class="media-list">
+    <div class="empty">No media streams detected yet.<br>Play a video on this page to detect.</div>
+  </div>
+
+  <div class="footer">
+    <span>By CreativeMichiz</span>
+    <span id="daemonVer">-</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

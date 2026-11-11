@@ -1,0 +1,16 @@
+{
+  "name": "@downnux/native-host",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/host.mjs",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@downnux/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
+}

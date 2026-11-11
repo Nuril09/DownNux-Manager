@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "DownNux Manager — Browser Integration",
+  "short_name": "DownNux",
+  "version": "0.0.1",
+  "description": "Capture downloads and video streams automatically for DownNux Manager by CreativeMichiz.",
+  "author": "CreativeMichiz",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "downloads",
+    "nativeMessaging",
+    "cookies",
+    "contextMenus",
+    "webRequest",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Unduh",
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "128": "icon.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzkhmlRtBbrCm2MDhEte7ysE1r7ffVBfsZzILAMp2b2eT55fuhgkwtThCl4onPTs/fhC1V+ZAfzB3ebrwqdA4PsoZvcSYKw13rzKzjV2nvq8UAZHKBF7vpXXn7B7QWNJjQ8LT/Rtg4IV+RPZasOgx76akmBBTrkmrcgmkoF67JihJ5OhziZSPpCALRY2g9mFw/suiyv2WvK3VHu8cR3U4t82e8O79imSjWiKc+KyH5FmXpUuHnCXOUCPSoASaz5x4w51t6uhYvbIxMlvjqNR386d/hoig9moMl+m/hFOsg0df2jrkVR+WvXE0Hld7aR76VWxOM3Yv2nfl9I9zLbc3hQIDAQAB"
+}

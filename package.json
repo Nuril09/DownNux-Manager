@@ -1,0 +1,32 @@
+{
+  "name": "downnux-manager",
+  "private": true,
+  "version": "0.0.1",
+  "description": "DownNux Manager for Linux by CreativeMichiz",
+  "type": "module",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "daemon": "pnpm --filter @downnux/daemon start",
+    "cli": "pnpm --silent --filter @downnux/daemon cli",
+    "gui": "pnpm --filter @downnux/gui dev",
+    "gui:build": "pnpm --filter @downnux/gui build",
+    "range-server": "tsx tools/range-server/server.ts",
+    "test": "pnpm -r test",
+    "typecheck": "tsc -p .",
+    "measure-mem": "tsx scripts/measure-mem.ts",
+    "install-dev": "bash scripts/install-dev.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

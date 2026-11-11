@@ -1,0 +1,15 @@
+{
+  "name": "@downnux/daemon",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx --no-warnings=ExperimentalWarning src/main.ts",
+    "cli": "tsx src/cli.ts",
+    "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts"
+  },
+  "dependencies": {
+    "@downnux/shared": "workspace:*",
+    "zod": "^3.24.1"
+  }
+}

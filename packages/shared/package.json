@@ -1,0 +1,14 @@
+{
+  "name": "@downnux/shared",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node/index.ts"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}
+
