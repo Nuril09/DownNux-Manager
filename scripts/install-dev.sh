@@ -54,7 +54,7 @@ HOST_PATH="$ROOT_DIR/apps/native-host/dist/downnux-native-host"
 CHROMIUM_MANIFEST=$(cat <<EOF
 {
   "name": "com.creativemichiz.downnux.native_host",
-  "description": "DownNux Manager Native Messaging Host by CreativeMichiz",
+  "description": "DownNux Manager by CreativeMichiz",
   "path": "$HOST_PATH",
   "type": "stdio",
   "allowed_origins": [
@@ -68,7 +68,7 @@ EOF
 FIREFOX_MANIFEST=$(cat <<EOF
 {
   "name": "com.creativemichiz.downnux.native_host",
-  "description": "DownNux Manager Native Messaging Host by CreativeMichiz",
+  "description": "DownNux Manager by CreativeMichiz",
   "path": "$HOST_PATH",
   "type": "stdio",
   "allowed_extensions": [
