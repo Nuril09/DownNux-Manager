@@ -8,8 +8,8 @@
  * tidak bisa, misalnya, mematikan daemon atau mengubah pengaturan.
  */
 import { spawn } from "node:child_process";
-import { DaemonClient, DaemonRpcError, getAppPaths } from "@unduh/shared/node";
-import type { Method } from "@unduh/shared";
+import { DaemonClient, DaemonRpcError, getAppPaths } from "@downnux/shared/node";
+import type { Method } from "@downnux/shared";
 
 const ALLOWED = new Set<Method>(["ping", "task.add", "task.list", "task.get", "task.pause", "task.resume"]);
 const MAX_IN = 4 * 1024 * 1024; // Chrome membatasi pesan ke host 4 GB, kita jauh lebih ketat.

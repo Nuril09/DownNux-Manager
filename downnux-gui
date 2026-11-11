@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python3 "/home/nurilhuda155/Documents/Project-Code/Download Manager/scripts/downnux-desktop.py" "$@"

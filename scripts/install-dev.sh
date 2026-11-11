@@ -49,7 +49,7 @@ EOF
 chmod +x "$ROOT_DIR/apps/native-host/dist/downnux-native-host"
 echo "[✓] Browser integration built at: $ROOT_DIR/apps/native-host/dist/downnux-native-host"
 
-# 3. Create CLI wrapper in ~/.local/bin and project root
+# 3. Create CLI & Native GUI wrappers in ~/.local/bin and project root
 mkdir -p "$HOME/.local/bin"
 cat > "$HOME/.local/bin/downnux" <<EOF
 #!/bin/sh
@@ -57,17 +57,56 @@ exec /usr/bin/node --import tsx "$ROOT_DIR/apps/daemon/src/cli.ts" "\$@"
 EOF
 chmod +x "$HOME/.local/bin/downnux"
 
-# Ensure root CLI wrapper also exists
+cat > "$HOME/.local/bin/downnux-gui" <<EOF
+#!/bin/sh
+exec python3 "$ROOT_DIR/scripts/downnux-desktop.py" "\$@"
+EOF
+chmod +x "$HOME/.local/bin/downnux-gui"
+
+# Ensure root wrappers also exist
 cat > "$ROOT_DIR/downnux" <<EOF
 #!/bin/sh
 exec /usr/bin/node --import tsx "$ROOT_DIR/apps/daemon/src/cli.ts" "\$@"
 EOF
 chmod +x "$ROOT_DIR/downnux"
 
+cat > "$ROOT_DIR/downnux-gui" <<EOF
+#!/bin/sh
+exec python3 "$ROOT_DIR/scripts/downnux-desktop.py" "\$@"
+EOF
+chmod +x "$ROOT_DIR/downnux-gui"
+
 if [ -d "$HOME/.gemini/antigravity/bin" ]; then
   ln -sf "$HOME/.local/bin/downnux" "$HOME/.gemini/antigravity/bin/downnux"
+  ln -sf "$HOME/.local/bin/downnux-gui" "$HOME/.gemini/antigravity/bin/downnux-gui"
 fi
-echo "[✓] CLI installed: $HOME/.local/bin/downnux and $ROOT_DIR/downnux"
+
+# Install Desktop Entry into user applications
+mkdir -p "$HOME/.local/share/applications" "$HOME/.local/share/icons/hicolor/512x512/apps"
+cp "$ROOT_DIR/apps/gui/public/app-icon.png" "$HOME/.local/share/icons/hicolor/512x512/apps/downnux.png" 2>/dev/null || true
+
+cat > "$HOME/.local/share/applications/downnux-manager.desktop" <<EOF
+[Desktop Entry]
+Name=DownNux Manager
+GenericName=Download Manager
+Comment=High performance segmented download manager
+Exec=$HOME/.local/bin/downnux-gui %U
+Icon=$ROOT_DIR/apps/gui/public/app-icon.png
+Terminal=false
+Type=Application
+Categories=Network;FileTransfer;Utility;
+Keywords=download;manager;idm;accelerator;
+StartupWMClass=DownNux Manager
+EOF
+chmod +x "$HOME/.local/share/applications/downnux-manager.desktop"
+
+if which update-desktop-database >/dev/null 2>&1; then
+  update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+fi
+
+echo "[✓] CLI installed: $HOME/.local/bin/downnux"
+echo "[✓] Native GUI installed: $HOME/.local/bin/downnux-gui"
+echo "[✓] Desktop shortcut installed: ~/.local/share/applications/downnux-manager.desktop"
 
 # 4. Install Browser Integration Manifests for Chrome, Brave, Chromium, Edge, and Firefox
 HOST_PATH="$ROOT_DIR/apps/native-host/dist/downnux-native-host"

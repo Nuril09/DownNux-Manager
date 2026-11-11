@@ -192,23 +192,40 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
 // ---------------------------------------------------------------------------
 // Pesan dari content script dan popup
 
-async function downloadVideo({ src, pageUrl, title }, tabId) {
+async function downloadVideo({ src, pageUrl, title, quality }, tabId) {
+  const isVideoPlatform = /youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(pageUrl);
+  
+  if (isVideoPlatform) {
+    const filename = title ? `${title.replace(/[\/\\?%*:|"<>]/g, "_")}.${quality === "audio" ? "mp3" : "mp4"}` : undefined;
+    return sendToApp({
+      url: pageUrl,
+      referrer: pageUrl,
+      filename,
+    });
+  }
+
   // 1) <video src> langsung (http/https) -> engine biasa.
   if (src && /^https?:/i.test(src)) {
-    return sendToApp({ url: src, referrer: pageUrl });
+    return sendToApp({ url: src, referrer: pageUrl, filename: title ? `${title}.mp4` : undefined });
   }
-  // 2) blob:/MSE -> pakai URL asli hasil sniffing jaringan.
+
+  // 2) blob:/MSE -> cari hasil sniffing media jaringan.
   const media = await mediaFor(tabId);
   const direct = [...media].reverse().find((m) => m.kind === "video" && !SEGMENT_RE.test(m.url));
   const stream = [...media].reverse().find((m) => m.kind === "hls" || m.kind === "dash");
-  if (stream) {
-    // HLS/DASH dan situs yt-dlp diunduh lewat yt-dlp + ffmpeg (milestone M4).
-    throw new Error(
-      `Video ini memakai streaming ${stream.kind.toUpperCase()}. Dukungan HLS/DASH hadir di milestone M4.`,
-    );
+  if (direct) {
+    return sendToApp({ url: direct.url, referrer: pageUrl, filename: title ? `${title}.mp4` : undefined });
   }
-  if (direct) return sendToApp({ url: direct.url, referrer: pageUrl });
-  throw new Error("URL video asli belum terdeteksi. Putar videonya sebentar lalu coba lagi.");
+  if (stream) {
+    return sendToApp({ url: stream.url, referrer: pageUrl, filename: title ? `${title}.mp4` : undefined });
+  }
+
+  // Fallback terakhir: kirim URL halaman agar diproses oleh engine hybrid
+  return sendToApp({
+    url: pageUrl,
+    referrer: pageUrl,
+    filename: title ? `${title}.mp4` : undefined,
+  });
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

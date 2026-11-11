@@ -4,6 +4,7 @@ import { PROTOCOL_VERSION, type DaemonInfo, type Method, type MethodResults } fr
 import { ensurePrivateDir, getAppPaths } from "@downnux/shared/node";
 import { TaskStore } from "./db.ts";
 import { Aria2Engine } from "./engine/aria2.ts";
+import { HybridEngine } from "./engine/hybrid.ts";
 import { logger } from "./log.ts";
 import { DownloadManager } from "./manager.ts";
 import { IpcServer, assertSocketFree } from "./server.ts";
@@ -22,11 +23,12 @@ async function main(): Promise<void> {
 
   const settings = new SettingsStore(paths.configDir);
   const store = new TaskStore(paths.dbPath);
-  const engine = new Aria2Engine({
+  const aria2 = new Aria2Engine({
     binary: settings.get().aria2Path || undefined,
     logDir: paths.logDir,
     pidFile: path.join(paths.runtimeDir, "aria2.pid"),
   });
+  const engine = new HybridEngine(aria2);
   const manager = new DownloadManager(store, engine, settings);
 
   let shuttingDown = false;

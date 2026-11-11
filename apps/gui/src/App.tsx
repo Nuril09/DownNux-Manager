@@ -52,14 +52,14 @@ function fmtBytes(n: number): string {
   return `${(n / 1024 ** i).toFixed(1)} ${u[i]}`.replace(".", ",");
 }
 
-function fmtTime(sec: number): string {
+function fmtTime(sec: number, lang: Lang = "en"): string {
   if (!isFinite(sec) || sec <= 0) return "—";
-  if (sec < 60) return `${Math.round(sec)} d`;
+  if (sec < 60) return `${Math.round(sec)} ${lang === "en" ? "s" : "d"}`;
   const m = Math.floor(sec / 60);
   const s = Math.round(sec % 60);
-  if (m < 60) return `${m} m ${s} d`;
+  if (m < 60) return `${m} ${lang === "en" ? "m" : "m"} ${s} ${lang === "en" ? "s" : "d"}`;
   const h = Math.floor(m / 60);
-  return `${h} j ${m % 60} m`;
+  return `${h} ${lang === "en" ? "h" : "j"} ${m % 60} ${lang === "en" ? "m" : "m"}`;
 }
 
 function getCategory(filename: string): "video" | "music" | "documents" | "compressed" | "programs" | "other" {
@@ -91,7 +91,8 @@ function getFileIcon(filename: string) {
 }
 
 export function App() {
-  const [lang, setLang] = useState<Lang>("id");
+  // User Requirement: English is DEFAULT language
+  const [lang, setLang] = useState<Lang>("en");
   const t = translations[lang];
 
   const [osName, setOsName] = useState<string>("Ubuntu · Desktop");
@@ -196,6 +197,31 @@ export function App() {
     setLang((prev) => (prev === "en" ? "id" : "en"));
   };
 
+  const getStatusText = (status: Task["status"]) => {
+    if (lang === "en") {
+      switch (status) {
+        case "downloading": return "Downloading";
+        case "completed": return "Completed";
+        case "paused": return "Paused";
+        case "failed": return "Failed";
+        case "queued": return "Queued";
+        case "merging": return "Merging";
+        case "retrying": return "Retrying";
+        default: return status;
+      }
+    }
+    switch (status) {
+      case "downloading": return "Mengunduh";
+      case "completed": return "Selesai";
+      case "paused": return "Dijeda";
+      case "failed": return "Gagal";
+      case "queued": return "Dalam antrean";
+      case "merging": return "Menggabungkan";
+      case "retrying": return "Mencoba lagi";
+      default: return status;
+    }
+  };
+
   return (
     <div className="ios-glass-canvas h-screen w-screen p-2 sm:p-3 flex flex-col box-border overflow-hidden select-none">
       {/* WINDOW CONTAINER: Rounded 12px with Frosted Glassmorphism iOS Depth */}
@@ -221,10 +247,10 @@ export function App() {
             <button
               onClick={toggleLanguage}
               className="flex items-center space-x-1 px-2.5 py-1 text-[11px] font-medium rounded-[6px] border border-[#e7e9ef] bg-white text-[#6e7685] hover:text-[#202631] hover:border-[#d0d3de] transition-colors"
-              title="Ganti Bahasa"
+              title={lang === "en" ? "Change Language" : "Ganti Bahasa"}
             >
               <Languages className="w-3.5 h-3.5 text-[#6554c0]" />
-              <span className="font-semibold">{lang === "en" ? "EN" : "ID"}</span>
+              <span className="font-semibold">{lang.toUpperCase()}</span>
             </button>
 
             <div className="h-4 w-[1px] bg-[#e7e9ef]" />
@@ -232,20 +258,20 @@ export function App() {
             <div className="flex items-center space-x-2 text-[#6e7685]">
               <button
                 className="w-5 h-5 rounded hover:bg-[#e7e9ef] flex items-center justify-center transition-colors"
-                title="Minimize"
+                title={lang === "en" ? "Minimize" : "Kecilkan"}
               >
                 <Minimize2 className="w-3.5 h-3.5" />
               </button>
               <button
                 className="w-5 h-5 rounded hover:bg-[#e7e9ef] flex items-center justify-center transition-colors"
-                title="Maximize"
+                title={lang === "en" ? "Maximize" : "Besarkan"}
               >
                 <Square className="w-3 h-3" />
               </button>
               <button
                 onClick={() => setIsExitDialogOpen(true)}
                 className="w-5 h-5 rounded hover:bg-rose-500 hover:text-white flex items-center justify-center transition-colors"
-                title="Tutup"
+                title={lang === "en" ? "Close" : "Tutup"}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -259,7 +285,7 @@ export function App() {
           {/* NAVIGASI (Sidebar Figma w: 216px, bg: #f7f8fa) */}
           <aside className="w-[216px] ios-glass-sidebar border-r border-[#e7e9ef] flex flex-col justify-between p-3 flex-shrink-0 z-20">
             <div className="space-y-4 overflow-y-auto pr-1">
-              {/* PUSTAKA */}
+              {/* PUSTAKA / LIBRARY */}
               <div>
                 <div className="text-[10px] font-semibold text-[#6e7685] tracking-wider uppercase px-2 mb-1.5">
                   {lang === "en" ? "LIBRARY" : "PUSTAKA"}
@@ -322,7 +348,7 @@ export function App() {
                 </div>
               </div>
 
-              {/* KATEGORI */}
+              {/* KATEGORI / CATEGORIES */}
               <div>
                 <div className="text-[10px] font-semibold text-[#6e7685] tracking-wider uppercase px-2 mb-1.5">
                   {lang === "en" ? "CATEGORIES" : "KATEGORI"}
@@ -380,10 +406,10 @@ export function App() {
             <div className="bg-[#eef4f1] p-3 rounded-[8px] border border-[#d6e7dc]/70 mt-2">
               <p className="font-medium text-[11px] text-[#218163] flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-[#218163] inline-block animate-pulse" />
-                Browser terhubung
+                {lang === "en" ? "Browser Connected" : "Browser terhubung"}
               </p>
               <p className="font-normal text-[10px] text-[#6e7685] mt-1">
-                Chrome · Siap menangkap URL
+                {lang === "en" ? "Chrome / Brave · Ready to capture" : "Chrome · Siap menangkap URL"}
               </p>
             </div>
           </aside>
@@ -476,11 +502,11 @@ export function App() {
 
                 <button className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium flex items-center space-x-2 flex-shrink-0">
                   <Clock className="w-4 h-4 text-[#6e7685]" />
-                  <span>Terbaru</span>
+                  <span>{lang === "en" ? "Recent" : "Terbaru"}</span>
                 </button>
               </div>
 
-              {/* Filter Tabs (Exact Figma: "Semua" with indicator line #6554c0, "Aktif", "Selesai") */}
+              {/* Filter Tabs (Exact Figma: "All" with indicator line #6554c0, "Active", "Completed") */}
               <div className="flex items-center justify-between pt-2 border-b border-[#e7e9ef]">
                 <div className="flex items-center space-x-6">
                   <button
@@ -489,7 +515,7 @@ export function App() {
                       activeFilter === "all" ? "text-[#6554c0] font-semibold" : "text-[#6e7685] hover:text-[#202631]"
                     }`}
                   >
-                    Semua
+                    {lang === "en" ? "All" : "Semua"}
                     <span className="text-[10px] text-[#6e7685] font-normal ml-1.5">{tasks.length}</span>
                     {activeFilter === "all" && (
                       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0]" />
@@ -503,7 +529,7 @@ export function App() {
                         : "text-[#6e7685] hover:text-[#202631]"
                     }`}
                   >
-                    Aktif
+                    {lang === "en" ? "Active" : "Aktif"}
                     {activeFilter === "downloading" && (
                       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0]" />
                     )}
@@ -516,14 +542,14 @@ export function App() {
                         : "text-[#6e7685] hover:text-[#202631]"
                     }`}
                   >
-                    Selesai
+                    {lang === "en" ? "Completed" : "Selesai"}
                     {activeFilter === "completed" && (
                       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0]" />
                     )}
                   </button>
                 </div>
                 <span className="text-[11px] text-[#6e7685]">
-                  {selectedTask ? "1 dipilih" : "0 dipilih"}
+                  {selectedTask ? (lang === "en" ? "1 selected" : "1 dipilih") : (lang === "en" ? "0 selected" : "0 dipilih")}
                 </span>
               </div>
             </div>
@@ -534,13 +560,13 @@ export function App() {
                 <table className="w-full text-left border-collapse text-[11px]">
                   <thead>
                     <tr className="bg-[#f7f8fa] text-[#6e7685] font-medium border-b border-[#e7e9ef] text-[10px]">
-                      <th className="py-2.5 px-4 w-80">Nama file</th>
-                      <th className="py-2.5 px-3 w-28">Ukuran</th>
-                      <th className="py-2.5 px-3 w-40">Status / progres</th>
-                      <th className="py-2.5 px-3 w-28">Kecepatan</th>
-                      <th className="py-2.5 px-3 w-24">Sisa waktu</th>
-                      <th className="py-2.5 px-3 w-32">Ditambahkan</th>
-                      <th className="py-2.5 px-3 text-right">Aksi</th>
+                      <th className="py-2.5 px-4 w-80">{t.filename}</th>
+                      <th className="py-2.5 px-3 w-28">{t.size}</th>
+                      <th className="py-2.5 px-3 w-40">{t.status} / {t.progress}</th>
+                      <th className="py-2.5 px-3 w-28">{t.speed}</th>
+                      <th className="py-2.5 px-3 w-24">{t.eta}</th>
+                      <th className="py-2.5 px-3 w-32">{t.added}</th>
+                      <th className="py-2.5 px-3 text-right">{lang === "en" ? "Action" : "Aksi"}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#e7e9ef]">
@@ -548,7 +574,9 @@ export function App() {
                       <tr>
                         <td colSpan={7} className="py-12 text-center text-[#6e7685]">
                           <Folder className="w-8 h-8 mx-auto mb-2 opacity-30 text-[#6554c0]" />
-                          <p className="text-[12px] font-medium text-[#202631]">Tidak ada unduhan di daftar ini</p>
+                          <p className="text-[12px] font-medium text-[#202631]">
+                            {lang === "en" ? "No downloads in this list" : "Tidak ada unduhan di daftar ini"}
+                          </p>
                         </td>
                       </tr>
                     ) : (
@@ -618,15 +646,7 @@ export function App() {
                                       : "text-[#6554c0]"
                                   }`}
                                 >
-                                  {task.status === "downloading"
-                                    ? "Mengunduh"
-                                    : task.status === "completed"
-                                    ? "Selesai"
-                                    : task.status === "paused"
-                                    ? "Dijeda"
-                                    : task.status === "failed"
-                                    ? "Gagal"
-                                    : "Dalam antrean"}
+                                  {getStatusText(task.status)}
                                 </span>
                                 <span className="font-normal text-[10px] text-[#6554c0]">
                                   {task.status === "completed" ? "100%" : `${pct.toFixed(0)}%`}
@@ -653,11 +673,11 @@ export function App() {
                             </td>
 
                             <td className="py-2.5 px-3 text-[#6e7685] whitespace-nowrap">
-                              {task.status === "downloading" ? fmtTime(etaSec) : "—"}
+                              {task.status === "downloading" ? fmtTime(etaSec, lang) : "—"}
                             </td>
 
                             <td className="py-2.5 px-3 text-[#6e7685] text-[10px] whitespace-nowrap">
-                              Hari ini, {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              {lang === "en" ? "Today" : "Hari ini"}, {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </td>
 
                             <td className="py-2.5 px-3 text-right">
@@ -689,12 +709,16 @@ export function App() {
 
               {/* Table Footer: Menampilkan X dari Y unduhan & Link Lihat semua */}
               <div className="flex items-center justify-between text-[10px] text-[#6e7685] mt-2 px-1">
-                <span>Menampilkan {filteredTasks.length} dari {tasks.length} unduhan</span>
+                <span>
+                  {lang === "en"
+                    ? `Showing ${filteredTasks.length} of ${tasks.length} downloads`
+                    : `Menampilkan ${filteredTasks.length} dari ${tasks.length} unduhan`}
+                </span>
                 <button
                   onClick={() => setActiveFilter("all")}
                   className="text-[#6554c0] font-medium flex items-center hover:underline"
                 >
-                  Lihat semua riwayat <ArrowRight className="w-3 h-3 ml-1" />
+                  {lang === "en" ? "View full history" : "Lihat semua riwayat"} <ArrowRight className="w-3 h-3 ml-1" />
                 </button>
               </div>
 
@@ -707,8 +731,8 @@ export function App() {
                         {selectedTask.filename || selectedTask.url}
                       </h3>
                       <p className="font-normal text-[10px] text-[#6e7685] mt-0.5">
-                        {fmtBytes(selectedTask.completedBytes)} dari {fmtBytes(selectedTask.totalBytes)} ·{" "}
-                        {selectedTask.connections || 8} koneksi aktif · Resume didukung
+                        {fmtBytes(selectedTask.completedBytes)} {lang === "en" ? "of" : "dari"} {fmtBytes(selectedTask.totalBytes)} ·{" "}
+                        {selectedTask.connections || 8} {lang === "en" ? "active connections · Resume supported" : "koneksi aktif · Resume didukung"}
                       </p>
                     </div>
                     <button
@@ -716,7 +740,7 @@ export function App() {
                       className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium flex items-center space-x-2"
                     >
                       <FolderOpen className="w-4 h-4 text-[#6e7685]" />
-                      <span>Buka folder</span>
+                      <span>{lang === "en" ? "Open Folder" : "Buka folder"}</span>
                     </button>
                   </div>
 
@@ -727,7 +751,7 @@ export function App() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-[9px] font-semibold text-[#6e7685] uppercase tracking-wide">
-                            KECEPATAN TRANSFER
+                            {lang === "en" ? "TRANSFER SPEED" : "KECEPATAN TRANSFER"}
                           </p>
                           <div className="flex items-baseline space-x-1 mt-1">
                             <span className="text-[24px] font-semibold text-[#202631] leading-none">
@@ -738,7 +762,7 @@ export function App() {
                             <span className="text-[11px] text-[#6e7685]">MB/s</span>
                           </div>
                           <p className="text-[10px] text-[#6e7685] mt-1">
-                            Rata-rata {(selectedTask.speed > 0 ? (selectedTask.speed / (1024 * 1024) * 0.95).toFixed(1) : "0,0").replace(".", ",")} MB/s
+                            {lang === "en" ? "Average" : "Rata-rata"} {(selectedTask.speed > 0 ? (selectedTask.speed / (1024 * 1024) * 0.95).toFixed(1) : "0,0").replace(".", ",")} MB/s
                           </p>
                         </div>
 
@@ -771,15 +795,15 @@ export function App() {
                       </div>
 
                       <div className="flex justify-between text-[9px] text-[#6e7685] mt-1 pt-1">
-                        <span>60 d lalu</span>
-                        <span>Sekarang</span>
+                        <span>{lang === "en" ? "60s ago" : "60 d lalu"}</span>
+                        <span>{lang === "en" ? "Now" : "Sekarang"}</span>
                       </div>
                     </div>
 
                     {/* Progres per koneksi (Figma 8 segmen paralel) */}
                     <div className="col-span-7">
                       <p className="text-[9px] font-semibold text-[#6e7685] uppercase tracking-wide mb-2">
-                        PROGRES PER KONEKSI
+                        {lang === "en" ? "PROGRESS PER CONNECTION" : "PROGRES PER KONEKSI"}
                       </p>
                       <div className="grid grid-cols-4 gap-x-4 gap-y-2">
                         {Array.from({ length: selectedTask.connections || 8 }).map((_, idx) => (
@@ -805,7 +829,7 @@ export function App() {
                         ))}
                       </div>
                       <p className="text-[9px] text-[#6e7685] mt-2">
-                        Lokasi: {selectedTask.dir || "~/Downloads"}
+                        {lang === "en" ? "Location:" : "Lokasi:"} {selectedTask.dir || "~/Downloads"}
                       </p>
                     </div>
                   </div>
@@ -817,13 +841,18 @@ export function App() {
             <footer className="h-[36px] ios-glass-bar border-t border-[#e7e9ef] px-4 flex items-center justify-between text-[11px] text-[#202631] flex-shrink-0">
               <div className="flex items-center space-x-4">
                 <span className="text-[#218163] font-medium flex items-center gap-1.5">
-                  <span className="text-[10px]">●</span> Layanan background aktif
+                  <span className="text-[10px]">●</span>{" "}
+                  {lang === "en" ? "Background service active" : "Layanan background aktif"}
                 </span>
-                <span className="text-[#6e7685]">Unduhan tetap berjalan saat jendela ditutup</span>
+                <span className="text-[#6e7685]">
+                  {lang === "en"
+                    ? "Downloads continue when window is closed"
+                    : "Unduhan tetap berjalan saat jendela ditutup"}
+                </span>
               </div>
               <div className="flex items-center space-x-4 text-[#6e7685]">
                 <span className="text-[#202631] font-medium">↓ {fmtBytes(totalSpeed)}/s</span>
-                <span>Ruang tersedia: 128 GB</span>
+                <span>{lang === "en" ? "Available storage: 128 GB" : "Ruang tersedia: 128 GB"}</span>
               </div>
             </footer>
           </main>
@@ -835,7 +864,7 @@ export function App() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white/95 backdrop-blur-xl border border-[#e7e9ef] rounded-[10px] w-full max-w-lg p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-[#e7e9ef] pb-3">
-              <h2 className="text-[14px] font-semibold text-[#202631]">Tambah Download Baru</h2>
+              <h2 className="text-[14px] font-semibold text-[#202631]">{t.addUrlTitle}</h2>
               <button
                 onClick={() => setIsAddOpen(false)}
                 className="w-6 h-6 rounded hover:bg-[#f7f8fa] flex items-center justify-center text-[#6e7685]"
@@ -846,7 +875,7 @@ export function App() {
 
             <div className="space-y-3 text-[12px]">
               <div>
-                <label className="block text-[#6e7685] mb-1 font-medium">URL Download (HTTP/HTTPS):</label>
+                <label className="block text-[#6e7685] mb-1 font-medium">{t.enterUrl}</label>
                 <input
                   type="text"
                   placeholder="https://example.com/file.iso"
@@ -857,7 +886,7 @@ export function App() {
               </div>
 
               <div>
-                <label className="block text-[#6e7685] mb-1 font-medium">Nama File Khusus (opsional):</label>
+                <label className="block text-[#6e7685] mb-1 font-medium">{t.customFilename}</label>
                 <input
                   type="text"
                   placeholder="custom-name.iso"
@@ -868,7 +897,7 @@ export function App() {
               </div>
 
               <div>
-                <label className="block text-[#6e7685] mb-1 font-medium">Jumlah Koneksi Paralel (1-16):</label>
+                <label className="block text-[#6e7685] mb-1 font-medium">{t.connections}</label>
                 <input
                   type="number"
                   min={1}
@@ -885,13 +914,13 @@ export function App() {
                 onClick={() => setIsAddOpen(false)}
                 className="px-4 py-1.5 rounded-[6px] bg-[#f7f8fa] hover:bg-[#e7e9ef] text-[#202631] text-[12px] font-medium"
               >
-                Batal
+                {t.cancelAction}
               </button>
               <button
                 onClick={handleAddDownload}
                 className="px-4 py-1.5 rounded-[6px] ios-button-primary text-white text-[12px] font-medium"
               >
-                Mulai Download
+                {t.startDownloadBtn}
               </button>
             </div>
           </div>
