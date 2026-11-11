@@ -1,0 +1,49 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-cli/schema.json",
+  "productName": "DownNux Manager",
+  "version": "0.1.0",
+  "identifier": "com.creativemichiz.downnux",
+  "build": {
+    "beforeDevCommand": "npm --prefix apps/gui run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm --prefix apps/gui run build",
+    "frontendDist": "../apps/gui/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "DownNux Manager",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 640,
+        "decorations": true,
+        "transparent": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "appimage", "nsis", "msi", "dmg"],
+    "icon": [
+      "icons/icon.png"
+    ],
+    "linux": {
+      "deb": {
+        "depends": ["aria2", "libwebkit2gtk-4.1-0"]
+      }
+    },
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.png"
+      }
+    },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15"
+    }
+  }
+}

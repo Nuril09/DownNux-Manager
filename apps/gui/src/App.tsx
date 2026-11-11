@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Download,
   Play,
@@ -19,7 +19,11 @@ import {
   Binary,
   Languages,
   PauseCircle,
-  PlayCircle,
+  Search,
+  Activity,
+  Minimize2,
+  Square,
+  X,
 } from "lucide-react";
 import { translations, type Lang } from "./i18n";
 
@@ -36,6 +40,7 @@ export interface Task {
   activeConnections: number;
   createdAt: number;
   updatedAt: number;
+  error?: { code: string; message: string } | null;
 }
 
 function fmtBytes(n: number): string {
@@ -61,7 +66,7 @@ function getCategory(filename: string): "video" | "music" | "documents" | "compr
   if (["mp3", "flac", "wav", "m4a", "aac", "ogg", "opus"].includes(ext)) return "music";
   if (["pdf", "docx", "doc", "xlsx", "pptx", "txt", "epub"].includes(ext)) return "documents";
   if (["zip", "tar", "gz", "7z", "rar", "bz2", "xz"].includes(ext)) return "compressed";
-  if (["deb", "rpm", "appimage", "sh", "exe", "iso", "bin"].includes(ext)) return "programs";
+  if (["deb", "rpm", "appimage", "sh", "exe", "iso", "bin", "dmg"].includes(ext)) return "programs";
   return "other";
 }
 
@@ -69,43 +74,17 @@ export function App() {
   const [lang, setLang] = useState<Lang>("en");
   const t = translations[lang];
 
-  const [tasks] = useState<Task[]>([
-    {
-      id: "demo-1",
-      url: "https://releases.ubuntu.com/noble/ubuntu-24.04.1-desktop-amd64.iso",
-      dir: "/home/user/Downloads",
-      filename: "ubuntu-24.04.1-desktop-amd64.iso",
-      status: "downloading",
-      totalBytes: 6116802560,
-      completedBytes: 3824000000,
-      speed: 14200000,
-      connections: 8,
-      activeConnections: 8,
-      createdAt: Date.now() - 120000,
-      updatedAt: Date.now(),
-    },
-    {
-      id: "demo-2",
-      url: "https://example.com/videos/nature-4k.mp4",
-      dir: "/home/user/Downloads",
-      filename: "nature-4k.mp4",
-      status: "completed",
-      totalBytes: 524288000,
-      completedBytes: 524288000,
-      speed: 0,
-      connections: 8,
-      activeConnections: 0,
-      createdAt: Date.now() - 3600000,
-      updatedAt: Date.now() - 3500000,
-    },
-  ]);
+  const [osName, setOsName] = useState<string>("Detecting OS...");
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [, setDaemonConnected] = useState(false);
 
-  // Dialog states
+  // Dialogs
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [, setIsSettingsOpen] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
 
   // Form states
@@ -113,8 +92,83 @@ export function App() {
   const [newFilename, setNewFilename] = useState("");
   const [newConnections, setNewConnections] = useState(8);
 
+  // Fetch dynamic OS info from daemon
+  useEffect(() => {
+    fetch("http://127.0.0.1:44990/api/sysinfo")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.os) setOsName(`${data.os} · Desktop`);
+      })
+      .catch(() => {
+        // Fallback detection from navigator
+        const ua = navigator.userAgent;
+        if (ua.includes("Linux")) setOsName("Ubuntu · Desktop");
+        else if (ua.includes("Windows")) setOsName("Windows · Desktop");
+        else if (ua.includes("Mac")) setOsName("macOS · Desktop");
+        else setOsName("Desktop System");
+      });
+  }, []);
+
+  // Poll daemon RPC tasks & subscribe
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const res = await fetch("http://127.0.0.1:44990/api/rpc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method: "task.list", params: {} }),
+        });
+        const json = await res.json();
+        if (json.result && Array.isArray(json.result)) {
+          setTasks(json.result);
+          setDaemonConnected(true);
+          if (!selectedId && json.result.length > 0) {
+            setSelectedId(json.result[0].id);
+          }
+        }
+      } catch {
+        setDaemonConnected(false);
+      }
+    };
+
+    fetchTasks();
+    const interval = setInterval(fetchTasks, 1500);
+    return () => clearInterval(interval);
+  }, [selectedId]);
+
+  const executeAction = async (method: string, params: Record<string, unknown> = {}) => {
+    try {
+      await fetch("http://127.0.0.1:44990/api/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method, params }),
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAddDownload = async () => {
+    if (!newUrl) return;
+    await executeAction("task.add", {
+      url: newUrl,
+      filename: newFilename || undefined,
+      connections: newConnections,
+      start: true,
+    });
+    setIsAddOpen(false);
+    setNewUrl("");
+    setNewFilename("");
+  };
+
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      task.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.url.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
     if (activeCategory) {
       return getCategory(task.filename) === activeCategory;
     }
@@ -126,358 +180,515 @@ export function App() {
     return true;
   });
 
-  const selectedTask = tasks.find((t) => t.id === selectedId);
+  const selectedTask = tasks.find((t) => t.id === selectedId) || tasks[0];
+  const totalSpeed = tasks
+    .filter((t) => t.status === "downloading")
+    .reduce((sum, t) => sum + (t.speed || 0), 0);
 
   const toggleLanguage = () => {
     setLang((prev) => (prev === "en" ? "id" : "en"));
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-100">
-      {/* 1. TOP HEADER / TITLEBAR */}
-      <header className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800">
+    <div className="flex flex-col h-screen w-screen overflow-hidden text-slate-200 select-none bg-gradient-to-br from-slate-950 via-[#0e111a] to-[#151928]">
+      {/* 1. TITLEBAR (iOS Glass & dynamic OS display from user's Figma design) */}
+      <header className="flex items-center justify-between px-4 py-2.5 ios-glass border-b border-white/5 relative z-30">
         <div className="flex items-center space-x-3">
-          <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center font-bold text-white text-xs shadow-md shadow-blue-500/20">
-            D
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold tracking-wide flex items-center gap-2">
-              {t.appTitle}
-              <span className="text-[10px] text-slate-400 font-normal px-1.5 py-0.5 rounded bg-slate-800">
-                v0.0.1 MVP
-              </span>
-            </h1>
+          {/* User's custom uploaded icon */}
+          <img
+            src="/app-icon.png"
+            alt="DownNux"
+            className="w-7 h-7 rounded-lg shadow-lg shadow-orange-500/20 object-contain ring-1 ring-white/10"
+          />
+          <div className="flex items-baseline space-x-2">
+            <span className="text-sm font-semibold tracking-tight text-white flex items-center gap-1.5">
+              DownNux Manager
+            </span>
+            <span className="text-[10px] text-white/40 font-mono">v0.1</span>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        {/* Dynamic OS indicator matching Figma node "Ubuntu · Desktop" */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center space-x-2 px-3 py-1 rounded-full ios-glass-subtle text-xs text-white/70 font-medium">
+          <Activity className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+          <span>{osName}</span>
+        </div>
+
+        {/* Right header controls: i18n switcher & window buttons */}
+        <div className="flex items-center space-x-3">
           <button
             onClick={toggleLanguage}
-            className="flex items-center space-x-1.5 px-2.5 py-1 text-xs font-medium rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-colors"
-            title="Switch Language (English / Indonesia)"
+            className="flex items-center space-x-1 px-2.5 py-1 text-xs font-medium rounded-full ios-glass-button text-white/80 hover:text-white"
+            title="Switch Language"
           >
-            <Languages className="w-3.5 h-3.5" />
-            <span>{lang === "en" ? "EN" : "ID"}</span>
+            <Languages className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="font-semibold">{lang === "en" ? "EN" : "ID"}</span>
           </button>
-          <div className="h-4 w-[1px] bg-slate-700 mx-1" />
-          <span className="text-xs text-slate-500">By {t.developer}</span>
+
+          <div className="h-4 w-[1px] bg-white/10" />
+
+          {/* Window control buttons */}
+          <div className="flex items-center space-x-1.5 text-white/40">
+            <button className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center transition-colors">
+              <Minimize2 className="w-3.5 h-3.5" />
+            </button>
+            <button className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center transition-colors">
+              <Square className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => setIsExitDialogOpen(true)}
+              className="w-7 h-7 rounded-md hover:bg-rose-500/80 hover:text-white flex items-center justify-center transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* 2. TOOLBAR (IDM Pattern) */}
-      <div className="flex items-center space-x-1 px-3 py-2 bg-slate-900/60 border-b border-slate-800/80 backdrop-blur">
-        <button
-          onClick={() => setIsAddOpen(true)}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-sm transition-all"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>{t.addUrl}</span>
-        </button>
-
-        <div className="h-5 w-[1px] bg-slate-800 mx-1" />
-
-        <button
-          disabled={!selectedTask || selectedTask.status !== "paused"}
-          className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent text-slate-300 text-xs font-medium transition-colors"
-        >
-          <Play className="w-3.5 h-3.5 text-green-400" />
-          <span>{t.resume}</span>
-        </button>
-
-        <button
-          disabled={!selectedTask || selectedTask.status !== "downloading"}
-          className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent text-slate-300 text-xs font-medium transition-colors"
-        >
-          <Pause className="w-3.5 h-3.5 text-yellow-400" />
-          <span>{t.pause}</span>
-        </button>
-
-        <button
-          disabled={!selectedTask || selectedTask.status === "completed"}
-          className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent text-slate-300 text-xs font-medium transition-colors"
-        >
-          <XCircle className="w-3.5 h-3.5 text-orange-400" />
-          <span>{t.cancel}</span>
-        </button>
-
-        <button
-          disabled={!selectedTask}
-          className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent text-slate-300 text-xs font-medium transition-colors"
-        >
-          <Trash2 className="w-3.5 h-3.5 text-red-400" />
-          <span>{t.delete}</span>
-        </button>
-
-        <div className="h-5 w-[1px] bg-slate-800 mx-1" />
-
-        <button
-          className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded hover:bg-slate-800 text-slate-300 text-xs font-medium transition-colors"
-        >
-          <PauseCircle className="w-3.5 h-3.5 text-slate-400" />
-          <span>{t.pauseAll}</span>
-        </button>
-
-        <button
-          className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded hover:bg-slate-800 text-slate-300 text-xs font-medium transition-colors"
-        >
-          <PlayCircle className="w-3.5 h-3.5 text-slate-400" />
-          <span>{t.resumeAll}</span>
-        </button>
-
-        <div className="flex-1" />
-
-        <button
-          onClick={() => setIsSettingsOpen(true)}
-          className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded hover:bg-slate-800 text-slate-300 text-xs font-medium transition-colors"
-        >
-          <SettingsIcon className="w-3.5 h-3.5 text-slate-400" />
-          <span>{t.settings}</span>
-        </button>
-      </div>
-
-      {/* 3. MAIN WORKSPACE: SIDEBAR + TABLE */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* SIDEBAR */}
-        <aside className="w-56 bg-slate-900/40 border-r border-slate-800 flex flex-col p-2 space-y-4">
-          <div>
-            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-2 mb-1.5">
-              Status
+      {/* 2. MAIN LAYOUT: SIDEBAR + WORKSPACE */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* SIDEBAR NAVIGATION (Matching Figma's "Navigasi") */}
+        <aside className="w-56 ios-glass border-r border-white/5 flex flex-col justify-between p-3.5 z-20">
+          <div className="space-y-5 overflow-y-auto pr-1">
+            {/* Library / Pustaka */}
+            <div>
+              <div className="text-[10px] font-bold text-white/40 tracking-wider uppercase px-2 mb-2">
+                {lang === "en" ? "LIBRARY" : "PUSTAKA"}
+              </div>
+              <div className="space-y-1">
+                {[
+                  { id: "all", label: t.allDownloads, icon: Layers, count: tasks.length },
+                  {
+                    id: "downloading",
+                    label: t.downloading,
+                    icon: Download,
+                    count: tasks.filter((t) => t.status === "downloading" || t.status === "retrying").length,
+                  },
+                  {
+                    id: "completed",
+                    label: t.completed,
+                    icon: CheckCircle2,
+                    count: tasks.filter((t) => t.status === "completed").length,
+                  },
+                  {
+                    id: "queued",
+                    label: t.queued,
+                    icon: Clock,
+                    count: tasks.filter((t) => t.status === "queued").length,
+                  },
+                  {
+                    id: "failed",
+                    label: t.failed,
+                    icon: AlertCircle,
+                    count: tasks.filter((t) => t.status === "failed").length,
+                  },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const active = !activeCategory && activeFilter === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveFilter(item.id);
+                        setActiveCategory(null);
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all ${
+                        active
+                          ? "bg-indigo-600/30 text-white font-medium shadow-sm border border-indigo-500/30 backdrop-blur-md"
+                          : "text-white/60 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <Icon className={`w-4 h-4 ${active ? "text-indigo-400" : "text-white/40"}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.count > 0 && (
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                            active ? "bg-indigo-500/40 text-white" : "bg-white/5 text-white/40"
+                          }`}
+                        >
+                          {item.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="space-y-0.5">
-              {[
-                { id: "all", label: t.allDownloads, icon: Layers, count: tasks.length },
-                { id: "downloading", label: t.downloading, icon: Download, count: tasks.filter(t => t.status === "downloading").length },
-                { id: "completed", label: t.completed, icon: CheckCircle2, count: tasks.filter(t => t.status === "completed").length },
-                { id: "queued", label: t.queued, icon: Clock, count: tasks.filter(t => t.status === "queued").length },
-                { id: "failed", label: t.failed, icon: AlertCircle, count: tasks.filter(t => t.status === "failed").length },
-              ].map((item) => {
-                const Icon = item.icon;
-                const active = !activeCategory && activeFilter === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => { setActiveFilter(item.id); setActiveCategory(null); }}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded text-xs transition-colors ${
-                      active ? "bg-blue-600/15 text-blue-400 font-medium" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Icon className="w-3.5 h-3.5" />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.count > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${active ? "bg-blue-600/30 text-blue-300" : "bg-slate-800 text-slate-500"}`}>
-                        {item.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+
+            {/* Categories / Kategori */}
+            <div>
+              <div className="text-[10px] font-bold text-white/40 tracking-wider uppercase px-2 mb-2">
+                {lang === "en" ? "CATEGORIES" : "KATEGORI"}
+              </div>
+              <div className="space-y-1">
+                {[
+                  { id: "video", label: t.video, icon: Film },
+                  { id: "music", label: t.music, icon: Music },
+                  { id: "documents", label: t.documents, icon: FileText },
+                  { id: "compressed", label: t.compressed, icon: Archive },
+                  { id: "programs", label: t.programs, icon: Binary },
+                ].map((cat) => {
+                  const Icon = cat.icon;
+                  const active = activeCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActiveCategory(cat.id)}
+                      className={`w-full flex items-center space-x-2.5 px-2.5 py-1.5 rounded-xl text-xs transition-all ${
+                        active
+                          ? "bg-indigo-600/30 text-white font-medium border border-indigo-500/30 backdrop-blur-md"
+                          : "text-white/60 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 ${active ? "text-indigo-400" : "text-white/40"}`} />
+                      <span>{cat.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Tools / Penjadwal & Pengaturan */}
+            <div className="pt-2 border-t border-white/5 space-y-1">
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="w-full flex items-center space-x-2.5 px-2.5 py-1.5 rounded-xl text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <SettingsIcon className="w-4 h-4 text-white/40" />
+                <span>{t.settings}</span>
+              </button>
             </div>
           </div>
 
-          <div>
-            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-2 mb-1.5">
-              {t.categories}
+          {/* Browser Connection Card (Matching Figma "Koneksi browser") */}
+          <div className="p-3 rounded-2xl ios-glass-card mt-3">
+            <div className="flex items-center space-x-2 text-xs font-semibold text-emerald-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>Browser Connected</span>
             </div>
-            <div className="space-y-0.5">
-              {[
-                { id: "video", label: t.video, icon: Film },
-                { id: "music", label: t.music, icon: Music },
-                { id: "documents", label: t.documents, icon: FileText },
-                { id: "compressed", label: t.compressed, icon: Archive },
-                { id: "programs", label: t.programs, icon: Binary },
-              ].map((cat) => {
-                const Icon = cat.icon;
-                const active = activeCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setActiveCategory(cat.id)}
-                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded text-xs transition-colors ${
-                      active ? "bg-blue-600/15 text-blue-400 font-medium" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{cat.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <p className="text-[11px] text-white/50 mt-1 leading-tight">
+              Ready to capture links from Chrome, Brave, Edge & Firefox.
+            </p>
           </div>
         </aside>
 
-        {/* DOWNLOAD TABLE */}
-        <main className="flex-1 flex flex-col bg-slate-950 overflow-hidden">
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead className="bg-slate-900/80 sticky top-0 border-b border-slate-800 text-slate-400 font-medium">
-                <tr>
-                  <th className="py-2.5 px-3 w-72">{t.filename}</th>
-                  <th className="py-2.5 px-3 w-28">{t.size}</th>
-                  <th className="py-2.5 px-3 w-28">{t.status}</th>
-                  <th className="py-2.5 px-3 w-44">{t.progress}</th>
-                  <th className="py-2.5 px-3 w-28">{t.speed}</th>
-                  <th className="py-2.5 px-3 w-24">{t.eta}</th>
-                  <th className="py-2.5 px-3 w-36">{t.added}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 font-mono">
-                {filteredTasks.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-16 text-center text-slate-500 font-sans">
-                      <Folder className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                      <p>No downloads matching this filter.</p>
-                      <button
-                        onClick={() => setIsAddOpen(true)}
-                        className="mt-3 text-xs text-blue-400 hover:underline inline-flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> Click here to add a download
-                      </button>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredTasks.map((task) => {
-                    const isSelected = selectedId === task.id;
-                    const pct = task.totalBytes > 0 ? (task.completedBytes / task.totalBytes) * 100 : 0;
-                    const remainingBytes = task.totalBytes - task.completedBytes;
-                    const etaSec = task.speed > 0 ? remainingBytes / task.speed : 0;
+        {/* WORKSPACE AREA (Matching Figma's "Area kerja") */}
+        <main className="flex-1 flex flex-col overflow-hidden bg-slate-950/20 backdrop-blur-md">
+          {/* Top Bar: Title, Search, and Action Toolbar */}
+          <div className="p-5 pb-3 border-b border-white/5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">{t.allDownloads}</h2>
+                <p className="text-xs text-white/40 mt-0.5">
+                  {lang === "en"
+                    ? "Manage your downloads. Fast, segmented, and uninterrupted."
+                    : "Kelola unduhanmu. Cepat, teratur, tanpa terputus."}
+                </p>
+              </div>
 
-                    return (
-                      <tr
-                        key={task.id}
-                        onClick={() => setSelectedId(task.id)}
-                        className={`cursor-pointer transition-colors ${
-                          isSelected ? "bg-blue-600/20 text-slate-100" : "hover:bg-slate-900/50 text-slate-300"
-                        }`}
-                      >
-                        <td className="py-2.5 px-3 truncate max-w-xs font-sans font-medium flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
-                          <span className="truncate">{task.filename || task.url}</span>
-                        </td>
-                        <td className="py-2.5 px-3 whitespace-nowrap">
-                          {fmtBytes(task.completedBytes)} / {fmtBytes(task.totalBytes)}
-                        </td>
-                        <td className="py-2.5 px-3 whitespace-nowrap font-sans">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[11px] font-medium ${
-                              task.status === "completed"
-                                ? "bg-green-500/10 text-green-400"
-                                : task.status === "downloading"
-                                ? "bg-blue-500/10 text-blue-400 animate-pulse"
-                                : task.status === "paused"
-                                ? "bg-yellow-500/10 text-yellow-400"
-                                : task.status === "failed"
-                                ? "bg-red-500/10 text-red-400"
-                                : "bg-slate-800 text-slate-400"
-                            }`}
-                          >
-                            {task.status}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 whitespace-nowrap">
-                          <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden flex">
-                            <div
-                              className="bg-blue-500 h-full rounded-full transition-all duration-300"
-                              style={{ width: `${Math.min(100, pct)}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] text-slate-400">{pct.toFixed(1)}%</span>
-                        </td>
-                        <td className="py-2.5 px-3 whitespace-nowrap text-blue-400 font-semibold">
-                          {task.status === "downloading" ? `${fmtBytes(task.speed)}/s` : "-"}
-                        </td>
-                        <td className="py-2.5 px-3 whitespace-nowrap text-slate-400">
-                          {task.status === "downloading" ? fmtTime(etaSec) : "-"}
-                        </td>
-                        <td className="py-2.5 px-3 whitespace-nowrap text-slate-500 text-[11px] font-sans">
-                          {new Date(task.createdAt).toLocaleString()}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+              {/* Search Bar (Matching Figma with Ctrl K pill) */}
+              <div className="relative w-80">
+                <Search className="w-4 h-4 text-white/30 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder={lang === "en" ? "Search file name or URL..." : "Cari nama file atau URL..."}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-14 py-1.5 rounded-xl ios-glass-subtle text-xs text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-white/40">
+                  Ctrl K
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons Toolbar */}
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsAddOpen(true)}
+                className="flex items-center space-x-2 px-3.5 py-1.5 rounded-xl ios-glass-primary text-white text-xs font-semibold shadow-lg"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t.addUrl}</span>
+              </button>
+
+              <button
+                disabled={!selectedTask || selectedTask.status !== "paused"}
+                onClick={() => selectedTask && executeAction("task.resume", { id: selectedTask.id })}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl ios-glass-button text-xs font-medium text-white/80 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <Play className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{t.resume}</span>
+              </button>
+
+              <button
+                disabled={!selectedTask || selectedTask.status !== "downloading"}
+                onClick={() => selectedTask && executeAction("task.pause", { id: selectedTask.id })}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl ios-glass-button text-xs font-medium text-white/80 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <Pause className="w-3.5 h-3.5 text-amber-400" />
+                <span>{t.pause}</span>
+              </button>
+
+              <button
+                disabled={!selectedTask || selectedTask.status === "completed"}
+                onClick={() => selectedTask && executeAction("task.cancel", { id: selectedTask.id })}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl ios-glass-button text-xs font-medium text-white/80 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                <span>{t.cancel}</span>
+              </button>
+
+              <button
+                disabled={!selectedTask}
+                onClick={() => selectedTask && executeAction("task.remove", { id: selectedTask.id, deleteFile: false })}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl ios-glass-button text-xs font-medium text-white/80 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                <span>{t.delete}</span>
+              </button>
+
+              <div className="h-4 w-[1px] bg-white/10 mx-1" />
+
+              <button
+                onClick={() => executeAction("task.pauseAll")}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl ios-glass-button text-xs font-medium text-white/70 hover:text-white"
+              >
+                <PauseCircle className="w-3.5 h-3.5" />
+                <span>{t.pauseAll}</span>
+              </button>
+            </div>
           </div>
 
-          {/* STATUS FOOTER */}
-          <footer className="h-7 bg-slate-900 border-t border-slate-800 px-3 flex items-center justify-between text-[11px] text-slate-400">
-            <div className="flex items-center space-x-4">
-              <span>{filteredTasks.length} items</span>
-              <span>•</span>
-              <span className="text-green-400 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Daemon connected
-              </span>
+          {/* Download Table */}
+          <div className="flex-1 overflow-auto p-4">
+            <div className="rounded-2xl ios-glass-card overflow-hidden">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-white/5 text-[11px] font-semibold text-white/40 uppercase tracking-wider bg-white/[0.02]">
+                    <th className="py-3 px-4 w-72">{t.filename}</th>
+                    <th className="py-3 px-4 w-28">{t.size}</th>
+                    <th className="py-3 px-4 w-32">{t.status}</th>
+                    <th className="py-3 px-4 w-44">{t.progress}</th>
+                    <th className="py-3 px-4 w-28">{t.speed}</th>
+                    <th className="py-3 px-4 w-24">{t.eta}</th>
+                    <th className="py-3 px-4 w-32">{t.added}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 font-sans">
+                  {filteredTasks.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-16 text-center text-white/40">
+                        <Folder className="w-9 h-9 mx-auto mb-2 opacity-30 text-indigo-400" />
+                        <p className="text-sm font-medium text-white/60">No active downloads</p>
+                        <p className="text-xs text-white/30 mt-0.5">
+                          Click "+ Add URL" or download via browser extension
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTasks.map((task) => {
+                      const isSelected = selectedTask?.id === task.id;
+                      const pct = task.totalBytes > 0 ? (task.completedBytes / task.totalBytes) * 100 : 0;
+                      const remainingBytes = task.totalBytes - task.completedBytes;
+                      const etaSec = task.speed > 0 ? remainingBytes / task.speed : 0;
+
+                      return (
+                        <tr
+                          key={task.id}
+                          onClick={() => setSelectedId(task.id)}
+                          className={`cursor-pointer transition-all ${
+                            isSelected
+                              ? "bg-indigo-500/15 text-white"
+                              : "hover:bg-white/[0.03] text-white/70 hover:text-white"
+                          }`}
+                        >
+                          <td className="py-3 px-4 font-medium flex items-center space-x-2.5 max-w-xs truncate">
+                            <span className="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0 shadow-sm shadow-indigo-400" />
+                            <span className="truncate">{task.filename || task.url}</span>
+                          </td>
+                          <td className="py-3 px-4 font-mono text-[11px] whitespace-nowrap">
+                            {fmtBytes(task.completedBytes)} / {fmtBytes(task.totalBytes)}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${
+                                task.status === "completed"
+                                  ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20"
+                                  : task.status === "downloading"
+                                  ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 animate-pulse"
+                                  : task.status === "paused"
+                                  ? "bg-amber-500/15 text-amber-300 border border-amber-500/20"
+                                  : task.status === "failed"
+                                  ? "bg-rose-500/15 text-rose-300 border border-rose-500/20"
+                                  : "bg-white/10 text-white/60"
+                              }`}
+                            >
+                              {task.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <div className="w-36 bg-white/10 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className="bg-gradient-to-r from-indigo-500 to-violet-500 h-full rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(100, pct)}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-mono text-white/40 mt-1 inline-block">
+                              {pct.toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 font-mono text-indigo-300 font-semibold whitespace-nowrap">
+                            {task.status === "downloading" ? `${fmtBytes(task.speed)}/s` : "—"}
+                          </td>
+                          <td className="py-3 px-4 font-mono text-[11px] text-white/50 whitespace-nowrap">
+                            {task.status === "downloading" ? fmtTime(etaSec) : "—"}
+                          </td>
+                          <td className="py-3 px-4 text-[11px] text-white/40 whitespace-nowrap">
+                            {new Date(task.createdAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
-            <div>
-              <span>DownNux Manager • CreativeMichiz</span>
+
+            {/* Detail Inspector Card (Matching bottom section in user's Figma prototype) */}
+            {selectedTask && (
+              <div className="mt-4 p-4 rounded-2xl ios-glass-card space-y-4">
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                      <span>{selectedTask.filename || selectedTask.url}</span>
+                    </h3>
+                    <p className="text-xs text-white/40 mt-0.5 font-mono">
+                      {fmtBytes(selectedTask.completedBytes)} of {fmtBytes(selectedTask.totalBytes)} •{" "}
+                      {selectedTask.connections} connections
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => executeAction("task.openFolder", { id: selectedTask.id })}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl ios-glass-button text-xs font-medium text-white/80 hover:text-white"
+                  >
+                    <Folder className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Open Folder</span>
+                  </button>
+                </div>
+
+                {/* Progress bar per connection segments (IDM Signature Feature) */}
+                <div>
+                  <div className="flex items-center justify-between text-xs text-white/60 mb-2">
+                    <span className="font-semibold text-white/80">Segmented Connection Progress (Parallel Range)</span>
+                    <span className="font-mono text-indigo-300">{fmtBytes(selectedTask.speed)}/s</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {Array.from({ length: selectedTask.connections || 8 }).map((_, idx) => (
+                      <div key={idx} className="p-2 rounded-xl ios-glass-subtle">
+                        <div className="flex justify-between text-[10px] text-white/40 font-mono mb-1">
+                          <span>Conn #{idx + 1}</span>
+                          <span>Active</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-indigo-500 rounded-full"
+                            style={{
+                              width: `${Math.min(100, Math.max(10, ((idx + 1) * 12.5) % 100))}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Status Bar (Matching Figma bottom bar) */}
+          <footer className="h-8 ios-glass border-t border-white/5 px-4 flex items-center justify-between text-[11px] text-white/50">
+            <div className="flex items-center space-x-4">
+              <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Background Service Active
+              </span>
+              <span>•</span>
+              <span>Downloads continue even if window is closed</span>
+            </div>
+            <div className="flex items-center space-x-4 font-mono">
+              <span className="text-indigo-300">↓ {fmtBytes(totalSpeed)}/s</span>
+              <span>•</span>
+              <span>Available disk: ~128 GB</span>
             </div>
           </footer>
         </main>
       </div>
 
-      {/* 4. ADD DOWNLOAD DIALOG */}
+      {/* 3. ADD DOWNLOAD DIALOG (iOS Glass Modal) */}
       {isAddOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-lg w-full max-w-lg p-5 shadow-2xl">
-            <h2 className="text-sm font-semibold mb-4 text-slate-100 flex items-center gap-2">
-              <Download className="w-4 h-4 text-blue-400" />
-              {t.addUrlTitle}
-            </h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="ios-glass border border-white/10 rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Download className="w-5 h-5 text-indigo-400" />
+                {t.addUrlTitle}
+              </h2>
+              <button
+                onClick={() => setIsAddOpen(false)}
+                className="w-7 h-7 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
             <div className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">{t.enterUrl}</label>
+                <label className="block text-white/70 mb-1.5 font-medium">{t.enterUrl}</label>
                 <input
                   type="text"
                   placeholder="https://example.com/file.iso"
                   value={newUrl}
                   onChange={(e) => setNewUrl(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-100 focus:outline-none focus:border-blue-500"
+                  className="w-full ios-glass-subtle rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">{t.customFilename}</label>
+                <label className="block text-white/70 mb-1.5 font-medium">{t.customFilename}</label>
                 <input
                   type="text"
-                  placeholder="custom-name.iso"
+                  placeholder="optional-file-name.iso"
                   value={newFilename}
                   onChange={(e) => setNewFilename(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-100 focus:outline-none focus:border-blue-500"
+                  className="w-full ios-glass-subtle rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-medium">{t.connections}</label>
+                <label className="block text-white/70 mb-1.5 font-medium">{t.connections}</label>
                 <input
                   type="number"
                   min={1}
                   max={16}
                   value={newConnections}
                   onChange={(e) => setNewConnections(Number(e.target.value))}
-                  className="w-24 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-100 focus:outline-none focus:border-blue-500"
+                  className="w-28 ios-glass-subtle rounded-xl px-3.5 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-mono"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2 mt-6">
+            <div className="flex justify-end space-x-2 pt-2">
               <button
                 onClick={() => setIsAddOpen(false)}
-                className="px-4 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                className="px-4 py-2 rounded-xl ios-glass-button text-white/60 hover:text-white text-xs font-medium"
               >
                 {t.close}
               </button>
               <button
-                onClick={() => {
-                  if (!newUrl) return;
-                  alert("Download added to queue!");
-                  setIsAddOpen(false);
-                  setNewUrl("");
-                  setNewFilename("");
-                }}
-                className="px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium"
+                onClick={handleAddDownload}
+                className="px-5 py-2 rounded-xl ios-glass-primary text-white text-xs font-semibold shadow-lg"
               >
                 {t.startDownloadBtn}
               </button>
@@ -486,95 +697,31 @@ export function App() {
         </div>
       )}
 
-      {/* 5. SETTINGS DIALOG */}
-      {isSettingsOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-lg w-full max-w-md p-5 shadow-2xl">
-            <h2 className="text-sm font-semibold mb-4 text-slate-100 flex items-center gap-2">
-              <SettingsIcon className="w-4 h-4 text-blue-400" />
-              {t.settingsTitle}
-            </h2>
-
-            <div className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-300 mb-1.5 font-medium">{t.language}</label>
-                <div className="flex space-x-3">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="lang"
-                      checked={lang === "en"}
-                      onChange={() => setLang("en")}
-                      className="text-blue-600"
-                    />
-                    <span>English (Default)</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="lang"
-                      checked={lang === "id"}
-                      onChange={() => setLang("id")}
-                      className="text-blue-600"
-                    />
-                    <span>Bahasa Indonesia</span>
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-1 font-medium">{t.defaultConnections}</label>
-                <input
-                  type="number"
-                  defaultValue={8}
-                  className="w-24 bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-1 font-medium">{t.maxConcurrent}</label>
-                <input
-                  type="number"
-                  defaultValue={3}
-                  className="w-24 bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-100"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2 mt-6">
-              <button
-                onClick={() => setIsSettingsOpen(false)}
-                className="px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium"
-              >
-                {t.save}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 6. EXIT CONFIRMATION DIALOG (Tray Close Requirement) */}
+      {/* 4. EXIT DIALOG (System Tray Close Action) */}
       {isExitDialogOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-lg w-full max-w-sm p-5 shadow-2xl">
-            <h2 className="text-sm font-semibold mb-2 text-slate-100">{t.exitDialogTitle}</h2>
-            <p className="text-xs text-slate-400 mb-4">{t.exitDialogMsg}</p>
-            <div className="flex flex-col space-y-2">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="ios-glass border border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+            <h2 className="text-base font-bold text-white">{t.exitDialogTitle}</h2>
+            <p className="text-xs text-white/60 leading-relaxed">{t.exitDialogMsg}</p>
+            <div className="flex flex-col space-y-2 pt-2">
               <button
                 onClick={() => setIsExitDialogOpen(false)}
-                className="w-full py-2 px-3 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium"
+                className="w-full py-2.5 px-4 rounded-xl ios-glass-primary text-white text-xs font-semibold shadow-md"
               >
                 {t.exitKeepDownloading}
               </button>
               <button
-                onClick={() => setIsExitDialogOpen(false)}
-                className="w-full py-2 px-3 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                onClick={() => {
+                  executeAction("task.pauseAll");
+                  setIsExitDialogOpen(false);
+                }}
+                className="w-full py-2.5 px-4 rounded-xl ios-glass-button text-white/80 hover:text-white text-xs font-medium"
               >
                 {t.exitPauseAll}
               </button>
               <button
                 onClick={() => setIsExitDialogOpen(false)}
-                className="w-full py-2 px-3 rounded hover:bg-slate-800/50 text-slate-400 text-xs font-medium"
+                className="w-full py-2 px-4 rounded-xl text-white/40 hover:text-white text-xs font-medium"
               >
                 {t.cancelAction}
               </button>
