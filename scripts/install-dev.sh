@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
 # DownNux Manager — Local Developer / User Installer
-# CreativeMichiz
+# CreativeMichiz <https://github.com/CreativeMichiz>
+# GNU General Public License v3.0
 
 set -e
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ESBUILD="$ROOT_DIR/node_modules/.pnpm/@esbuild+linux-x64@0.28.2/node_modules/@esbuild/linux-x64/bin/esbuild"
+
+# Resolve esbuild binary
+if command -v esbuild >/dev/null 2>&1; then
+  ESBUILD="esbuild"
+elif [ -x "$ROOT_DIR/node_modules/.bin/esbuild" ]; then
+  ESBUILD="$ROOT_DIR/node_modules/.bin/esbuild"
+elif [ -x "$ROOT_DIR/node_modules/.pnpm/node_modules/.bin/esbuild" ]; then
+  ESBUILD="$ROOT_DIR/node_modules/.pnpm/node_modules/.bin/esbuild"
+else
+  ESBUILD=$(find "$ROOT_DIR/node_modules" -name esbuild -type f -perm /111 2>/dev/null | head -n 1)
+fi
 
 echo "=== DownNux Manager Setup by CreativeMichiz ==="
 
@@ -18,8 +29,8 @@ echo "[*] Building daemon..."
 mkdir -p "$ROOT_DIR/apps/daemon/dist"
 "$ESBUILD" "$ROOT_DIR/apps/daemon/src/main.ts" \
   --bundle --platform=node --format=esm --target=node22 \
+  --packages=external \
   --outfile="$ROOT_DIR/apps/daemon/dist/main.mjs" \
-  --external:node:sqlite \
   --alias:@downnux/shared="$ROOT_DIR/packages/shared/src/index.ts" \
   --alias:@downnux/shared/node="$ROOT_DIR/packages/shared/src/node/index.ts"
 
@@ -38,17 +49,25 @@ EOF
 chmod +x "$ROOT_DIR/apps/native-host/dist/downnux-native-host"
 echo "[✓] Browser integration built at: $ROOT_DIR/apps/native-host/dist/downnux-native-host"
 
-# 3. Create CLI wrapper
+# 3. Create CLI wrapper in ~/.local/bin and project root
 mkdir -p "$HOME/.local/bin"
 cat > "$HOME/.local/bin/downnux" <<EOF
 #!/bin/sh
 exec /usr/bin/node --import tsx "$ROOT_DIR/apps/daemon/src/cli.ts" "\$@"
 EOF
 chmod +x "$HOME/.local/bin/downnux"
+
+# Ensure root CLI wrapper also exists
+cat > "$ROOT_DIR/downnux" <<EOF
+#!/bin/sh
+exec /usr/bin/node --import tsx "$ROOT_DIR/apps/daemon/src/cli.ts" "\$@"
+EOF
+chmod +x "$ROOT_DIR/downnux"
+
 if [ -d "$HOME/.gemini/antigravity/bin" ]; then
   ln -sf "$HOME/.local/bin/downnux" "$HOME/.gemini/antigravity/bin/downnux"
 fi
-echo "[✓] CLI installed: $HOME/.local/bin/downnux"
+echo "[✓] CLI installed: $HOME/.local/bin/downnux and $ROOT_DIR/downnux"
 
 # 4. Install Browser Integration Manifests for Chrome, Brave, Chromium, Edge, and Firefox
 HOST_PATH="$ROOT_DIR/apps/native-host/dist/downnux-native-host"
@@ -94,8 +113,16 @@ mkdir -p "$HOME/.mozilla/native-messaging-hosts"
 echo "$FIREFOX_MANIFEST" > "$HOME/.mozilla/native-messaging-hosts/com.creativemichiz.downnux.native_host.json"
 echo "[✓] Registered Browser Integration Manifests for Chrome, Brave, Edge, Chromium, and Firefox"
 
-# 5. Create Systemd User Service
+# 5. Build GUI assets if needed
+if [ ! -f "$ROOT_DIR/apps/gui/dist/index.html" ]; then
+  echo "[*] Building GUI web bundle..."
+  npm --prefix "$ROOT_DIR/apps/gui" run build
+fi
+
+# 6. Create Systemd User Services (Daemon + GUI)
 mkdir -p "$HOME/.config/systemd/user"
+
+# Daemon service
 cat > "$HOME/.config/systemd/user/downnux-daemon.service" <<EOF
 [Unit]
 Description=DownNux Manager Background Daemon (CreativeMichiz)
@@ -103,6 +130,7 @@ After=network.target
 
 [Service]
 Type=simple
+WorkingDirectory=$ROOT_DIR
 ExecStart=/usr/bin/node "$ROOT_DIR/apps/daemon/dist/main.mjs"
 Restart=on-failure
 RestartSec=3
@@ -112,19 +140,46 @@ KillMode=process
 WantedBy=default.target
 EOF
 
+# GUI service
+cat > "$HOME/.config/systemd/user/downnux-gui.service" <<EOF
+[Unit]
+Description=DownNux Manager GUI Web Server (CreativeMichiz)
+After=network.target downnux-daemon.service
+
+[Service]
+Type=simple
+WorkingDirectory=$ROOT_DIR
+ExecStart=/usr/bin/node "$ROOT_DIR/scripts/serve-gui.mjs"
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+EOF
+
 systemctl --user daemon-reload
-echo "[✓] Systemd user service installed: ~/.config/systemd/user/downnux-daemon.service"
+systemctl --user restart downnux-daemon downnux-gui
+echo "[✓] Systemd user services activated: downnux-daemon & downnux-gui"
 
 echo ""
-echo "=== Setup Complete! ==="
-echo "1. To start daemon now:     systemctl --user restart downnux-daemon"
-echo "2. To test CLI:             downnux ping"
-echo "3. To load browser extension in Chrome/Brave/Edge:"
-echo "   - Open chrome://extensions or brave://extensions"
-echo "   - Enable 'Developer mode'"
-echo "   - Click 'Load unpacked' and select:"
+echo "================================================="
+echo "   DownNux Manager is Ready to Use!"
+echo "================================================="
+echo "1. CLI Commands:"
+echo "   - Test daemon:     downnux ping"
+echo "   - List downloads:  downnux ls"
+echo "   - Add download:    downnux add <URL> -c 8"
+echo "   - Pause download:  downnux pause <ID>"
+echo "   - Resume download: downnux resume <ID>"
+echo ""
+echo "2. GUI Interface:"
+echo "   - Open browser:    http://localhost:1420"
+echo ""
+echo "3. Browser Integration Extension:"
+echo "   - Chrome / Brave / Edge: Open brave://extensions or chrome://extensions,"
+echo "     enable 'Developer mode', click 'Load unpacked', and select:"
 echo "     $ROOT_DIR/apps/extension"
-echo "4. In Firefox:"
-echo "   - Open about:debugging#/runtime/this-firefox"
-echo "   - Click 'Load Temporary Add-on' and select:"
+echo "   - Firefox: Open about:debugging#/runtime/this-firefox,"
+echo "     click 'Load Temporary Add-on', and select:"
 echo "     $ROOT_DIR/apps/extension/manifest.firefox.json"
+echo "================================================="

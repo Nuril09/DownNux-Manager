@@ -1,4 +1,2 @@
 #!/bin/sh
-DIR="$(cd "$(dirname "$0")" && pwd)"
-exec /usr/bin/node --import tsx "$DIR/apps/daemon/src/cli.ts" "$@"
-
+exec /usr/bin/node --import tsx "/home/nurilhuda155/Documents/Project-Code/Download Manager/apps/daemon/src/cli.ts" "$@"
