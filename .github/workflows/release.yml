@@ -85,3 +85,4 @@ jobs:
         with:
           name: DownNux-macOS-dmg
           path: src-tauri/target/release/bundle/dmg/*.dmg
+
