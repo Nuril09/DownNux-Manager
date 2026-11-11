@@ -45,6 +45,9 @@ cat > "$HOME/.local/bin/downnux" <<EOF
 exec /usr/bin/node --import tsx "$ROOT_DIR/apps/daemon/src/cli.ts" "\$@"
 EOF
 chmod +x "$HOME/.local/bin/downnux"
+if [ -d "$HOME/.gemini/antigravity/bin" ]; then
+  ln -sf "$HOME/.local/bin/downnux" "$HOME/.gemini/antigravity/bin/downnux"
+fi
 echo "[✓] CLI installed: $HOME/.local/bin/downnux"
 
 # 4. Install Browser Integration Manifests for Chrome, Brave, Chromium, Edge, and Firefox

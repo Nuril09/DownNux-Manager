@@ -10,6 +10,10 @@
   },
   "dependencies": {
     "@downnux/shared": "workspace:*",
+    "ws": "^8.22.2",
     "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.2"
   }
 }
