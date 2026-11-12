@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AddTaskInput, type Task } from "./task.ts";
 import { SettingsPatch, type Settings } from "./settings.ts";
+import { ScheduleConfigPatch, type ScheduleConfig } from "./scheduler.ts";
 
 /**
  * Protokol IPC daemon. Satu pesan JSON per baris (NDJSON) di atas Unix socket.
@@ -24,9 +25,14 @@ export const MethodParams = {
   "task.pauseAll": z.object({}).optional(),
   "task.resumeAll": z.object({}).optional(),
   "task.openFolder": IdParams,
+  "task.probe": z.object({ url: z.string(), headers: z.record(z.string()).optional() }),
+  "dialog.selectFolder": z.object({ defaultPath: z.string().optional() }).optional(),
   subscribe: z.object({}).optional(),
   "settings.get": z.object({}).optional(),
   "settings.update": SettingsPatch,
+  "scheduler.get": z.object({}).optional(),
+  "scheduler.update": ScheduleConfigPatch,
+  "scheduler.runNow": z.object({}).optional(),
   /** Dipakai menu tray "Keluar": hentikan daemon. pauseAll=true menjeda semua dulu. */
   "daemon.shutdown": z.object({ pauseAll: z.boolean().default(false) }).optional(),
 } as const;
@@ -41,6 +47,18 @@ export interface DaemonInfo {
   engine: { name: string; version: string };
 }
 
+export interface UrlProbeResult {
+  url: string;
+  filename: string;
+  size: number;
+  formattedSize: string;
+  resumeSupported: boolean;
+  category: "video" | "music" | "documents" | "compressed" | "programs" | "all";
+  contentType?: string;
+  isMedia: boolean;
+  defaultDir: string;
+}
+
 export interface MethodResults {
   ping: DaemonInfo;
   "task.add": Task;
@@ -53,9 +71,14 @@ export interface MethodResults {
   "task.pauseAll": { count: number };
   "task.resumeAll": { count: number };
   "task.openFolder": { ok: true };
+  "task.probe": UrlProbeResult;
+  "dialog.selectFolder": { ok: boolean; path?: string };
   subscribe: { ok: true };
   "settings.get": Settings;
   "settings.update": Settings;
+  "scheduler.get": ScheduleConfig;
+  "scheduler.update": ScheduleConfig;
+  "scheduler.runNow": { ok: boolean };
   "daemon.shutdown": { ok: true };
 }
 

@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$ROOT_DIR/build/deb-pkg"
 DIST_DIR="$ROOT_DIR/dist"
-PKG_VERSION="0.0.1"
+PKG_VERSION="0.0.3"
 PKG_NAME="downnux-manager_${PKG_VERSION}_amd64"
 
 echo "=== Building Native Linux (.deb) Package for DownNux Manager ==="
@@ -22,13 +22,18 @@ mkdir -p "$BUILD_DIR" "$DIST_DIR"
 echo "[*] Building GUI web bundle..."
 npm --prefix "$ROOT_DIR/apps/gui" run build
 
-echo "[*] Building background daemon..."
+echo "[*] Building background daemon & CLI..."
 ESBUILD="$ROOT_DIR/node_modules/.pnpm/@esbuild+linux-x64@0.28.2/node_modules/@esbuild/linux-x64/bin/esbuild"
 mkdir -p "$ROOT_DIR/apps/daemon/dist"
 "$ESBUILD" "$ROOT_DIR/apps/daemon/src/main.ts" \
   --bundle --platform=node --format=esm --target=node22 \
-  --packages=external \
-  --outfile="$ROOT_DIR/apps/daemon/dist/main.mjs" \
+  --packages=external --outfile="$ROOT_DIR/apps/daemon/dist/main.mjs" \
+  --alias:@downnux/shared="$ROOT_DIR/packages/shared/src/index.ts" \
+  --alias:@downnux/shared/node="$ROOT_DIR/packages/shared/src/node/index.ts"
+
+"$ESBUILD" "$ROOT_DIR/apps/daemon/src/cli.ts" \
+  --bundle --platform=node --format=esm --target=node22 \
+  --outfile="$ROOT_DIR/apps/daemon/dist/cli.mjs" \
   --alias:@downnux/shared="$ROOT_DIR/packages/shared/src/index.ts" \
   --alias:@downnux/shared/node="$ROOT_DIR/packages/shared/src/node/index.ts"
 
@@ -91,7 +96,7 @@ fi
 # 5. Create CLI and Native GUI Wrappers in /usr/bin
 cat > "$BUILD_DIR/usr/bin/downnux" <<'EOF'
 #!/bin/sh
-exec /usr/bin/node --import tsx "/usr/lib/downnux-manager/apps/daemon/src/cli.ts" "$@"
+exec /usr/bin/node "/usr/lib/downnux-manager/apps/daemon/dist/cli.mjs" "$@"
 EOF
 chmod 755 "$BUILD_DIR/usr/bin/downnux"
 

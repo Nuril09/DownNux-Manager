@@ -25,12 +25,17 @@ EXT_ID=$(node --import tsx "$ROOT_DIR/scripts/extension-id.ts")
 echo "[✓] Browser Extension ID: $EXT_ID"
 
 # 2. Build Daemon and Native Host
-echo "[*] Building daemon..."
+echo "[*] Building daemon & CLI..."
 mkdir -p "$ROOT_DIR/apps/daemon/dist"
 "$ESBUILD" "$ROOT_DIR/apps/daemon/src/main.ts" \
   --bundle --platform=node --format=esm --target=node22 \
-  --packages=external \
-  --outfile="$ROOT_DIR/apps/daemon/dist/main.mjs" \
+  --packages=external --outfile="$ROOT_DIR/apps/daemon/dist/main.mjs" \
+  --alias:@downnux/shared="$ROOT_DIR/packages/shared/src/index.ts" \
+  --alias:@downnux/shared/node="$ROOT_DIR/packages/shared/src/node/index.ts"
+
+"$ESBUILD" "$ROOT_DIR/apps/daemon/src/cli.ts" \
+  --bundle --platform=node --format=esm --target=node22 \
+  --outfile="$ROOT_DIR/apps/daemon/dist/cli.mjs" \
   --alias:@downnux/shared="$ROOT_DIR/packages/shared/src/index.ts" \
   --alias:@downnux/shared/node="$ROOT_DIR/packages/shared/src/node/index.ts"
 
@@ -53,7 +58,7 @@ echo "[✓] Browser integration built at: $ROOT_DIR/apps/native-host/dist/downnu
 mkdir -p "$HOME/.local/bin"
 cat > "$HOME/.local/bin/downnux" <<EOF
 #!/bin/sh
-exec /usr/bin/node --import tsx "$ROOT_DIR/apps/daemon/src/cli.ts" "\$@"
+exec /usr/bin/node "$ROOT_DIR/apps/daemon/dist/cli.mjs" "\$@"
 EOF
 chmod +x "$HOME/.local/bin/downnux"
 
@@ -66,7 +71,7 @@ chmod +x "$HOME/.local/bin/downnux-gui"
 # Ensure root wrappers also exist
 cat > "$ROOT_DIR/downnux" <<EOF
 #!/bin/sh
-exec /usr/bin/node --import tsx "$ROOT_DIR/apps/daemon/src/cli.ts" "\$@"
+exec /usr/bin/node "$ROOT_DIR/apps/daemon/dist/cli.mjs" "\$@"
 EOF
 chmod +x "$ROOT_DIR/downnux"
 

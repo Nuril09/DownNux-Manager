@@ -26,6 +26,9 @@ import {
   FolderOpen,
   ArrowRight,
   RefreshCw,
+  Loader2,
+  ArrowDown,
+  Check,
 } from "lucide-react";
 import { translations, type Lang } from "./i18n";
 
@@ -106,11 +109,24 @@ export function App() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
 
-  // Form states
+  // Form & IDM Pre-download states
   const [newUrl, setNewUrl] = useState("");
   const [newFilename, setNewFilename] = useState("");
+  const [saveDir, setSaveDir] = useState<string>("");
   const [newConnections, setNewConnections] = useState(8);
   const [downloadFormat, setDownloadFormat] = useState<"mp4" | "mp3">("mp4");
+  const [probeResult, setProbeResult] = useState<{
+    url: string;
+    filename: string;
+    size: number;
+    formattedSize: string;
+    resumeSupported: boolean;
+    category: string;
+    contentType?: string;
+    isMedia: boolean;
+    defaultDir: string;
+  } | null>(null);
+  const [isProbing, setIsProbing] = useState(false);
 
   const isMediaUrl = /youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(newUrl);
 
@@ -131,6 +147,70 @@ export function App() {
     } catch { }
   };
 
+  // Live URL inspection & metadata probing (IDM Style)
+  useEffect(() => {
+    const trimmed = newUrl.trim();
+    if (!trimmed || !/^https?:\/\//i.test(trimmed)) {
+      setProbeResult(null);
+      setIsProbing(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsProbing(true);
+      try {
+        const res = await fetch("http://127.0.0.1:44990/api/rpc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            method: "task.probe",
+            params: { url: trimmed },
+          }),
+        });
+        const json = await res.json();
+        if (json.result) {
+          setProbeResult(json.result);
+          if (!newFilename || newFilename === "video.mp4" || newFilename === "audio.mp3" || !newFilename.includes(".")) {
+            setNewFilename(json.result.filename);
+          }
+          if (!saveDir) {
+            setSaveDir(json.result.defaultDir);
+          }
+        }
+      } catch (err) {
+        console.warn("Probe error:", err);
+      } finally {
+        setIsProbing(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [newUrl]);
+
+  // Handle native folder chooser
+  const handleSelectFolder = async () => {
+    try {
+      (window as any).__downnux_onFolderSelected = (chosenPath: string) => {
+        if (chosenPath) setSaveDir(chosenPath);
+      };
+      (window as any).webkit?.messageHandlers?.windowControl?.postMessage("selectFolder");
+    } catch { }
+
+    try {
+      const res = await fetch("http://127.0.0.1:44990/api/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "dialog.selectFolder", params: {} }),
+      });
+      const json = await res.json();
+      if (json.result?.ok && json.result?.path) {
+        setSaveDir(json.result.path);
+      }
+    } catch (err) {
+      console.warn("Folder picker error:", err);
+    }
+  };
+
   // Fetch dynamic OS info from daemon
   useEffect(() => {
     fetch("http://127.0.0.1:44990/api/sysinfo")
@@ -141,7 +221,7 @@ export function App() {
       .catch(() => { });
   }, []);
 
-  // Poll daemon RPC tasks & subscribe
+  // Poll daemon RPC tasks & auto-focus active downloading task
   useEffect(() => {
     const fetchTasks = async () => {
       try {
@@ -153,7 +233,14 @@ export function App() {
         const json = await res.json();
         if (json.result && Array.isArray(json.result)) {
           setTasks(json.result);
-          if (!selectedId && json.result.length > 0) {
+          // Auto focus active downloading task so transfer stats card is never stuck on completed
+          const activeTask = json.result.find((t: Task) => t.status === "downloading" || t.status === "retrying");
+          if (activeTask) {
+            const currentSelected = json.result.find((t: Task) => t.id === selectedId);
+            if (!currentSelected || currentSelected.status === "completed" || currentSelected.status === "failed") {
+              setSelectedId(activeTask.id);
+            }
+          } else if (!selectedId && json.result.length > 0) {
             setSelectedId(json.result[0].id);
           }
         }
@@ -161,7 +248,7 @@ export function App() {
     };
 
     fetchTasks();
-    const interval = setInterval(fetchTasks, 1500);
+    const interval = setInterval(fetchTasks, 1200);
     return () => clearInterval(interval);
   }, [selectedId]);
 
@@ -177,20 +264,42 @@ export function App() {
     }
   };
 
-  const handleAddDownload = async () => {
+  const handleAddDownload = async (startImmediately: boolean = true) => {
     if (!newUrl) return;
-    await executeAction("task.add", {
-      url: newUrl,
-      filename: newFilename || undefined,
-      connections: newConnections,
-      headers: {
-        format: downloadFormat === "mp3" ? "audio" : "video",
-      },
-      start: true,
-    });
+    const finalFilename = newFilename ? newFilename.trim() : (probeResult?.filename || undefined);
+    const finalDir = saveDir ? saveDir.trim() : (probeResult?.defaultDir || undefined);
+
+    try {
+      const res = await fetch("http://127.0.0.1:44990/api/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          method: "task.add",
+          params: {
+            url: newUrl.trim(),
+            filename: finalFilename,
+            dir: finalDir,
+            connections: newConnections,
+            headers: {
+              format: downloadFormat === "mp3" ? "audio" : "video",
+            },
+            start: startImmediately,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (json.result?.id) {
+        setSelectedId(json.result.id);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
     setIsAddOpen(false);
     setNewUrl("");
     setNewFilename("");
+    setSaveDir("");
+    setProbeResult(null);
     setDownloadFormat("mp4");
   };
 
@@ -314,6 +423,9 @@ export function App() {
               <img src="/app-icon.png" alt="DownNux" className="w-full h-full object-contain" />
             </div>
             <span className="font-bold text-[12px] text-[#202631] tracking-tight">DownNux Manager</span>
+            <span className="text-[10px] font-bold text-[#6554c0] bg-[#edeaf9] px-2 py-0.5 rounded-full border border-[#d8d2f5] tracking-wide shadow-xs">
+              BETA 0.0.2
+            </span>
           </div>
 
           {/* Dynamic OS indicator matching Figma node 2:18 "Ubuntu · Desktop" */}
@@ -707,11 +819,11 @@ export function App() {
                               {fmtBytes(task.totalBytes || task.completedBytes)}
                             </td>
 
-                            {/* Status & Progress bar (Figma: bar bg #e3e4ea, fill #6554c0) */}
+                            {/* Status & Progress bar (IDM enhanced visual) */}
                             <td className="py-2.5 px-3 whitespace-nowrap">
                               <div className="flex justify-between items-center mb-1">
                                 <span
-                                  className={`font-medium text-[10px] ${task.status === "completed"
+                                  className={`font-semibold text-[10px] flex items-center gap-1.5 ${task.status === "completed"
                                       ? "text-[#218163]"
                                       : task.status === "paused"
                                         ? "text-[#ac8433]"
@@ -720,13 +832,16 @@ export function App() {
                                           : "text-[#6554c0]"
                                     }`}
                                 >
+                                  {task.status === "downloading" && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#6554c0] animate-ping" />
+                                  )}
                                   {getStatusText(task.status)}
                                 </span>
-                                <span className="font-normal text-[10px] text-[#6554c0]">
+                                <span className="font-bold text-[10px] text-[#6554c0]">
                                   {task.status === "completed" ? "100%" : `${pct.toFixed(0)}%`}
                                 </span>
                               </div>
-                              <div className="w-[142px] h-[4px] bg-[#e3e4ea] rounded-[2px] overflow-hidden">
+                              <div className="w-[142px] h-[6px] bg-[#e3e4ea] rounded-[3px] overflow-hidden p-[0.5px]">
                                 <div
                                   className={`h-full rounded-[2px] transition-all duration-300 ${task.status === "completed"
                                       ? "bg-[#218163]"
@@ -734,15 +849,20 @@ export function App() {
                                         ? "bg-[#ac8433]"
                                         : task.status === "failed"
                                           ? "bg-[#c34a4a]"
-                                          : "bg-[#6554c0]"
+                                          : "bg-gradient-to-r from-[#6554c0] via-[#8675ea] to-[#6554c0] animate-pulse"
                                     }`}
-                                  style={{ width: `${task.status === "completed" ? 100 : Math.min(100, pct)}%` }}
+                                  style={{ width: `${task.status === "completed" ? 100 : Math.min(100, Math.max(2, pct))}%` }}
                                 />
                               </div>
                             </td>
 
-                            <td className="py-2.5 px-3 text-[#202631] whitespace-nowrap">
-                              {task.status === "downloading" ? `${fmtBytes(task.speed)}/s` : "—"}
+                            <td className="py-2.5 px-3 text-[#202631] whitespace-nowrap font-semibold text-[11px]">
+                              {task.status === "downloading" ? (
+                                <span className="text-[#6554c0] flex items-center gap-1">
+                                  <ArrowDown className="w-3 h-3 text-[#6554c0] animate-bounce" />
+                                  {fmtBytes(task.speed)}/s
+                                </span>
+                              ) : "—"}
                             </td>
 
                             <td className="py-2.5 px-3 text-[#6e7685] whitespace-nowrap">
@@ -809,7 +929,10 @@ export function App() {
                       </p>
                     </div>
                     <button
-                      onClick={() => executeAction("task.openFolder", { id: selectedTask.id })}
+                      onClick={() => {
+                        executeAction("task.openFolder", { id: selectedTask.id });
+                        postWindowMessage(`openFolder:${selectedTask.dir || ""}`);
+                      }}
                       className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium flex items-center space-x-2"
                     >
                       <FolderOpen className="w-4 h-4 text-[#6e7685]" />
@@ -931,36 +1054,130 @@ export function App() {
         </div>
       </div>
 
-      {/* DIALOG TAMBAH URL */}
+      {/* DIALOG TAMBAH URL (IDM Download File Information Mode) */}
       {isAddOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white/95 backdrop-blur-xl border border-[#e7e9ef] rounded-[10px] w-full max-w-lg p-5 shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white/95 backdrop-blur-2xl border border-[#e7e9ef] rounded-[12px] w-full max-w-lg p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-[#e7e9ef] pb-3">
-              <h2 className="text-[14px] font-semibold text-[#202631]">{t.addUrlTitle}</h2>
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 rounded bg-[#6554c0] flex items-center justify-center text-white">
+                  <Download className="w-3.5 h-3.5" />
+                </div>
+                <h2 className="text-[13px] font-semibold text-[#202631]">{t.fileInfo}</h2>
+              </div>
               <button
-                onClick={() => setIsAddOpen(false)}
-                className="w-6 h-6 rounded hover:bg-[#f7f8fa] flex items-center justify-center text-[#6e7685]"
+                onClick={() => {
+                  setIsAddOpen(false);
+                  setProbeResult(null);
+                }}
+                className="w-6 h-6 rounded hover:bg-[#f7f8fa] flex items-center justify-center text-[#6e7685] hover:text-[#202631]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-[12px]">
+            <div className="space-y-3.5 text-[12px]">
+              {/* URL Input */}
               <div>
                 <label className="block text-[#6e7685] mb-1 font-medium">{t.enterUrl}</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="https://example.com/file.zip or YouTube URL"
+                    value={newUrl}
+                    onChange={(e) => handleUrlChange(e.target.value)}
+                    className="w-full bg-[#f7f8fa] border border-[#e7e9ef] rounded-[6px] px-3 py-2 text-[#202631] focus:outline-none focus:border-[#6554c0] pr-8"
+                  />
+                  {isProbing && (
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                      <Loader2 className="w-4 h-4 text-[#6554c0] animate-spin" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* IDM Metadata Preview Card (Estimated Size, Resume Support, Category) */}
+              {isProbing ? (
+                <div className="bg-[#edeaf9]/40 border border-[#d8d2f5] rounded-[8px] p-3 flex items-center space-x-2.5 text-[11px] text-[#6554c0]">
+                  <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                  <span className="font-medium">{t.inspectingUrl}</span>
+                </div>
+              ) : probeResult ? (
+                <div className="bg-[#f7f8fa] border border-[#e7e9ef] rounded-[8px] p-3 space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-[#6e7685] font-medium">{t.estimatedSize}:</span>
+                    <span className="font-bold text-[#202631] bg-white px-2.5 py-0.5 rounded border border-[#e7e9ef] shadow-xs">
+                      {probeResult.formattedSize}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-[#6e7685] font-medium">Resume Capability:</span>
+                    <span className={`font-semibold flex items-center gap-1 ${
+                      probeResult.resumeSupported ? "text-[#218163]" : "text-[#ac8433]"
+                    }`}>
+                      {probeResult.resumeSupported ? (
+                        <>
+                          <Check className="w-3.5 h-3.5" /> {t.resumeSupported}
+                        </>
+                      ) : (
+                        t.resumeNotSupported
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-[#6e7685] font-medium">{t.categoryLabel}:</span>
+                    <span className="font-semibold text-[#6554c0] uppercase tracking-wider text-[10px] bg-[#edeaf9] px-2 py-0.5 rounded">
+                      {probeResult.category}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* File Name (Editable Description) */}
+              <div>
+                <label className="block text-[#6e7685] mb-1 font-medium">{t.customFilename}</label>
                 <input
                   type="text"
-                  placeholder="https://example.com/file.iso or YouTube URL"
-                  value={newUrl}
-                  onChange={(e) => handleUrlChange(e.target.value)}
+                  placeholder={
+                    isMediaUrl
+                      ? downloadFormat === "mp3"
+                        ? "(Auto detect title · .mp3)"
+                        : "(Auto detect title · .mp4)"
+                      : "filename.ext"
+                  }
+                  value={newFilename}
+                  onChange={(e) => setNewFilename(e.target.value)}
                   className="w-full bg-[#f7f8fa] border border-[#e7e9ef] rounded-[6px] px-3 py-2 text-[#202631] focus:outline-none focus:border-[#6554c0]"
                 />
+              </div>
+
+              {/* Save Folder Destination with Browse Button (IDM Feature) */}
+              <div>
+                <label className="block text-[#6e7685] mb-1 font-medium">{t.saveFolder}</label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    placeholder="~/Downloads"
+                    value={saveDir}
+                    onChange={(e) => setSaveDir(e.target.value)}
+                    className="flex-1 bg-[#f7f8fa] border border-[#e7e9ef] rounded-[6px] px-3 py-2 text-[#202631] focus:outline-none focus:border-[#6554c0] text-[11px] font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSelectFolder}
+                    className="h-[34px] px-3 rounded-[6px] ios-glass-button text-[#202631] text-[11px] font-medium flex items-center space-x-1.5 flex-shrink-0"
+                    title={lang === "en" ? "Browse Folder" : "Pilih Folder"}
+                  >
+                    <Folder className="w-3.5 h-3.5 text-[#6554c0]" />
+                    <span>{t.browseFolder}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Format selection pills for online video / audio */}
               {isMediaUrl && (
                 <div>
-                  <label className="block text-[#6e7685] mb-1 font-medium">{lang === "en" ? "Download Format:" : "Format Download:"}</label>
+                  <label className="block text-[#6e7685] mb-1 font-medium">{lang === "en" ? "Format Preset:" : "Format Download:"}</label>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
@@ -970,10 +1187,11 @@ export function App() {
                           setNewFilename(newFilename.replace(/\.mp3$/, ".mp4"));
                         }
                       }}
-                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp4"
+                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${
+                        downloadFormat === "mp4"
                           ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
                           : "bg-white text-[#202631] border-[#e7e9ef] hover:bg-[#f7f8fa]"
-                        }`}
+                      }`}
                     >
                       🎬 Video (MP4)
                     </button>
@@ -985,10 +1203,11 @@ export function App() {
                           setNewFilename(newFilename.replace(/\.mp4$/, ".mp3"));
                         }
                       }}
-                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp3"
+                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${
+                        downloadFormat === "mp3"
                           ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
                           : "bg-white text-[#202631] border-[#e7e9ef] hover:bg-[#f7f8fa]"
-                        }`}
+                      }`}
                     >
                       🎵 Audio Only (MP3)
                     </button>
@@ -996,49 +1215,57 @@ export function App() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-[#6e7685] mb-1 font-medium">{t.customFilename}</label>
-                <input
-                  type="text"
-                  placeholder={
-                    isMediaUrl
-                      ? downloadFormat === "mp3"
-                        ? "(Auto detect title · .mp3)"
-                        : "(Auto detect title · .mp4)"
-                      : "filename.ext (optional)"
-                  }
-                  value={newFilename}
-                  onChange={(e) => setNewFilename(e.target.value)}
-                  className="w-full bg-[#f7f8fa] border border-[#e7e9ef] rounded-[6px] px-3 py-2 text-[#202631] focus:outline-none focus:border-[#6554c0]"
-                />
-              </div>
-
+              {/* Parallel Connections (IDM Multi-threaded Segmentation) */}
               <div>
                 <label className="block text-[#6e7685] mb-1 font-medium">{t.connections}</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={16}
-                  value={newConnections}
-                  onChange={(e) => setNewConnections(Number(e.target.value))}
-                  className="w-24 bg-[#f7f8fa] border border-[#e7e9ef] rounded-[6px] px-3 py-1.5 text-[#202631] focus:outline-none focus:border-[#6554c0]"
-                />
+                <div className="flex items-center space-x-2">
+                  {[1, 4, 8, 16].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setNewConnections(num)}
+                      className={`px-3 py-1 rounded-[6px] text-[11px] font-medium border transition-colors ${
+                        newConnections === num
+                          ? "bg-[#6554c0] text-white border-[#5a4ab0]"
+                          : "bg-[#f7f8fa] text-[#202631] border-[#e7e9ef] hover:bg-[#eceaf4]"
+                      }`}
+                    >
+                      {num} {lang === "en" ? "conns" : "koneksi"}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2 pt-2">
+            {/* Action buttons (IDM style: Cancel, Download Later, Start Download) */}
+            <div className="flex items-center justify-between pt-3 border-t border-[#e7e9ef]">
               <button
-                onClick={() => setIsAddOpen(false)}
-                className="px-4 py-1.5 rounded-[6px] bg-[#f7f8fa] hover:bg-[#e7e9ef] text-[#202631] text-[12px] font-medium"
+                onClick={() => {
+                  setIsAddOpen(false);
+                  setProbeResult(null);
+                }}
+                className="px-3.5 py-1.5 rounded-[6px] bg-[#f7f8fa] hover:bg-[#e7e9ef] text-[#202631] text-[12px] font-medium"
               >
                 {t.cancelAction}
               </button>
-              <button
-                onClick={handleAddDownload}
-                className="px-4 py-1.5 rounded-[6px] ios-button-primary text-white text-[12px] font-medium"
-              >
-                {t.startDownloadBtn}
-              </button>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => handleAddDownload(false)}
+                  className="px-3.5 py-1.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium"
+                  title="Add to queue in paused state"
+                >
+                  {t.downloadLater}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddDownload(true)}
+                  className="px-4 py-1.5 rounded-[6px] ios-button-primary text-white text-[12px] font-medium shadow-sm"
+                >
+                  {t.startDownloadBtn}
+                </button>
+              </div>
             </div>
           </div>
         </div>

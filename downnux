@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /usr/bin/node --import tsx "/home/nurilhuda155/Documents/Project-Code/Download Manager/apps/daemon/src/cli.ts" "$@"
+exec /usr/bin/node "/home/nurilhuda155/Documents/Project-Code/Download Manager/apps/daemon/dist/cli.mjs" "$@"

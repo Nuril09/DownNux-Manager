@@ -129,6 +129,40 @@ class DownNuxNativeWindow(Gtk.Window):
                     self.maximize()
             elif msg == "close":
                 self.close()
+            elif msg.startswith("openFolder:"):
+                try:
+                    target = msg.split(":", 1)[1]
+                    if target and os.path.exists(target):
+                        subprocess.Popen(["xdg-open", target])
+                    else:
+                        subprocess.Popen(["xdg-open", os.path.expanduser("~/Downloads")])
+                except Exception as ex:
+                    sys.stderr.write(f"Open folder error: {ex}\n")
+            elif msg == "selectFolder":
+                try:
+                    import json
+                    dialog = Gtk.FileChooserDialog(
+                        title="Select Download Folder",
+                        parent=self,
+                        action=Gtk.FileChooserAction.SELECT_FOLDER
+                    )
+                    dialog.add_buttons(
+                        Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                        Gtk.STOCK_OPEN, Gtk.ResponseType.OK
+                    )
+                    dialog.set_default_response(Gtk.ResponseType.OK)
+                    response = dialog.run()
+                    selected_path = ""
+                    if response == Gtk.ResponseType.OK:
+                        selected_path = dialog.get_filename()
+                    dialog.destroy()
+                    if selected_path:
+                        self.webview.evaluate_javascript(
+                            f'window.__downnux_onFolderSelected && window.__downnux_onFolderSelected({json.dumps(selected_path)});',
+                            -1, None, None, None, None, None
+                        )
+                except Exception as ex:
+                    sys.stderr.write(f"Folder chooser error: {ex}\n")
             elif msg == "drag":
                 disp = Gdk.Display.get_default()
                 seat = disp.get_default_seat()

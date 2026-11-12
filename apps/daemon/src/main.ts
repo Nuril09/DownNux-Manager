@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
+import { promisify } from "node:util";
+import { execFile } from "node:child_process";
 import { PROTOCOL_VERSION, type DaemonInfo, type Method, type MethodResults } from "@downnux/shared";
 import { ensurePrivateDir, getAppPaths } from "@downnux/shared/node";
 import { TaskStore } from "./db.ts";
@@ -9,6 +11,9 @@ import { logger } from "./log.ts";
 import { DownloadManager } from "./manager.ts";
 import { IpcServer, assertSocketFree } from "./server.ts";
 import { SettingsStore } from "./settings.ts";
+import { probeUrl } from "./probe.ts";
+
+const execFileAsync = promisify(execFile);
 
 const log = logger("daemon");
 const VERSION: string = JSON.parse(
@@ -68,6 +73,27 @@ async function main(): Promise<void> {
     "task.pauseAll": async () => ({ count: await manager.pauseAll() }),
     "task.resumeAll": () => ({ count: manager.resumeAll() }),
     "task.openFolder": (p) => manager.openFolder(p.id),
+    "task.probe": (p) => probeUrl(p.url, settings.downloadDir(), p.headers),
+    "dialog.selectFolder": async () => {
+      try {
+        const { stdout } = await execFileAsync("zenity", [
+          "--file-selection",
+          "--directory",
+          "--title=Pilih Folder Unduhan DownNux",
+        ], {
+          env: {
+            ...process.env,
+            DISPLAY: process.env.DISPLAY || ":0",
+            WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0",
+          },
+        });
+        const chosen = stdout.trim();
+        return { ok: Boolean(chosen), path: chosen };
+      } catch (err) {
+        log.warn("Folder chooser canceled or error:", err);
+        return { ok: false };
+      }
+    },
     "settings.get": () => settings.get(),
     "settings.update": (p) => {
       const next = settings.update(p);
