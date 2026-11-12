@@ -8,6 +8,7 @@
 import os
 import sys
 import time
+import shutil
 import subprocess
 import threading
 import urllib.request
@@ -28,9 +29,18 @@ except ValueError:
         sys.exit(1)
 
 APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+NODE_BIN = shutil.which("node") or "/usr/bin/node"
+
 ICON_PATH = os.path.join(APP_DIR, "apps/gui/public/app-icon.png")
 if not os.path.exists(ICON_PATH):
-    ICON_PATH = "/usr/share/icons/hicolor/512x512/apps/downnux.png"
+    for candidate in [
+        "/app/share/icons/hicolor/512x512/apps/io.github.Nuril09.DownNuxManager.png",
+        "/usr/share/icons/hicolor/512x512/apps/downnux.png",
+        "/usr/share/pixmaps/downnux.png"
+    ]:
+        if os.path.exists(candidate):
+            ICON_PATH = candidate
+            break
 
 def is_daemon_running():
     try:
@@ -47,11 +57,21 @@ def ensure_services():
         except Exception:
             pass
         if not is_daemon_running():
-            daemon_script = os.path.join(APP_DIR, "apps/daemon/dist/main.mjs")
+            daemon_script = os.path.join(APP_DIR, "apps/daemon/dist/main-standalone.mjs")
+            if not os.path.exists(daemon_script):
+                daemon_script = os.path.join(APP_DIR, "apps/daemon/dist/main.mjs")
+            if not os.path.exists(daemon_script):
+                for candidate in [
+                    "/app/lib/downnux-manager/apps/daemon/dist/main-standalone.mjs",
+                    "/app/lib/downnux-manager/apps/daemon/dist/main.mjs",
+                    "/usr/lib/downnux-manager/apps/daemon/dist/main-standalone.mjs",
+                    "/usr/lib/downnux-manager/apps/daemon/dist/main.mjs"
+                ]:
+                    if os.path.exists(candidate):
+                        daemon_script = candidate
+                        break
             if os.path.exists(daemon_script):
-                subprocess.Popen(["/usr/bin/node", daemon_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            elif os.path.exists("/usr/lib/downnux-manager/apps/daemon/dist/main.mjs"):
-                subprocess.Popen(["/usr/bin/node", "/usr/lib/downnux-manager/apps/daemon/dist/main.mjs"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.Popen([NODE_BIN, daemon_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     # 2. Start GUI server if not running
     try:
@@ -65,10 +85,16 @@ def ensure_services():
             urllib.request.urlopen("http://127.0.0.1:1420", timeout=1)
         except Exception:
             gui_script = os.path.join(APP_DIR, "scripts/serve-gui.mjs")
+            if not os.path.exists(gui_script):
+                for candidate in [
+                    "/app/lib/downnux-manager/scripts/serve-gui.mjs",
+                    "/usr/lib/downnux-manager/scripts/serve-gui.mjs"
+                ]:
+                    if os.path.exists(candidate):
+                        gui_script = candidate
+                        break
             if os.path.exists(gui_script):
-                subprocess.Popen(["/usr/bin/node", gui_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            elif os.path.exists("/usr/lib/downnux-manager/scripts/serve-gui.mjs"):
-                subprocess.Popen(["/usr/bin/node", "/usr/lib/downnux-manager/scripts/serve-gui.mjs"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.Popen([NODE_BIN, gui_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 class DownNuxNativeWindow(Gtk.Window):
     def __init__(self):
