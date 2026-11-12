@@ -285,6 +285,13 @@ export function App() {
     }
   };
 
+  const handlePreviewSettings = (preview: Partial<SettingsData>) => {
+    setSettingsData((prev) => ({ ...prev, ...preview }));
+    if (preview.language) {
+      setLang(preview.language);
+    }
+  };
+
   const handleSaveScheduler = async (next: ScheduleConfigData) => {
     try {
       await fetch("http://127.0.0.1:44990/api/rpc", {
@@ -607,27 +614,27 @@ export function App() {
               <span className="font-semibold">{lang.toUpperCase()}</span>
             </button>
 
-            <div className="h-4 w-[1px] bg-[#e7e9ef]" />
+            <div className="h-4 w-[1px] bg-[#e7e9ef] dark:bg-[#2a2c3d]" />
 
             {/* Window Controls matching exact Figma nodes 2:19, 2:21, 2:23 */}
-            <div className="flex items-center space-x-1 text-[#6e7685]">
+            <div className="flex items-center space-x-1 text-[#6e7685] dark:text-[#9ea4b5]">
               <button
                 onClick={handleMinimize}
-                className="w-7 h-7 rounded-[5px] hover:bg-[#e7e9ef] flex items-center justify-center transition-colors text-[#6e7685] hover:text-[#202631]"
+                className="w-7 h-7 rounded-[5px] hover:bg-[#e7e9ef] dark:hover:bg-[#25283b] flex items-center justify-center transition-colors text-[#6e7685] hover:text-[#202631] dark:hover:text-white"
                 title={lang === "en" ? "Minimize" : "Kecilkan"}
               >
                 <Minus className="w-4 h-4 stroke-[2]" />
               </button>
               <button
                 onClick={handleMaximize}
-                className="w-7 h-7 rounded-[5px] hover:bg-[#e7e9ef] flex items-center justify-center transition-colors text-[#6e7685] hover:text-[#202631]"
+                className="w-7 h-7 rounded-[5px] hover:bg-[#e7e9ef] dark:hover:bg-[#25283b] flex items-center justify-center transition-colors text-[#6e7685] hover:text-[#202631] dark:hover:text-white"
                 title={lang === "en" ? "Maximize" : "Besarkan"}
               >
                 <Square className="w-3.5 h-3.5 stroke-[1.8]" />
               </button>
               <button
                 onClick={handleClose}
-                className="w-7 h-7 rounded-[5px] hover:bg-[#e81123] hover:text-white flex items-center justify-center transition-colors text-[#6e7685]"
+                className="w-7 h-7 rounded-[5px] hover:bg-[#e81123] hover:text-white flex items-center justify-center transition-colors text-[#6e7685] dark:text-[#9ea4b5]"
                 title={lang === "en" ? "Close" : "Tutup"}
               >
                 <X className="w-4 h-4 stroke-[2]" />
@@ -772,12 +779,12 @@ export function App() {
             </div>
 
             {/* Koneksi browser (Exact Figma node 2:90: bg: #eef4f1, text: #218163) */}
-            <div className="bg-[#eef4f1] p-3 rounded-[8px] border border-[#d6e7dc]/70 mt-2">
-              <p className="font-medium text-[11px] text-[#218163] flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#218163] inline-block animate-pulse" />
+            <div className="bg-[#eef4f1] dark:bg-[#162720]/80 p-3 rounded-[8px] border border-[#d6e7dc]/70 dark:border-[#224738] mt-2">
+              <p className="font-medium text-[11px] text-[#218163] dark:text-[#4ade80] flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#218163] dark:bg-[#4ade80] inline-block animate-pulse" />
                 {lang === "en" ? "Browser Connected" : "Browser terhubung"}
               </p>
-              <p className="font-normal text-[10px] text-[#6e7685] mt-1">
+              <p className="font-normal text-[10px] text-[#6e7685] dark:text-[#88998e] mt-1">
                 {lang === "en" ? "Chrome / Brave · Ready to capture" : "Chrome · Siap menangkap URL"}
               </p>
             </div>
@@ -789,6 +796,7 @@ export function App() {
               lang={lang}
               settings={settingsData}
               onSave={handleSaveSettings}
+              onPreview={handlePreviewSettings}
               onBrowseFolder={handleBrowseFolderForTarget}
               onClose={() => setActiveView("downloads")}
             />
@@ -802,15 +810,15 @@ export function App() {
               onResumeTask={(id) => executeAction("task.resume", { id })}
             />
           ) : (
-            <main className="flex-1 flex flex-col overflow-hidden bg-white/95 dark:bg-[#14151f]/95">
+            <main className="flex-1 flex flex-col overflow-hidden bg-white/70 dark:bg-[#13141f]/75 backdrop-blur-xl">
             {/* Header Area Kerja: Judul, Subtitle, Search */}
             <div className="p-6 pb-3 space-y-4 flex-shrink-0">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-[24px] font-semibold text-[#202631] leading-tight">
+                  <h2 className="text-[24px] font-bold text-[#202631] dark:text-white leading-tight">
                     {t.allDownloads}
                   </h2>
-                  <p className="text-[12px] text-[#6e7685] mt-1">
+                  <p className="text-[12px] text-[#6e7685] dark:text-[#a0a6b8] mt-1">
                     {lang === "en"
                       ? "Manage your downloads. Fast, organized, uninterrupted."
                       : "Kelola unduhanmu. Cepat, teratur, tanpa terputus."}
@@ -818,16 +826,16 @@ export function App() {
                 </div>
 
                 {/* Pencarian (Figma w: 308px, h: 36px, bg: #f7f8fa) */}
-                <div className="relative w-[308px] h-[36px] bg-[#f7f8fa] rounded-[6px] border border-[#e7e9ef] flex items-center px-3 shadow-inner">
-                  <Search className="w-4 h-4 text-[#6e7685] mr-2" />
+                <div className="relative w-[308px] h-[36px] bg-[#f7f8fa] dark:bg-[#1a1c29] rounded-[6px] border border-[#e7e9ef] dark:border-[#2a2c3d] flex items-center px-3 shadow-inner">
+                  <Search className="w-4 h-4 text-[#6e7685] dark:text-[#a0a6b8] mr-2" />
                   <input
                     type="text"
                     placeholder={lang === "en" ? "Search file name or URL..." : "Cari nama file atau URL..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-transparent border-none text-[12px] text-[#202631] placeholder-[#6e7685] focus:outline-none w-full"
+                    className="bg-transparent border-none text-[12px] text-[#202631] dark:text-white placeholder-[#6e7685] dark:placeholder-[#6e7487] focus:outline-none w-full"
                   />
-                  <span className="text-[10px] text-[#6e7685] font-mono ml-1">Ctrl K</span>
+                  <span className="text-[10px] text-[#6e7685] dark:text-[#888e9e] font-mono ml-1">Ctrl K</span>
                 </div>
               </div>
 
@@ -844,106 +852,106 @@ export function App() {
                 <button
                   disabled={!selectedTask || selectedTask.status !== "paused"}
                   onClick={() => selectedTask && executeAction("task.resume", { id: selectedTask.id })}
-                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
+                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
                 >
-                  <Play className="w-4 h-4 text-[#202631]" />
+                  <Play className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
                   <span>{t.resume}</span>
                 </button>
 
                 <button
                   disabled={!selectedTask || selectedTask.status !== "downloading"}
                   onClick={() => selectedTask && executeAction("task.pause", { id: selectedTask.id })}
-                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
+                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
                 >
-                  <Pause className="w-4 h-4 text-[#202631]" />
+                  <Pause className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
                   <span>{t.pause}</span>
                 </button>
 
                 <button
                   disabled={!selectedTask || selectedTask.status === "completed"}
                   onClick={() => selectedTask && executeAction("task.cancel", { id: selectedTask.id })}
-                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
+                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
                 >
-                  <XCircle className="w-4 h-4 text-[#202631]" />
+                  <XCircle className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
                   <span>{t.cancel}</span>
                 </button>
 
                 <button
                   disabled={!selectedTask}
                   onClick={() => selectedTask && executeAction("task.remove", { id: selectedTask.id, deleteFile: false })}
-                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
+                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
                 >
-                  <Trash2 className="w-4 h-4 text-[#202631]" />
+                  <Trash2 className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
                   <span>{t.delete}</span>
                 </button>
 
                 <button
                   onClick={() => executeAction("task.pauseAll")}
-                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium flex items-center space-x-2 flex-shrink-0"
+                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 flex-shrink-0"
                 >
-                  <PauseCircle className="w-4 h-4 text-[#202631]" />
+                  <PauseCircle className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
                   <span>{t.pauseAll}</span>
                 </button>
 
                 <div className="flex-1" />
 
-                <button className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium flex items-center space-x-2 flex-shrink-0">
-                  <Clock className="w-4 h-4 text-[#6e7685]" />
+                <button className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 flex-shrink-0">
+                  <Clock className="w-4 h-4 text-[#6e7685] dark:text-[#a0a6b8]" />
                   <span>{lang === "en" ? "Recent" : "Terbaru"}</span>
                 </button>
               </div>
 
               {/* Filter Tabs (Exact Figma: "All" with indicator line #6554c0, "Active", "Completed") */}
-              <div className="flex items-center justify-between pt-2 border-b border-[#e7e9ef]">
+              <div className="flex items-center justify-between pt-2 border-b border-[#e7e9ef] dark:border-[#2a2c3d]">
                 <div className="flex items-center space-x-6">
                   <button
                     onClick={() => setActiveFilter("all")}
-                    className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "all" ? "text-[#6554c0] font-semibold" : "text-[#6e7685] hover:text-[#202631]"
+                    className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "all" ? "text-[#6554c0] dark:text-[#a79be8] font-semibold" : "text-[#6e7685] hover:text-[#202631] dark:text-[#9ea4b5] dark:hover:text-white"
                       }`}
                   >
                     {lang === "en" ? "All" : "Semua"}
-                    <span className="text-[10px] text-[#6e7685] font-normal ml-1.5">{tasks.length}</span>
+                    <span className="text-[10px] text-[#6e7685] dark:text-[#9ea4b5] font-normal ml-1.5">{tasks.length}</span>
                     {activeFilter === "all" && (
-                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0]" />
+                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0] dark:bg-[#a79be8]" />
                     )}
                   </button>
                   <button
                     onClick={() => setActiveFilter("downloading")}
                     className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "downloading"
-                        ? "text-[#6554c0] font-semibold"
-                        : "text-[#6e7685] hover:text-[#202631]"
+                        ? "text-[#6554c0] dark:text-[#a79be8] font-semibold"
+                        : "text-[#6e7685] hover:text-[#202631] dark:text-[#9ea4b5] dark:hover:text-white"
                       }`}
                   >
                     {lang === "en" ? "Active" : "Aktif"}
                     {activeFilter === "downloading" && (
-                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0]" />
+                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0] dark:bg-[#a79be8]" />
                     )}
                   </button>
                   <button
                     onClick={() => setActiveFilter("completed")}
                     className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "completed"
-                        ? "text-[#6554c0] font-semibold"
-                        : "text-[#6e7685] hover:text-[#202631]"
+                        ? "text-[#6554c0] dark:text-[#a79be8] font-semibold"
+                        : "text-[#6e7685] hover:text-[#202631] dark:text-[#9ea4b5] dark:hover:text-white"
                       }`}
                   >
                     {lang === "en" ? "Completed" : "Selesai"}
                     {activeFilter === "completed" && (
-                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0]" />
+                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0] dark:bg-[#a79be8]" />
                     )}
                   </button>
                 </div>
-                <span className="text-[11px] text-[#6e7685]">
+                <span className="text-[11px] text-[#6e7685] dark:text-[#9ea4b5]">
                   {selectedTask ? (lang === "en" ? "1 selected" : "1 dipilih") : (lang === "en" ? "0 selected" : "0 dipilih")}
                 </span>
               </div>
             </div>
 
-            {/* TABEL DAFTAR UNDUHAN (Exact Figma border #e7e9ef, header #f7f8fa) */}
+            {/* TABEL DAFTAR UNDUHAN */}
             <div className="flex-1 overflow-y-auto px-6 pb-4">
-              <div className="border border-[#e7e9ef] rounded-[6px] overflow-hidden ios-glass-card">
+              <div className="border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[6px] overflow-hidden ios-glass-card">
                 <table className="w-full text-left border-collapse text-[11px]">
                   <thead>
-                    <tr className="bg-[#f7f8fa] text-[#6e7685] font-medium border-b border-[#e7e9ef] text-[10px]">
+                    <tr className="bg-[#f7f8fa] dark:bg-[#181a28] text-[#6e7685] dark:text-[#9ea4b5] font-medium border-b border-[#e7e9ef] dark:border-[#2a2c3d] text-[10px]">
                       <th className="py-2.5 px-4 w-80">{t.filename}</th>
                       <th className="py-2.5 px-3 w-28">{t.size}</th>
                       <th className="py-2.5 px-3 w-40">{t.status} / {t.progress}</th>
@@ -953,12 +961,12 @@ export function App() {
                       <th className="py-2.5 px-3 text-right">{lang === "en" ? "Action" : "Aksi"}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#e7e9ef]">
+                  <tbody className="divide-y divide-[#e7e9ef] dark:divide-[#242738]">
                     {filteredTasks.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-[#6e7685]">
-                          <Folder className="w-8 h-8 mx-auto mb-2 opacity-30 text-[#6554c0]" />
-                          <p className="text-[12px] font-medium text-[#202631]">
+                        <td colSpan={7} className="py-12 text-center text-[#6e7685] dark:text-[#888e9e]">
+                          <Folder className="w-8 h-8 mx-auto mb-2 opacity-30 text-[#6554c0] dark:text-[#a79be8]" />
+                          <p className="text-[12px] font-medium text-[#202631] dark:text-white">
                             {lang === "en" ? "No downloads in this list" : "Tidak ada unduhan di daftar ini"}
                           </p>
                         </td>
@@ -982,35 +990,39 @@ export function App() {
                           <tr
                             key={task.id}
                             onClick={() => setSelectedId(task.id)}
-                            className={`cursor-pointer transition-colors relative ${isSelected ? "bg-[#f3f0fc]" : "hover:bg-[#fbfbfd] bg-white"
-                              }`}
+                            className={`cursor-pointer transition-colors relative ${
+                              isSelected
+                                ? "bg-[#edeaf9] dark:bg-[#6554c0]/25 text-[#202631] dark:text-white"
+                                : "hover:bg-[#fbfbfd] dark:hover:bg-[#1c1e2d] bg-white/70 dark:bg-[#151724]/70 text-[#202631] dark:text-[#e2e4ea]"
+                            }`}
                           >
                             <td className="py-2.5 px-4 max-w-xs relative">
                               {/* Penanda pilihan ungu #6554c0 */}
                               {isSelected && (
-                                <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#6554c0]" />
+                                <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#6554c0] dark:bg-[#a79be8]" />
                               )}
                               <div className="flex items-center space-x-3">
                                 <div
-                                  className={`w-8 h-8 rounded-[6px] flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-[#e5def8]" : "bg-[#f1f3f6]"
-                                    }`}
+                                  className={`w-8 h-8 rounded-[6px] flex items-center justify-center flex-shrink-0 ${
+                                    isSelected ? "bg-[#e5def8] dark:bg-[#342e54]" : "bg-[#f1f3f6] dark:bg-[#202334]"
+                                  }`}
                                 >
                                   <FileIcon
-                                    className={`w-4 h-4 ${isSelected ? "text-[#6554c0]" : "text-[#6e7685]"}`}
+                                    className={`w-4 h-4 ${isSelected ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#6e7685] dark:text-[#9ea4b5]"}`}
                                   />
                                 </div>
                                 <div className="truncate">
-                                  <p className="font-semibold text-[11px] text-[#202631] truncate">
+                                  <p className="font-semibold text-[11px] text-[#202631] dark:text-white truncate">
                                     {task.filename || task.url}
                                   </p>
-                                  <p className="text-[9px] text-[#6e7685] truncate">
+                                  <p className="text-[9px] text-[#6e7685] dark:text-[#888e9e] truncate">
                                     {hostname}
                                   </p>
                                 </div>
                               </div>
                             </td>
 
-                            <td className="py-2.5 px-3 text-[#202631] whitespace-nowrap">
+                            <td className="py-2.5 px-3 text-[#202631] dark:text-[#e2e4ea] whitespace-nowrap">
                               {fmtBytes(task.totalBytes || task.completedBytes)}
                             </td>
 
@@ -1019,31 +1031,31 @@ export function App() {
                               <div className="flex justify-between items-center mb-1">
                                 <span
                                   className={`font-semibold text-[10px] flex items-center gap-1.5 ${task.status === "completed"
-                                      ? "text-[#218163]"
+                                      ? "text-[#218163] dark:text-[#38d49a]"
                                       : task.status === "paused"
-                                        ? "text-[#ac8433]"
+                                        ? "text-[#ac8433] dark:text-[#fbbf24]"
                                         : task.status === "failed"
-                                          ? "text-[#c34a4a]"
-                                          : "text-[#6554c0]"
+                                          ? "text-[#c34a4a] dark:text-[#f87171]"
+                                          : "text-[#6554c0] dark:text-[#a79be8]"
                                     }`}
                                 >
                                   {task.status === "downloading" && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#6554c0] animate-ping" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#6554c0] dark:bg-[#a79be8] animate-ping" />
                                   )}
                                   {getStatusText(task.status)}
                                 </span>
-                                <span className="font-bold text-[10px] text-[#6554c0]">
+                                <span className="font-bold text-[10px] text-[#6554c0] dark:text-[#a79be8]">
                                   {task.status === "completed" ? "100%" : `${pct.toFixed(0)}%`}
                                 </span>
                               </div>
-                              <div className="w-[142px] h-[6px] bg-[#e3e4ea] rounded-[3px] overflow-hidden p-[0.5px]">
+                              <div className="w-[142px] h-[6px] bg-[#e3e4ea] dark:bg-[#252838] rounded-[3px] overflow-hidden p-[0.5px]">
                                 <div
                                   className={`h-full rounded-[2px] transition-all duration-300 ${task.status === "completed"
-                                      ? "bg-[#218163]"
+                                      ? "bg-[#218163] dark:bg-[#38d49a]"
                                       : task.status === "paused"
-                                        ? "bg-[#ac8433]"
+                                        ? "bg-[#ac8433] dark:bg-[#fbbf24]"
                                         : task.status === "failed"
-                                          ? "bg-[#c34a4a]"
+                                          ? "bg-[#c34a4a] dark:bg-[#f87171]"
                                           : "bg-gradient-to-r from-[#6554c0] via-[#8675ea] to-[#6554c0] animate-pulse"
                                     }`}
                                   style={{ width: `${task.status === "completed" ? 100 : Math.min(100, Math.max(2, pct))}%` }}
@@ -1051,20 +1063,20 @@ export function App() {
                               </div>
                             </td>
 
-                            <td className="py-2.5 px-3 text-[#202631] whitespace-nowrap font-semibold text-[11px]">
+                            <td className="py-2.5 px-3 text-[#202631] dark:text-[#e2e4ea] whitespace-nowrap font-semibold text-[11px]">
                               {task.status === "downloading" ? (
-                                <span className="text-[#6554c0] flex items-center gap-1">
-                                  <ArrowDown className="w-3 h-3 text-[#6554c0] animate-bounce" />
+                                <span className="text-[#6554c0] dark:text-[#a79be8] flex items-center gap-1">
+                                  <ArrowDown className="w-3 h-3 text-[#6554c0] dark:text-[#a79be8] animate-bounce" />
                                   {fmtBytes(task.speed)}/s
                                 </span>
                               ) : "—"}
                             </td>
 
-                            <td className="py-2.5 px-3 text-[#6e7685] whitespace-nowrap">
+                            <td className="py-2.5 px-3 text-[#6e7685] dark:text-[#888e9e] whitespace-nowrap">
                               {task.status === "downloading" ? fmtTime(etaSec, lang) : "—"}
                             </td>
 
-                            <td className="py-2.5 px-3 text-[#6e7685] text-[10px] whitespace-nowrap">
+                            <td className="py-2.5 px-3 text-[#6e7685] dark:text-[#888e9e] text-[10px] whitespace-nowrap">
                               {lang === "en" ? "Today" : "Hari ini"}, {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </td>
 
@@ -1076,7 +1088,7 @@ export function App() {
                                   else if (task.status === "paused") executeAction("task.resume", { id: task.id });
                                   else if (task.status === "failed") executeAction("task.retry", { id: task.id });
                                 }}
-                                className="w-6 h-6 rounded hover:bg-[#edeaf9] inline-flex items-center justify-center text-[#6554c0] transition-colors"
+                                className="w-6 h-6 rounded hover:bg-[#edeaf9] dark:hover:bg-[#2a2840] inline-flex items-center justify-center text-[#6554c0] dark:text-[#a79be8] transition-colors"
                               >
                                 {task.status === "downloading" ? (
                                   <Pause className="w-3.5 h-3.5" />
@@ -1112,13 +1124,13 @@ export function App() {
 
               {/* 3. DETAIL UNDUHAN TERPILIH (Exact Figma Node 2:348) */}
               {selectedTask && (
-                <div className="mt-3 p-4 bg-white border border-[#e7e9ef] rounded-[8px] ios-glass-card space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#e7e9ef] pb-3">
+                <div className="mt-3 p-4 bg-white/70 dark:bg-[#161826]/80 border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[8px] ios-glass-card space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#e7e9ef] dark:border-[#2a2c3d] pb-3">
                     <div>
-                      <h3 className="font-semibold text-[12px] text-[#202631]">
+                      <h3 className="font-semibold text-[12px] text-[#202631] dark:text-white">
                         {selectedTask.filename || selectedTask.url}
                       </h3>
-                      <p className="font-normal text-[10px] text-[#6e7685] mt-0.5">
+                      <p className="font-normal text-[10px] text-[#6e7685] dark:text-[#9ea4b5] mt-0.5">
                         {fmtBytes(selectedTask.completedBytes)} {lang === "en" ? "of" : "dari"} {fmtBytes(selectedTask.totalBytes)} ·{" "}
                         {selectedTask.connections || 8} {lang === "en" ? "active connections · Resume supported" : "koneksi aktif · Resume didukung"}
                       </p>
@@ -1128,9 +1140,9 @@ export function App() {
                         executeAction("task.openFolder", { id: selectedTask.id });
                         postWindowMessage(`openFolder:${selectedTask.dir || ""}`);
                       }}
-                      className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium flex items-center space-x-2"
+                      className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2"
                     >
-                      <FolderOpen className="w-4 h-4 text-[#6e7685]" />
+                      <FolderOpen className="w-4 h-4 text-[#6e7685] dark:text-[#a79be8]" />
                       <span>{lang === "en" ? "Open Folder" : "Buka folder"}</span>
                     </button>
                   </div>
@@ -1138,21 +1150,21 @@ export function App() {
                   {/* TRANSFER STATS & PROGRES PER KONEKSI (Exact Figma layout) */}
                   <div className="grid grid-cols-12 gap-4 items-center">
                     {/* Kecepatan transfer */}
-                    <div className="col-span-5 flex flex-col justify-between border-r border-[#e7e9ef] pr-4">
+                    <div className="col-span-5 flex flex-col justify-between border-r border-[#e7e9ef] dark:border-[#2a2c3d] pr-4">
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="text-[9px] font-semibold text-[#6e7685] uppercase tracking-wide">
+                          <p className="text-[9px] font-semibold text-[#6e7685] dark:text-[#9ea4b5] uppercase tracking-wide">
                             {lang === "en" ? "TRANSFER SPEED" : "KECEPATAN TRANSFER"}
                           </p>
                           <div className="flex items-baseline space-x-1 mt-1">
-                            <span className="text-[24px] font-semibold text-[#202631] leading-none">
+                            <span className="text-[24px] font-semibold text-[#202631] dark:text-white leading-none">
                               {selectedTask.status === "downloading"
                                 ? (selectedTask.speed / (1024 * 1024)).toFixed(1).replace(".", ",")
                                 : "0,0"}
                             </span>
-                            <span className="text-[11px] text-[#6e7685]">MB/s</span>
+                            <span className="text-[11px] text-[#6e7685] dark:text-[#9ea4b5]">MB/s</span>
                           </div>
-                          <p className="text-[10px] text-[#6e7685] mt-1">
+                          <p className="text-[10px] text-[#6e7685] dark:text-[#9ea4b5] mt-1">
                             {lang === "en" ? "Average" : "Rata-rata"} {(selectedTask.speed > 0 ? (selectedTask.speed / (1024 * 1024) * 0.95).toFixed(1) : "0,0").replace(".", ",")} MB/s
                           </p>
                         </div>
@@ -1168,7 +1180,7 @@ export function App() {
                           >
                             <defs>
                               <linearGradient id="speedGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#6554C0" stopOpacity="0.25" />
+                                <stop offset="0%" stopColor="#6554C0" stopOpacity="0.3" />
                                 <stop offset="100%" stopColor="#6554C0" stopOpacity="0.0" />
                               </linearGradient>
                             </defs>
@@ -1185,7 +1197,7 @@ export function App() {
                         </div>
                       </div>
 
-                      <div className="flex justify-between text-[9px] text-[#6e7685] mt-1 pt-1">
+                      <div className="flex justify-between text-[9px] text-[#6e7685] dark:text-[#9ea4b5] mt-1 pt-1">
                         <span>{lang === "en" ? "60s ago" : "60 d lalu"}</span>
                         <span>{lang === "en" ? "Now" : "Sekarang"}</span>
                       </div>
@@ -1193,18 +1205,18 @@ export function App() {
 
                     {/* Progres per koneksi (Figma 8 segmen paralel) */}
                     <div className="col-span-7">
-                      <p className="text-[9px] font-semibold text-[#6e7685] uppercase tracking-wide mb-2">
+                      <p className="text-[9px] font-semibold text-[#6e7685] dark:text-[#9ea4b5] uppercase tracking-wide mb-2">
                         {lang === "en" ? "PROGRESS PER CONNECTION" : "PROGRES PER KONEKSI"}
                       </p>
                       <div className="grid grid-cols-4 gap-x-4 gap-y-2">
                         {Array.from({ length: selectedTask.connections || 8 }).map((_, idx) => (
                           <div key={idx} className="flex items-center space-x-2">
-                            <span className="text-[9px] text-[#6e7685] font-mono">
+                            <span className="text-[9px] text-[#6e7685] dark:text-[#9ea4b5] font-mono">
                               {String(idx + 1).padStart(2, "0")}
                             </span>
-                            <div className="flex-1 h-[5px] bg-[#eceaf4] rounded-[2px] overflow-hidden">
+                            <div className="flex-1 h-[5px] bg-[#eceaf4] dark:bg-[#252838] rounded-[2px] overflow-hidden">
                               <div
-                                className="h-full bg-[#6554c0] rounded-[2px] transition-all duration-300"
+                                className="h-full bg-[#6554c0] dark:bg-[#8b7ce0] rounded-[2px] transition-all duration-300"
                                 style={{
                                   width: `${selectedTask.status === "downloading"
                                       ? Math.min(100, Math.max(15, ((idx + 1) * 14.5) % 100))
@@ -1218,7 +1230,7 @@ export function App() {
                           </div>
                         ))}
                       </div>
-                      <p className="text-[9px] text-[#6e7685] mt-2">
+                      <p className="text-[9px] text-[#6e7685] dark:text-[#9ea4b5] mt-2">
                         {lang === "en" ? "Location:" : "Lokasi:"} {selectedTask.dir || "~/Downloads"}
                       </p>
                     </div>
@@ -1228,19 +1240,19 @@ export function App() {
             </div>
 
             {/* 4. STATUS LAYANAN (Exact Figma Node 2:6, h: 36px, bg: #f7f8fa) */}
-            <footer className="h-[36px] ios-glass-bar border-t border-[#e7e9ef] px-4 flex items-center justify-between text-[11px] text-[#202631] flex-shrink-0">
+            <footer className="h-[36px] ios-glass-bar border-t border-[#e7e9ef] dark:border-[#2a2c3d] px-4 flex items-center justify-between text-[11px] text-[#202631] dark:text-[#d1d5e0] flex-shrink-0">
               <div className="flex items-center space-x-4">
-                <span className="text-[#218163] font-medium flex items-center gap-1.5">
+                <span className="text-[#218163] dark:text-[#38d49a] font-medium flex items-center gap-1.5">
                   <span className="text-[10px]">●</span>{" "}
                   {lang === "en" ? "Background service active" : "Layanan background aktif"}
                 </span>
-                <span className="text-[#6e7685]">
+                <span className="text-[#6e7685] dark:text-[#9ea4b5]">
                   {lang === "en"
                     ? "Downloads continue when window is closed"
                     : "Unduhan tetap berjalan saat jendela ditutup"}
                 </span>
               </div>
-              <div className="flex items-center space-x-4 text-[#6e7685]">
+              <div className="flex items-center space-x-4 text-[#6e7685] dark:text-[#9ea4b5]">
                 <span className="text-[#202631] dark:text-white font-medium flex items-center gap-1.5">
                   ↓ {fmtBytes(totalSpeed)}/s
                   {settingsData.speedLimiterEnabled && settingsData.speedLimitBytesPerSec > 0 && (
@@ -1259,21 +1271,21 @@ export function App() {
 
       {/* DIALOG TAMBAH URL (IDM Download File Information Mode) */}
       {isAddOpen && (
-        <div className="fixed inset-0 bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white/95 backdrop-blur-2xl border border-[#e7e9ef] rounded-[12px] w-full max-w-lg p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#e7e9ef] pb-3">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white/95 dark:bg-[#181a28]/95 backdrop-blur-2xl border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[12px] w-full max-w-lg p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#e7e9ef] dark:border-[#2a2c3d] pb-3">
               <div className="flex items-center space-x-2">
                 <div className="w-6 h-6 rounded bg-[#6554c0] flex items-center justify-center text-white">
                   <Download className="w-3.5 h-3.5" />
                 </div>
-                <h2 className="text-[13px] font-semibold text-[#202631]">{t.fileInfo}</h2>
+                <h2 className="text-[13px] font-semibold text-[#202631] dark:text-white">{t.fileInfo}</h2>
               </div>
               <button
                 onClick={() => {
                   setIsAddOpen(false);
                   setProbeResult(null);
                 }}
-                className="w-6 h-6 rounded hover:bg-[#f7f8fa] flex items-center justify-center text-[#6e7685] hover:text-[#202631]"
+                className="w-6 h-6 rounded hover:bg-[#f7f8fa] dark:hover:bg-[#25283b] flex items-center justify-center text-[#6e7685] hover:text-[#202631] dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1282,14 +1294,14 @@ export function App() {
             <div className="space-y-3.5 text-[12px]">
               {/* URL Input */}
               <div>
-                <label className="block text-[#6e7685] mb-1 font-medium">{t.enterUrl}</label>
+                <label className="block text-[#6e7685] dark:text-[#9ea4b5] mb-1 font-medium">{t.enterUrl}</label>
                 <div className="relative">
                   <input
                     type="text"
                     placeholder="https://example.com/file.zip or YouTube URL"
                     value={newUrl}
                     onChange={(e) => handleUrlChange(e.target.value)}
-                    className="w-full bg-[#f7f8fa] border border-[#e7e9ef] rounded-[6px] px-3 py-2 text-[#202631] focus:outline-none focus:border-[#6554c0] pr-8"
+                    className="w-full bg-[#f7f8fa] dark:bg-[#12131b] border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[6px] px-3 py-2 text-[#202631] dark:text-white focus:outline-none focus:border-[#6554c0] pr-8"
                   />
                   {isProbing && (
                     <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
@@ -1301,22 +1313,22 @@ export function App() {
 
               {/* IDM Metadata Preview Card (Estimated Size, Resume Support, Category) */}
               {isProbing ? (
-                <div className="bg-[#edeaf9]/40 border border-[#d8d2f5] rounded-[8px] p-3 flex items-center space-x-2.5 text-[11px] text-[#6554c0]">
+                <div className="bg-[#edeaf9]/40 dark:bg-[#6554c0]/15 border border-[#d8d2f5] dark:border-[#4d4287] rounded-[8px] p-3 flex items-center space-x-2.5 text-[11px] text-[#6554c0] dark:text-[#a79be8]">
                   <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
                   <span className="font-medium">{t.inspectingUrl}</span>
                 </div>
               ) : probeResult ? (
-                <div className="bg-[#f7f8fa] border border-[#e7e9ef] rounded-[8px] p-3 space-y-2">
+                <div className="bg-[#f7f8fa] dark:bg-[#12131b] border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[8px] p-3 space-y-2">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#6e7685] font-medium">{t.estimatedSize}:</span>
-                    <span className="font-bold text-[#202631] bg-white px-2.5 py-0.5 rounded border border-[#e7e9ef] shadow-xs">
+                    <span className="text-[#6e7685] dark:text-[#9ea4b5] font-medium">{t.estimatedSize}:</span>
+                    <span className="font-bold text-[#202631] dark:text-white bg-white dark:bg-[#1a1c29] px-2.5 py-0.5 rounded border border-[#e7e9ef] dark:border-[#2a2c3d] shadow-xs">
                       {probeResult.formattedSize}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#6e7685] font-medium">Resume Capability:</span>
+                    <span className="text-[#6e7685] dark:text-[#9ea4b5] font-medium">Resume Capability:</span>
                     <span className={`font-semibold flex items-center gap-1 ${
-                      probeResult.resumeSupported ? "text-[#218163]" : "text-[#ac8433]"
+                      probeResult.resumeSupported ? "text-[#218163] dark:text-[#38d49a]" : "text-[#ac8433] dark:text-[#fbbf24]"
                     }`}>
                       {probeResult.resumeSupported ? (
                         <>
@@ -1328,8 +1340,8 @@ export function App() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#6e7685] font-medium">{t.categoryLabel}:</span>
-                    <span className="font-semibold text-[#6554c0] uppercase tracking-wider text-[10px] bg-[#edeaf9] px-2 py-0.5 rounded">
+                    <span className="text-[#6e7685] dark:text-[#9ea4b5] font-medium">{t.categoryLabel}:</span>
+                    <span className="font-semibold text-[#6554c0] dark:text-[#a79be8] uppercase tracking-wider text-[10px] bg-[#edeaf9] dark:bg-[#6554c0]/20 px-2 py-0.5 rounded">
                       {probeResult.category}
                     </span>
                   </div>
@@ -1338,7 +1350,7 @@ export function App() {
 
               {/* File Name (Editable Description) */}
               <div>
-                <label className="block text-[#6e7685] mb-1 font-medium">{t.customFilename}</label>
+                <label className="block text-[#6e7685] dark:text-[#9ea4b5] mb-1 font-medium">{t.customFilename}</label>
                 <input
                   type="text"
                   placeholder={
@@ -1350,25 +1362,25 @@ export function App() {
                   }
                   value={newFilename}
                   onChange={(e) => setNewFilename(e.target.value)}
-                  className="w-full bg-[#f7f8fa] border border-[#e7e9ef] rounded-[6px] px-3 py-2 text-[#202631] focus:outline-none focus:border-[#6554c0]"
+                  className="w-full bg-[#f7f8fa] dark:bg-[#12131b] border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[6px] px-3 py-2 text-[#202631] dark:text-white focus:outline-none focus:border-[#6554c0]"
                 />
               </div>
 
               {/* Save Folder Destination with Browse Button (IDM Feature) */}
               <div>
-                <label className="block text-[#6e7685] mb-1 font-medium">{t.saveFolder}</label>
+                <label className="block text-[#6e7685] dark:text-[#9ea4b5] mb-1 font-medium">{t.saveFolder}</label>
                 <div className="flex items-center space-x-2">
                   <input
                     type="text"
                     placeholder="~/Downloads"
                     value={saveDir}
                     onChange={(e) => setSaveDir(e.target.value)}
-                    className="flex-1 bg-[#f7f8fa] border border-[#e7e9ef] rounded-[6px] px-3 py-2 text-[#202631] focus:outline-none focus:border-[#6554c0] text-[11px] font-mono"
+                    className="flex-1 bg-[#f7f8fa] dark:bg-[#12131b] border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[6px] px-3 py-2 text-[#202631] dark:text-white focus:outline-none focus:border-[#6554c0] text-[11px] font-mono"
                   />
                   <button
                     type="button"
                     onClick={handleSelectFolder}
-                    className="h-[34px] px-3 rounded-[6px] ios-glass-button text-[#202631] text-[11px] font-medium flex items-center space-x-1.5 flex-shrink-0"
+                    className="h-[34px] px-3 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[11px] font-medium flex items-center space-x-1.5 flex-shrink-0"
                     title={lang === "en" ? "Browse Folder" : "Pilih Folder"}
                   >
                     <Folder className="w-3.5 h-3.5 text-[#6554c0]" />
@@ -1380,7 +1392,7 @@ export function App() {
               {/* Format selection pills for online video / audio */}
               {isMediaUrl && (
                 <div>
-                  <label className="block text-[#6e7685] mb-1 font-medium">{lang === "en" ? "Format Preset:" : "Format Download:"}</label>
+                  <label className="block text-[#6e7685] dark:text-[#9ea4b5] mb-1 font-medium">{lang === "en" ? "Format Preset:" : "Format Download:"}</label>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
@@ -1393,7 +1405,7 @@ export function App() {
                       className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${
                         downloadFormat === "mp4"
                           ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
-                          : "bg-white text-[#202631] border-[#e7e9ef] hover:bg-[#f7f8fa]"
+                          : "bg-white dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b]"
                       }`}
                     >
                       🎬 Video (MP4)
@@ -1409,7 +1421,7 @@ export function App() {
                       className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${
                         downloadFormat === "mp3"
                           ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
-                          : "bg-white text-[#202631] border-[#e7e9ef] hover:bg-[#f7f8fa]"
+                          : "bg-white dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b]"
                       }`}
                     >
                       🎵 Audio Only (MP3)
@@ -1420,7 +1432,7 @@ export function App() {
 
               {/* Parallel Connections (IDM Multi-threaded Segmentation) */}
               <div>
-                <label className="block text-[#6e7685] mb-1 font-medium">{t.connections}</label>
+                <label className="block text-[#6e7685] dark:text-[#9ea4b5] mb-1 font-medium">{t.connections}</label>
                 <div className="flex items-center space-x-2">
                   {[1, 4, 8, 16].map((num) => (
                     <button
@@ -1430,7 +1442,7 @@ export function App() {
                       className={`px-3 py-1 rounded-[6px] text-[11px] font-medium border transition-colors ${
                         newConnections === num
                           ? "bg-[#6554c0] text-white border-[#5a4ab0]"
-                          : "bg-[#f7f8fa] text-[#202631] border-[#e7e9ef] hover:bg-[#eceaf4]"
+                          : "bg-[#f7f8fa] dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#eceaf4] dark:hover:bg-[#25283b]"
                       }`}
                     >
                       {num} {lang === "en" ? "conns" : "koneksi"}
@@ -1441,13 +1453,13 @@ export function App() {
             </div>
 
             {/* Action buttons (IDM style: Cancel, Download Later, Start Download) */}
-            <div className="flex items-center justify-between pt-3 border-t border-[#e7e9ef]">
+            <div className="flex items-center justify-between pt-3 border-t border-[#e7e9ef] dark:border-[#2a2c3d]">
               <button
                 onClick={() => {
                   setIsAddOpen(false);
                   setProbeResult(null);
                 }}
-                className="px-3.5 py-1.5 rounded-[6px] bg-[#f7f8fa] hover:bg-[#e7e9ef] text-[#202631] text-[12px] font-medium"
+                className="px-3.5 py-1.5 rounded-[6px] bg-[#f7f8fa] dark:bg-[#1a1c29] hover:bg-[#e7e9ef] dark:hover:bg-[#25283b] text-[#202631] dark:text-white text-[12px] font-medium"
               >
                 {t.cancelAction}
               </button>
@@ -1456,7 +1468,7 @@ export function App() {
                 <button
                   type="button"
                   onClick={() => handleAddDownload(false)}
-                  className="px-3.5 py-1.5 rounded-[6px] ios-glass-button text-[#202631] text-[12px] font-medium"
+                  className="px-3.5 py-1.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium"
                   title="Add to queue in paused state"
                 >
                   {t.downloadLater}
@@ -1476,10 +1488,10 @@ export function App() {
 
       {/* DIALOG KELUAR TRAY */}
       {isExitDialogOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white/95 backdrop-blur-xl border border-[#e7e9ef] rounded-[10px] w-full max-w-sm p-5 shadow-2xl space-y-3">
-            <h2 className="text-[14px] font-semibold text-[#202631]">{t.exitDialogTitle}</h2>
-            <p className="text-[12px] text-[#6e7685] leading-relaxed">{t.exitDialogMsg}</p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white/95 dark:bg-[#181a28]/95 backdrop-blur-xl border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[10px] w-full max-w-sm p-5 shadow-2xl space-y-3">
+            <h2 className="text-[14px] font-semibold text-[#202631] dark:text-white">{t.exitDialogTitle}</h2>
+            <p className="text-[12px] text-[#6e7685] dark:text-[#9ea4b5] leading-relaxed">{t.exitDialogMsg}</p>
             <div className="flex flex-col space-y-2 pt-2">
               <button
                 onClick={() => {
@@ -1496,13 +1508,13 @@ export function App() {
                   setIsExitDialogOpen(false);
                   postWindowMessage("close");
                 }}
-                className="w-full py-2 px-3 rounded-[6px] bg-[#f7f8fa] border border-[#e7e9ef] hover:bg-[#e7e9ef] text-[#202631] text-[12px] font-medium"
+                className="w-full py-2 px-3 rounded-[6px] bg-[#f7f8fa] dark:bg-[#12131b] border border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#e7e9ef] dark:hover:bg-[#25283b] text-[#202631] dark:text-white text-[12px] font-medium"
               >
                 {t.exitPauseAll}
               </button>
               <button
                 onClick={() => setIsExitDialogOpen(false)}
-                className="w-full py-1.5 px-3 rounded-[6px] text-[#6e7685] hover:text-[#202631] text-[12px]"
+                className="w-full py-1.5 px-3 rounded-[6px] text-[#6e7685] dark:text-[#9ea4b5] hover:text-[#202631] dark:hover:text-white text-[12px]"
               >
                 {t.cancelAction}
               </button>

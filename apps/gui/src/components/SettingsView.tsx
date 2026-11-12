@@ -48,6 +48,7 @@ interface SettingsViewProps {
   lang: Lang;
   settings: SettingsData;
   onSave: (next: SettingsData) => void;
+  onPreview?: (preview: Partial<SettingsData>) => void;
   onBrowseFolder: (targetField: string, currentPath?: string) => Promise<string | null>;
   onClose?: () => void;
 }
@@ -56,6 +57,7 @@ export function SettingsView({
   lang,
   settings: initialSettings,
   onSave,
+  onPreview,
   onBrowseFolder,
   onClose,
 }: SettingsViewProps) {
@@ -160,7 +162,7 @@ export function SettingsView({
       {/* Main Settings Body: Left Sub-tabs + Right Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sub-nav */}
-        <div className="w-[200px] border-r border-[#e7e9ef] dark:border-[#2a2c3d] p-3 space-y-1 flex-shrink-0 bg-white/40 dark:bg-[#161724]/40">
+        <div className="w-[224px] border-r border-[#e7e9ef] dark:border-[#2a2c3d] p-3 space-y-1 flex-shrink-0 bg-white/40 dark:bg-[#161724]/40">
           {[
             { id: "appearance", label: t.tabAppearance, icon: Palette },
             { id: "storage", label: t.tabStorage, icon: FolderOpen },
@@ -174,14 +176,14 @@ export function SettingsView({
               <button
                 key={item.id}
                 onClick={() => setActiveSubTab(item.id as any)}
-                className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-[6px] text-[12px] font-medium transition-all ${
+                className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-[6px] text-[12px] font-medium text-left transition-all ${
                   active
                     ? "bg-[#6554c0] text-white shadow-sm"
                     : "text-[#6e7685] hover:text-[#202631] dark:text-[#9ea4b5] dark:hover:text-white hover:bg-[#edeaf9]/50 dark:hover:bg-[#25283b]/60"
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate whitespace-nowrap">{item.label}</span>
               </button>
             );
           })}
@@ -229,7 +231,11 @@ export function SettingsView({
                       <button
                         key={themeOpt.id}
                         type="button"
-                        onClick={() => setFormData({ ...formData, theme: themeOpt.id as any })}
+                        onClick={() => {
+                          const nextTheme = themeOpt.id as any;
+                          setFormData((prev) => ({ ...prev, theme: nextTheme }));
+                          onPreview?.({ theme: nextTheme });
+                        }}
                         className={`p-3.5 rounded-[8px] border text-left flex flex-col justify-between transition-all ${
                           isSelected
                             ? "bg-[#edeaf9] dark:bg-[#6554c0]/20 border-[#6554c0] shadow-sm"
@@ -274,7 +280,10 @@ export function SettingsView({
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, blurLevel: "high" })}
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, blurLevel: "high" }));
+                      onPreview?.({ blurLevel: "high" });
+                    }}
                     className={`p-3 rounded-[8px] border text-left flex items-center space-x-3 transition-all ${
                       formData.blurLevel === "high"
                         ? "bg-[#edeaf9] dark:bg-[#6554c0]/20 border-[#6554c0]"
@@ -294,7 +303,10 @@ export function SettingsView({
 
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, blurLevel: "low" })}
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, blurLevel: "low" }));
+                      onPreview?.({ blurLevel: "low" });
+                    }}
                     className={`p-3 rounded-[8px] border text-left flex items-center space-x-3 transition-all ${
                       formData.blurLevel === "low"
                         ? "bg-[#edeaf9] dark:bg-[#6554c0]/20 border-[#6554c0]"
@@ -322,7 +334,10 @@ export function SettingsView({
                 <div className="flex items-center space-x-2 mt-2">
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, language: "en" })}
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, language: "en" }));
+                      onPreview?.({ language: "en" });
+                    }}
                     className={`px-4 py-2 rounded-[6px] text-[12px] font-medium border transition-all ${
                       formData.language === "en"
                         ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
@@ -333,7 +348,10 @@ export function SettingsView({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, language: "id" })}
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, language: "id" }));
+                      onPreview?.({ language: "id" });
+                    }}
                     className={`px-4 py-2 rounded-[6px] text-[12px] font-medium border transition-all ${
                       formData.language === "id"
                         ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"

@@ -107,7 +107,7 @@ class DownNuxNativeWindow(Gtk.Window):
         
         # Transparent background for authentic iOS glassmorphism
         bg_color = Gdk.RGBA()
-        bg_color.parse("rgba(247, 248, 250, 1.0)")
+        bg_color.parse("rgba(0, 0, 0, 0.0)")
         self.webview.set_background_color(bg_color)
 
         self.add(self.webview)

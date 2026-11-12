@@ -16,54 +16,55 @@
 
 /* Authentic iOS / VisionOS Glassmorphism Theme */
 .ios-glass-canvas {
-  background: radial-gradient(circle at 12% 15%, rgba(101, 84, 192, 0.08) 0%, transparent 40%),
-              radial-gradient(circle at 88% 18%, rgba(56, 189, 248, 0.07) 0%, transparent 35%),
-              radial-gradient(circle at 50% 85%, rgba(244, 63, 94, 0.04) 0%, transparent 45%),
-              #f0f2f6;
+  background: radial-gradient(circle at 10% 12%, rgba(101, 84, 192, 0.22) 0%, transparent 45%),
+              radial-gradient(circle at 90% 15%, rgba(56, 189, 248, 0.18) 0%, transparent 40%),
+              radial-gradient(circle at 50% 90%, rgba(244, 63, 94, 0.14) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.16) 0%, transparent 45%),
+              #edf0f5;
 }
 
 .ios-glass-window {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(32px) saturate(180%);
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
-  border: 1px solid rgba(231, 233, 239, 0.95);
-  box-shadow: 0 20px 60px -10px rgba(32, 38, 49, 0.08), 0 1px 3px rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border: 1px solid rgba(231, 233, 239, 0.85);
+  box-shadow: 0 20px 60px -10px rgba(32, 38, 49, 0.12), 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .ios-glass-bar {
-  background: rgba(247, 248, 250, 0.85);
+  background: rgba(247, 248, 250, 0.75);
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
   border-color: rgba(231, 233, 239, 0.9);
 }
 
 .ios-glass-sidebar {
-  background: rgba(247, 248, 250, 0.82);
-  backdrop-filter: blur(28px) saturate(160%);
-  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  background: rgba(247, 248, 250, 0.70);
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
   border-right: 1px solid rgba(231, 233, 239, 0.85);
 }
 
 .ios-glass-card {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid #e7e9ef;
+  border: 1px solid rgba(231, 233, 239, 0.9);
   box-shadow: 0 4px 16px -2px rgba(101, 84, 192, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .ios-glass-button {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid #e7e9ef;
+  border: 1px solid rgba(231, 233, 239, 0.95);
   color: #202631;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
   transition: all 0.15s ease;
 }
 
 .ios-glass-button:hover:not(:disabled) {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.98);
   border-color: #d8dae2;
   box-shadow: 0 2px 6px rgba(101, 84, 192, 0.08);
   transform: translateY(-0.5px);
@@ -99,41 +100,52 @@
 }
 
 .dark body {
-  background: #111218;
+  background: #0f1016;
   color: #e2e4ea;
 }
 
 .dark .ios-glass-canvas {
-  background: radial-gradient(circle at 12% 15%, rgba(101, 84, 192, 0.18) 0%, transparent 40%),
-              radial-gradient(circle at 88% 18%, rgba(56, 189, 248, 0.14) 0%, transparent 35%),
-              radial-gradient(circle at 50% 85%, rgba(244, 63, 94, 0.09) 0%, transparent 45%),
-              #111218;
+  background: radial-gradient(circle at 12% 15%, rgba(124, 58, 237, 0.32) 0%, transparent 45%),
+              radial-gradient(circle at 88% 18%, rgba(14, 165, 233, 0.24) 0%, transparent 40%),
+              radial-gradient(circle at 50% 85%, rgba(225, 29, 72, 0.18) 0%, transparent 50%),
+              radial-gradient(circle at 75% 75%, rgba(147, 51, 234, 0.22) 0%, transparent 45%),
+              #0f1016;
 }
 
 .dark .ios-glass-window {
-  background: rgba(20, 22, 31, 0.88);
+  background: rgba(18, 20, 29, 0.76);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
   border-color: rgba(45, 49, 68, 0.85);
-  box-shadow: 0 24px 70px -10px rgba(0, 0, 0, 0.65), 0 1px 3px rgba(255, 255, 255, 0.05) inset;
+  box-shadow: 0 24px 70px -10px rgba(0, 0, 0, 0.75), 0 1px 3px rgba(255, 255, 255, 0.05) inset;
 }
 
 .dark .ios-glass-bar {
-  background: rgba(16, 17, 25, 0.85);
+  background: rgba(16, 17, 25, 0.72);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
   border-color: rgba(40, 44, 62, 0.85);
 }
 
 .dark .ios-glass-sidebar {
-  background: rgba(16, 17, 25, 0.82);
+  background: rgba(16, 17, 25, 0.68);
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
   border-color: rgba(40, 44, 62, 0.85);
 }
 
 .dark .ios-glass-card {
-  background: rgba(26, 28, 40, 0.9);
+  background: rgba(24, 26, 38, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-color: rgba(48, 52, 74, 0.85);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .dark .ios-glass-button {
-  background: rgba(32, 35, 50, 0.85);
+  background: rgba(30, 33, 48, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-color: rgba(55, 60, 85, 0.85);
   color: #e2e4ea;
 }
@@ -144,14 +156,83 @@
   color: #ffffff;
 }
 
-/* Low Blur / Performance Mode */
-.low-blur .ios-glass-window,
-.low-blur .ios-glass-bar,
-.low-blur .ios-glass-sidebar,
-.low-blur .ios-glass-card,
-.low-blur .ios-glass-button {
+/* Low Blur / Performance Mode: Solid, Non-blurred flat panels for max speed */
+.low-blur .ios-glass-canvas {
+  background: #f0f2f6 !important;
+}
+
+.dark.low-blur .ios-glass-canvas {
+  background: #0f1016 !important;
+}
+
+.low-blur .ios-glass-window {
+  background: #ffffff !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+.dark.low-blur .ios-glass-window {
+  background: #14151f !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.low-blur .ios-glass-bar {
+  background: #f7f8fa !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dark.low-blur .ios-glass-bar {
+  background: #111218 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.low-blur .ios-glass-sidebar {
+  background: #f7f8fa !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dark.low-blur .ios-glass-sidebar {
+  background: #111218 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.low-blur .ios-glass-card {
+  background: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dark.low-blur .ios-glass-card {
+  background: #1a1c29 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.low-blur .ios-glass-button {
+  background: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dark.low-blur .ios-glass-button {
+  background: #202332 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.low-blur main {
+  background: #ffffff !important;
+  backdrop-filter: none !important;
+}
+
+.dark.low-blur main {
+  background: #14151f !important;
+  backdrop-filter: none !important;
 }
 
 /* Custom Sleek Scrollbar */
