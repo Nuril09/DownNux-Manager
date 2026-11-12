@@ -76,9 +76,20 @@ class DownNuxNativeWindow(Gtk.Window):
         self.set_default_size(1260, 780)
         self.set_position(Gtk.WindowPosition.CENTER)
 
+        # Remove OS window titlebar so in-app design header becomes the native window titlebar
+        self.set_decorated(False)
+        self.set_resizable(True)
+
         # Set window icon
         if os.path.exists(ICON_PATH):
             self.set_icon_from_file(ICON_PATH)
+
+        # Transparent RGBA visual for smooth rounded corners and depth
+        screen = self.get_screen()
+        visual = screen.get_rgba_visual()
+        if visual:
+            self.set_visual(visual)
+        self.set_app_paintable(True)
 
         # WebKit settings
         settings = WebKit2.Settings()
@@ -88,10 +99,15 @@ class DownNuxNativeWindow(Gtk.Window):
         settings.set_enable_write_console_messages_to_stdout(False)
 
         self.webview = WebKit2.WebView.new_with_settings(settings)
+
+        # Register native window control bridge for minimize/maximize/close/drag
+        ucm = self.webview.get_user_content_manager()
+        ucm.register_script_message_handler("windowControl")
+        ucm.connect("script-message-received::windowControl", self.on_window_control)
         
         # Transparent background for authentic iOS glassmorphism
         bg_color = Gdk.RGBA()
-        bg_color.parse("rgba(240, 242, 246, 1.0)")
+        bg_color.parse("rgba(247, 248, 250, 1.0)")
         self.webview.set_background_color(bg_color)
 
         self.add(self.webview)
@@ -99,6 +115,46 @@ class DownNuxNativeWindow(Gtk.Window):
 
         # Wait until port 1420 responds, then load
         GLib.timeout_add(100, self.load_gui)
+
+    def on_window_control(self, manager, js_result):
+        try:
+            val = js_result.get_js_value()
+            msg = val.to_string() if val else ""
+            if msg == "minimize":
+                self.iconify()
+            elif msg == "maximize":
+                if self.is_maximized():
+                    self.unmaximize()
+                else:
+                    self.maximize()
+            elif msg == "close":
+                self.close()
+            elif msg == "drag":
+                disp = Gdk.Display.get_default()
+                seat = disp.get_default_seat()
+                ptr = seat.get_pointer()
+                screen, x, y = ptr.get_position()
+                self.begin_move_drag(1, x, y, Gtk.get_current_event_time())
+            elif msg.startswith("resize:"):
+                edge_name = msg.split(":", 1)[1]
+                edge_map = {
+                    "right": Gdk.WindowEdge.EAST,
+                    "left": Gdk.WindowEdge.WEST,
+                    "bottom": Gdk.WindowEdge.SOUTH,
+                    "bottom-right": Gdk.WindowEdge.SOUTH_EAST,
+                    "bottom-left": Gdk.WindowEdge.SOUTH_WEST,
+                    "top": Gdk.WindowEdge.NORTH,
+                    "top-right": Gdk.WindowEdge.NORTH_EAST,
+                    "top-left": Gdk.WindowEdge.NORTH_WEST,
+                }
+                edge = edge_map.get(edge_name, Gdk.WindowEdge.SOUTH_EAST)
+                disp = Gdk.Display.get_default()
+                seat = disp.get_default_seat()
+                ptr = seat.get_pointer()
+                screen, x, y = ptr.get_position()
+                self.begin_resize_drag(edge, 1, x, y, Gtk.get_current_event_time())
+        except Exception as e:
+            sys.stderr.write(f"window control error: {e}\n")
 
     def load_gui(self):
         for _ in range(25):

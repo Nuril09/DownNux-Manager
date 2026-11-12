@@ -20,7 +20,7 @@ import {
   Languages,
   PauseCircle,
   Search,
-  Minimize2,
+  Minus,
   Square,
   X,
   FolderOpen,
@@ -128,7 +128,7 @@ export function App() {
           setNewFilename(decodeURIComponent(lastPart));
         }
       }
-    } catch {}
+    } catch { }
   };
 
   // Fetch dynamic OS info from daemon
@@ -138,7 +138,7 @@ export function App() {
       .then((data) => {
         if (data?.os) setOsName(`${data.os} · Desktop`);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Poll daemon RPC tasks & subscribe
@@ -157,7 +157,7 @@ export function App() {
             setSelectedId(json.result[0].id);
           }
         }
-      } catch {}
+      } catch { }
     };
 
     fetchTasks();
@@ -246,14 +246,69 @@ export function App() {
     }
   };
 
+  // Native Window Control Handlers (CSD / Frameless window bridge)
+  const postWindowMessage = (action: string) => {
+    try {
+      (window as any).webkit?.messageHandlers?.windowControl?.postMessage(action);
+    } catch (err) {
+      console.warn("windowControl message failed:", err);
+    }
+  };
+
+  const handleMinimize = () => {
+    postWindowMessage("minimize");
+  };
+
+  const handleMaximize = () => {
+    postWindowMessage("maximize");
+  };
+
+  const handleClose = () => {
+    const hasActive = tasks.some((t) => t.status === "downloading" || t.status === "retrying");
+    if (hasActive) {
+      setIsExitDialogOpen(true);
+    } else {
+      postWindowMessage("close");
+    }
+  };
+
+  const handleHeaderMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0 && !(e.target as HTMLElement).closest("button, input, a, select, textarea")) {
+      postWindowMessage("drag");
+    }
+  };
+
+  const handleHeaderDoubleClick = (e: React.MouseEvent) => {
+    if (!(e.target as HTMLElement).closest("button, input, a, select, textarea")) {
+      postWindowMessage("maximize");
+    }
+  };
+
+  const handleResize = (e: React.MouseEvent, edge: string) => {
+    e.preventDefault();
+    postWindowMessage(`resize:${edge}`);
+  };
+
   return (
-    <div className="ios-glass-canvas h-screen w-screen p-2 sm:p-3 flex flex-col box-border overflow-hidden select-none">
-      {/* WINDOW CONTAINER: Rounded 12px with Frosted Glassmorphism iOS Depth */}
-      <div className="ios-glass-window rounded-[12px] flex flex-col flex-1 overflow-hidden relative shadow-2xl">
-        
+    <div className="ios-glass-canvas h-screen w-screen flex flex-col box-border overflow-hidden select-none relative">
+      {/* Native window resize edge handles */}
+      <div onMouseDown={(e) => handleResize(e, "right")} className="fixed top-0 right-0 w-2 h-full cursor-e-resize z-50 select-none" />
+      <div onMouseDown={(e) => handleResize(e, "bottom")} className="fixed bottom-0 left-0 w-full h-2 cursor-s-resize z-50 select-none" />
+      <div onMouseDown={(e) => handleResize(e, "left")} className="fixed top-0 left-0 w-2 h-full cursor-w-resize z-50 select-none" />
+      <div onMouseDown={(e) => handleResize(e, "top")} className="fixed top-0 left-0 w-full h-2 cursor-n-resize z-50 select-none" />
+      <div onMouseDown={(e) => handleResize(e, "bottom-right")} className="fixed bottom-0 right-0 w-4 h-4 cursor-se-resize z-50 select-none" />
+      <div onMouseDown={(e) => handleResize(e, "bottom-left")} className="fixed bottom-0 left-0 w-4 h-4 cursor-sw-resize z-50 select-none" />
+
+      {/* WINDOW CONTAINER: Frameless native window with Figma titlebar */}
+      <div className="ios-glass-window flex flex-col flex-1 overflow-hidden relative">
+
         {/* 1. BILAH JUDUL (Exact Figma node 2:3, h: 48px, bg: #f7f8fa) */}
-        <header className="h-[48px] ios-glass-bar border-b border-[#e7e9ef] flex items-center justify-between px-4 relative z-30 flex-shrink-0">
-          <div className="flex items-center space-x-3">
+        <header
+          onMouseDown={handleHeaderMouseDown}
+          onDoubleClick={handleHeaderDoubleClick}
+          className="h-[48px] ios-glass-bar border-b border-[#e7e9ef] flex items-center justify-between px-4 relative z-30 flex-shrink-0 cursor-default select-none"
+        >
+          <div className="flex items-center space-x-3 pointer-events-none">
             {/* Custom Icon user dengan container rounded 6px ungu #6554c0 */}
             <div className="w-6 h-6 rounded-[6px] bg-[#6554c0] flex items-center justify-center p-0.5 shadow-sm shadow-[#6554c0]/30 overflow-hidden">
               <img src="/app-icon.png" alt="DownNux" className="w-full h-full object-contain" />
@@ -262,7 +317,7 @@ export function App() {
           </div>
 
           {/* Dynamic OS indicator matching Figma node 2:18 "Ubuntu · Desktop" */}
-          <div className="absolute left-1/2 -translate-x-1/2 font-normal text-[11px] text-[#6e7685]">
+          <div className="absolute left-1/2 -translate-x-1/2 font-normal text-[11px] text-[#6e7685] pointer-events-none">
             {osName}
           </div>
 
@@ -279,25 +334,28 @@ export function App() {
 
             <div className="h-4 w-[1px] bg-[#e7e9ef]" />
 
-            <div className="flex items-center space-x-2 text-[#6e7685]">
+            {/* Window Controls matching exact Figma nodes 2:19, 2:21, 2:23 */}
+            <div className="flex items-center space-x-1 text-[#6e7685]">
               <button
-                className="w-5 h-5 rounded hover:bg-[#e7e9ef] flex items-center justify-center transition-colors"
+                onClick={handleMinimize}
+                className="w-7 h-7 rounded-[5px] hover:bg-[#e7e9ef] flex items-center justify-center transition-colors text-[#6e7685] hover:text-[#202631]"
                 title={lang === "en" ? "Minimize" : "Kecilkan"}
               >
-                <Minimize2 className="w-3.5 h-3.5" />
+                <Minus className="w-4 h-4 stroke-[2]" />
               </button>
               <button
-                className="w-5 h-5 rounded hover:bg-[#e7e9ef] flex items-center justify-center transition-colors"
+                onClick={handleMaximize}
+                className="w-7 h-7 rounded-[5px] hover:bg-[#e7e9ef] flex items-center justify-center transition-colors text-[#6e7685] hover:text-[#202631]"
                 title={lang === "en" ? "Maximize" : "Besarkan"}
               >
-                <Square className="w-3 h-3" />
+                <Square className="w-3.5 h-3.5 stroke-[1.8]" />
               </button>
               <button
-                onClick={() => setIsExitDialogOpen(true)}
-                className="w-5 h-5 rounded hover:bg-rose-500 hover:text-white flex items-center justify-center transition-colors"
+                onClick={handleClose}
+                className="w-7 h-7 rounded-[5px] hover:bg-[#e81123] hover:text-white flex items-center justify-center transition-colors text-[#6e7685]"
                 title={lang === "en" ? "Close" : "Tutup"}
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4 stroke-[2]" />
               </button>
             </div>
           </div>
@@ -305,7 +363,7 @@ export function App() {
 
         {/* 2. MAIN LAYOUT: SIDEBAR + WORKSPACE */}
         <div className="flex flex-1 overflow-hidden">
-          
+
           {/* NAVIGASI (Sidebar Figma w: 216px, bg: #f7f8fa) */}
           <aside className="w-[216px] ios-glass-sidebar border-r border-[#e7e9ef] flex flex-col justify-between p-3 flex-shrink-0 z-20">
             <div className="space-y-4 overflow-y-auto pr-1">
@@ -351,11 +409,10 @@ export function App() {
                           setActiveFilter(item.id);
                           setActiveCategory(null);
                         }}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${
-                          active
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${active
                             ? "bg-[#edeaf9] text-[#6554c0] font-semibold"
                             : "text-[#202631] hover:bg-[#edeaf9]/40 hover:text-[#6554c0]"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center space-x-2">
                           <Icon className={`w-4 h-4 ${active ? "text-[#6554c0]" : "text-[#6e7685]"}`} />
@@ -391,11 +448,10 @@ export function App() {
                       <button
                         key={cat.id}
                         onClick={() => setActiveCategory(cat.id)}
-                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${
-                          active
+                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${active
                             ? "bg-[#edeaf9] text-[#6554c0] font-semibold"
                             : "text-[#6e7685] hover:bg-[#edeaf9]/40 hover:text-[#202631]"
-                        }`}
+                          }`}
                       >
                         <Icon className="w-4 h-4 text-[#6e7685]" />
                         <span>{cat.label}</span>
@@ -410,14 +466,14 @@ export function App() {
 
               <div className="space-y-0.5">
                 <button
-                  onClick={() => {}}
+                  onClick={() => { }}
                   className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] text-[#202631] hover:bg-[#edeaf9]/40 transition-colors"
                 >
                   <Clock className="w-4 h-4 text-[#6e7685]" />
                   <span>{lang === "en" ? "Scheduler" : "Penjadwal"}</span>
                 </button>
                 <button
-                  onClick={() => {}}
+                  onClick={() => { }}
                   className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] text-[#202631] hover:bg-[#edeaf9]/40 transition-colors"
                 >
                   <SettingsIcon className="w-4 h-4 text-[#6e7685]" />
@@ -535,9 +591,8 @@ export function App() {
                 <div className="flex items-center space-x-6">
                   <button
                     onClick={() => setActiveFilter("all")}
-                    className={`pb-2 text-[12px] relative transition-colors ${
-                      activeFilter === "all" ? "text-[#6554c0] font-semibold" : "text-[#6e7685] hover:text-[#202631]"
-                    }`}
+                    className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "all" ? "text-[#6554c0] font-semibold" : "text-[#6e7685] hover:text-[#202631]"
+                      }`}
                   >
                     {lang === "en" ? "All" : "Semua"}
                     <span className="text-[10px] text-[#6e7685] font-normal ml-1.5">{tasks.length}</span>
@@ -547,11 +602,10 @@ export function App() {
                   </button>
                   <button
                     onClick={() => setActiveFilter("downloading")}
-                    className={`pb-2 text-[12px] relative transition-colors ${
-                      activeFilter === "downloading"
+                    className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "downloading"
                         ? "text-[#6554c0] font-semibold"
                         : "text-[#6e7685] hover:text-[#202631]"
-                    }`}
+                      }`}
                   >
                     {lang === "en" ? "Active" : "Aktif"}
                     {activeFilter === "downloading" && (
@@ -560,11 +614,10 @@ export function App() {
                   </button>
                   <button
                     onClick={() => setActiveFilter("completed")}
-                    className={`pb-2 text-[12px] relative transition-colors ${
-                      activeFilter === "completed"
+                    className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "completed"
                         ? "text-[#6554c0] font-semibold"
                         : "text-[#6e7685] hover:text-[#202631]"
-                    }`}
+                      }`}
                   >
                     {lang === "en" ? "Completed" : "Selesai"}
                     {activeFilter === "completed" && (
@@ -622,9 +675,8 @@ export function App() {
                           <tr
                             key={task.id}
                             onClick={() => setSelectedId(task.id)}
-                            className={`cursor-pointer transition-colors relative ${
-                              isSelected ? "bg-[#f3f0fc]" : "hover:bg-[#fbfbfd] bg-white"
-                            }`}
+                            className={`cursor-pointer transition-colors relative ${isSelected ? "bg-[#f3f0fc]" : "hover:bg-[#fbfbfd] bg-white"
+                              }`}
                           >
                             <td className="py-2.5 px-4 max-w-xs relative">
                               {/* Penanda pilihan ungu #6554c0 */}
@@ -633,9 +685,8 @@ export function App() {
                               )}
                               <div className="flex items-center space-x-3">
                                 <div
-                                  className={`w-8 h-8 rounded-[6px] flex items-center justify-center flex-shrink-0 ${
-                                    isSelected ? "bg-[#e5def8]" : "bg-[#f1f3f6]"
-                                  }`}
+                                  className={`w-8 h-8 rounded-[6px] flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-[#e5def8]" : "bg-[#f1f3f6]"
+                                    }`}
                                 >
                                   <FileIcon
                                     className={`w-4 h-4 ${isSelected ? "text-[#6554c0]" : "text-[#6e7685]"}`}
@@ -660,15 +711,14 @@ export function App() {
                             <td className="py-2.5 px-3 whitespace-nowrap">
                               <div className="flex justify-between items-center mb-1">
                                 <span
-                                  className={`font-medium text-[10px] ${
-                                    task.status === "completed"
+                                  className={`font-medium text-[10px] ${task.status === "completed"
                                       ? "text-[#218163]"
                                       : task.status === "paused"
-                                      ? "text-[#ac8433]"
-                                      : task.status === "failed"
-                                      ? "text-[#c34a4a]"
-                                      : "text-[#6554c0]"
-                                  }`}
+                                        ? "text-[#ac8433]"
+                                        : task.status === "failed"
+                                          ? "text-[#c34a4a]"
+                                          : "text-[#6554c0]"
+                                    }`}
                                 >
                                   {getStatusText(task.status)}
                                 </span>
@@ -678,15 +728,14 @@ export function App() {
                               </div>
                               <div className="w-[142px] h-[4px] bg-[#e3e4ea] rounded-[2px] overflow-hidden">
                                 <div
-                                  className={`h-full rounded-[2px] transition-all duration-300 ${
-                                    task.status === "completed"
+                                  className={`h-full rounded-[2px] transition-all duration-300 ${task.status === "completed"
                                       ? "bg-[#218163]"
                                       : task.status === "paused"
-                                      ? "bg-[#ac8433]"
-                                      : task.status === "failed"
-                                      ? "bg-[#c34a4a]"
-                                      : "bg-[#6554c0]"
-                                  }`}
+                                        ? "bg-[#ac8433]"
+                                        : task.status === "failed"
+                                          ? "bg-[#c34a4a]"
+                                          : "bg-[#6554c0]"
+                                    }`}
                                   style={{ width: `${task.status === "completed" ? 100 : Math.min(100, pct)}%` }}
                                 />
                               </div>
@@ -839,13 +888,12 @@ export function App() {
                               <div
                                 className="h-full bg-[#6554c0] rounded-[2px] transition-all duration-300"
                                 style={{
-                                  width: `${
-                                    selectedTask.status === "downloading"
+                                  width: `${selectedTask.status === "downloading"
                                       ? Math.min(100, Math.max(15, ((idx + 1) * 14.5) % 100))
                                       : selectedTask.status === "completed"
-                                      ? 100
-                                      : 0
-                                  }%`,
+                                        ? 100
+                                        : 0
+                                    }%`,
                                 }}
                               />
                             </div>
@@ -922,11 +970,10 @@ export function App() {
                           setNewFilename(newFilename.replace(/\.mp3$/, ".mp4"));
                         }
                       }}
-                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${
-                        downloadFormat === "mp4"
+                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp4"
                           ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
                           : "bg-white text-[#202631] border-[#e7e9ef] hover:bg-[#f7f8fa]"
-                      }`}
+                        }`}
                     >
                       🎬 Video (MP4)
                     </button>
@@ -938,11 +985,10 @@ export function App() {
                           setNewFilename(newFilename.replace(/\.mp4$/, ".mp3"));
                         }
                       }}
-                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${
-                        downloadFormat === "mp3"
+                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp3"
                           ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
                           : "bg-white text-[#202631] border-[#e7e9ef] hover:bg-[#f7f8fa]"
-                      }`}
+                        }`}
                     >
                       🎵 Audio Only (MP3)
                     </button>
@@ -1006,15 +1052,19 @@ export function App() {
             <p className="text-[12px] text-[#6e7685] leading-relaxed">{t.exitDialogMsg}</p>
             <div className="flex flex-col space-y-2 pt-2">
               <button
-                onClick={() => setIsExitDialogOpen(false)}
+                onClick={() => {
+                  setIsExitDialogOpen(false);
+                  postWindowMessage("close");
+                }}
                 className="w-full py-2 px-3 rounded-[6px] ios-button-primary text-white text-[12px] font-medium"
               >
                 {t.exitKeepDownloading}
               </button>
               <button
-                onClick={() => {
-                  executeAction("task.pauseAll");
+                onClick={async () => {
+                  await executeAction("task.pauseAll");
                   setIsExitDialogOpen(false);
+                  postWindowMessage("close");
                 }}
                 className="w-full py-2 px-3 rounded-[6px] bg-[#f7f8fa] border border-[#e7e9ef] hover:bg-[#e7e9ef] text-[#202631] text-[12px] font-medium"
               >
