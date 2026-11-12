@@ -31,6 +31,8 @@ import {
   Check,
 } from "lucide-react";
 import { translations, type Lang } from "./i18n";
+import { SettingsView, type SettingsData } from "./components/SettingsView";
+import { SchedulerView, type ScheduleConfigData } from "./components/SchedulerView";
 
 export interface Task {
   id: string;
@@ -104,6 +106,39 @@ export function App() {
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeView, setActiveView] = useState<"downloads" | "scheduler" | "settings">("downloads");
+
+  // Settings & Scheduler persistent data
+  const [settingsData, setSettingsData] = useState<SettingsData>({
+    theme: "system",
+    accentColor: "#6554c0",
+    blurLevel: "high",
+    language: "en",
+    downloadDir: "",
+    categoryDirs: { video: "", music: "", documents: "", compressed: "", programs: "", other: "" },
+    rememberLastDir: true,
+    speedLimiterEnabled: false,
+    speedLimitBytesPerSec: 0,
+    defaultConnections: 8,
+    maxConcurrent: 3,
+    autoResumeOnStart: true,
+    retryCount: 5,
+    showPreDownloadDialog: true,
+    notifyOnStart: true,
+    notifyOnComplete: true,
+    soundOnComplete: false,
+    onCompleteAction: "none",
+  });
+
+  const [schedulerConfig, setSchedulerConfig] = useState<ScheduleConfigData>({
+    enabled: false,
+    mode: "recurring",
+    startTime: "01:00",
+    stopTime: "06:00",
+    daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+    maxSimultaneous: 1,
+    onFinishAction: "none",
+  });
 
   // Dialogs
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -127,6 +162,153 @@ export function App() {
     defaultDir: string;
   } | null>(null);
   const [isProbing, setIsProbing] = useState(false);
+
+  // Apply Theme Mode (System, Light, Dark) & Blur Mode
+  useEffect(() => {
+    const applyTheme = () => {
+      const mode = settingsData.theme;
+      const isDark =
+        mode === "dark" ||
+        (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      if (isDark) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+
+      if (settingsData.blurLevel === "low") {
+        document.documentElement.classList.add("low-blur");
+      } else {
+        document.documentElement.classList.remove("low-blur");
+      }
+    };
+
+    applyTheme();
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    mql.addEventListener("change", applyTheme);
+    return () => mql.removeEventListener("change", applyTheme);
+  }, [settingsData.theme, settingsData.blurLevel]);
+
+  // Load Settings and Scheduler configs on mount
+  useEffect(() => {
+    fetch("http://127.0.0.1:44990/api/rpc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: "settings.get", params: {} }),
+    })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.result) {
+          setSettingsData(json.result);
+          if (json.result.language) setLang(json.result.language);
+          if (json.result.defaultConnections) setNewConnections(json.result.defaultConnections);
+        }
+      })
+      .catch(() => {});
+
+    fetch("http://127.0.0.1:44990/api/rpc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: "scheduler.get", params: {} }),
+    })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.result) {
+          setSchedulerConfig(json.result);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // WebKit Native Window Folder Chooser Callback
+  useEffect(() => {
+    (window as any).__downnux_onFolderSelected = (path: string) => {
+      const field = (window as any).__downnux_pendingField || "download";
+      if (field === "download") {
+        setSaveDir(path);
+      } else if (field === "default") {
+        setSettingsData((prev) => ({ ...prev, downloadDir: path }));
+      } else if (["video", "music", "documents", "compressed", "programs"].includes(field)) {
+        setSettingsData((prev) => ({
+          ...prev,
+          categoryDirs: { ...prev.categoryDirs, [field]: path },
+        }));
+      }
+    };
+  }, []);
+
+  const handleBrowseFolderForTarget = async (targetField: string = "download", currentPath?: string): Promise<string | null> => {
+    (window as any).__downnux_pendingField = targetField;
+    try {
+      (window as any).webkit?.messageHandlers?.windowControl?.postMessage("selectFolder");
+    } catch {}
+
+    try {
+      const res = await fetch("http://127.0.0.1:44990/api/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "dialog.selectFolder", params: { defaultPath: currentPath } }),
+      });
+      const json = await res.json();
+      if (json.result?.ok && json.result?.path) {
+        const path = json.result.path;
+        if (targetField === "download") {
+          setSaveDir(path);
+        } else if (targetField === "default") {
+          setSettingsData((prev) => ({ ...prev, downloadDir: path }));
+        } else if (["video", "music", "documents", "compressed", "programs"].includes(targetField)) {
+          setSettingsData((prev) => ({
+            ...prev,
+            categoryDirs: { ...prev.categoryDirs, [targetField]: path },
+          }));
+        }
+        return path;
+      }
+    } catch (err) {
+      console.warn("Folder picker error:", err);
+    }
+    return null;
+  };
+
+  const handleSaveSettings = async (next: SettingsData) => {
+    try {
+      await fetch("http://127.0.0.1:44990/api/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "settings.update", params: next }),
+      });
+      setSettingsData(next);
+      if (next.language) setLang(next.language);
+      if (next.defaultConnections) setNewConnections(next.defaultConnections);
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+    }
+  };
+
+  const handleSaveScheduler = async (next: ScheduleConfigData) => {
+    try {
+      await fetch("http://127.0.0.1:44990/api/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "scheduler.update", params: next }),
+      });
+      setSchedulerConfig(next);
+    } catch (err) {
+      console.error("Failed to save scheduler:", err);
+    }
+  };
+
+  const handleRunSchedulerNow = async () => {
+    try {
+      await fetch("http://127.0.0.1:44990/api/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "scheduler.runNow", params: {} }),
+      });
+    } catch (err) {
+      console.error("Failed to run scheduler:", err);
+    }
+  };
 
   const isMediaUrl = /youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(newUrl);
 
@@ -189,26 +371,7 @@ export function App() {
 
   // Handle native folder chooser
   const handleSelectFolder = async () => {
-    try {
-      (window as any).__downnux_onFolderSelected = (chosenPath: string) => {
-        if (chosenPath) setSaveDir(chosenPath);
-      };
-      (window as any).webkit?.messageHandlers?.windowControl?.postMessage("selectFolder");
-    } catch { }
-
-    try {
-      const res = await fetch("http://127.0.0.1:44990/api/rpc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "dialog.selectFolder", params: {} }),
-      });
-      const json = await res.json();
-      if (json.result?.ok && json.result?.path) {
-        setSaveDir(json.result.path);
-      }
-    } catch (err) {
-      console.warn("Folder picker error:", err);
-    }
+    await handleBrowseFolderForTarget("download", saveDir);
   };
 
   // Fetch dynamic OS info from daemon
@@ -415,21 +578,21 @@ export function App() {
         <header
           onMouseDown={handleHeaderMouseDown}
           onDoubleClick={handleHeaderDoubleClick}
-          className="h-[48px] ios-glass-bar border-b border-[#e7e9ef] flex items-center justify-between px-4 relative z-30 flex-shrink-0 cursor-default select-none"
+          className="h-[48px] ios-glass-bar border-b border-[#e7e9ef] dark:border-[#2a2c3d] flex items-center justify-between px-4 relative z-30 flex-shrink-0 cursor-default select-none"
         >
           <div className="flex items-center space-x-3 pointer-events-none">
             {/* Custom Icon user dengan container rounded 6px ungu #6554c0 */}
             <div className="w-6 h-6 rounded-[6px] bg-[#6554c0] flex items-center justify-center p-0.5 shadow-sm shadow-[#6554c0]/30 overflow-hidden">
               <img src="/app-icon.png" alt="DownNux" className="w-full h-full object-contain" />
             </div>
-            <span className="font-bold text-[12px] text-[#202631] tracking-tight">DownNux Manager</span>
-            <span className="text-[10px] font-bold text-[#6554c0] bg-[#edeaf9] px-2 py-0.5 rounded-full border border-[#d8d2f5] tracking-wide shadow-xs">
-              BETA 0.0.2
+            <span className="font-bold text-[12px] text-[#202631] dark:text-white tracking-tight">DownNux Manager</span>
+            <span className="text-[10px] font-bold text-[#6554c0] bg-[#edeaf9] dark:bg-[#6554c0]/20 dark:text-[#a79be8] px-2 py-0.5 rounded-full border border-[#d8d2f5] dark:border-[#4d4287] tracking-wide shadow-xs">
+              BETA 0.0.3
             </span>
           </div>
 
           {/* Dynamic OS indicator matching Figma node 2:18 "Ubuntu · Desktop" */}
-          <div className="absolute left-1/2 -translate-x-1/2 font-normal text-[11px] text-[#6e7685] pointer-events-none">
+          <div className="absolute left-1/2 -translate-x-1/2 font-normal text-[11px] text-[#6e7685] dark:text-[#9ea4b5] pointer-events-none">
             {osName}
           </div>
 
@@ -437,7 +600,7 @@ export function App() {
           <div className="flex items-center space-x-3">
             <button
               onClick={toggleLanguage}
-              className="flex items-center space-x-1 px-2.5 py-1 text-[11px] font-medium rounded-[6px] border border-[#e7e9ef] bg-white text-[#6e7685] hover:text-[#202631] hover:border-[#d0d3de] transition-colors"
+              className="flex items-center space-x-1 px-2.5 py-1 text-[11px] font-medium rounded-[6px] border border-[#e7e9ef] dark:border-[#2a2c3d] bg-white dark:bg-[#1a1c29] text-[#6e7685] dark:text-[#9ea4b5] hover:text-[#202631] dark:hover:text-white hover:border-[#d0d3de] transition-colors"
               title={lang === "en" ? "Change Language" : "Ganti Bahasa"}
             >
               <Languages className="w-3.5 h-3.5 text-[#6554c0]" />
@@ -520,18 +683,20 @@ export function App() {
                         onClick={() => {
                           setActiveFilter(item.id);
                           setActiveCategory(null);
+                          setActiveView("downloads");
                         }}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${active
-                            ? "bg-[#edeaf9] text-[#6554c0] font-semibold"
-                            : "text-[#202631] hover:bg-[#edeaf9]/40 hover:text-[#6554c0]"
-                          }`}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${
+                          active && activeView === "downloads"
+                            ? "bg-[#edeaf9] dark:bg-[#6554c0]/20 text-[#6554c0] dark:text-[#a79be8] font-semibold"
+                            : "text-[#202631] dark:text-[#e2e4ea] hover:bg-[#edeaf9]/40 dark:hover:bg-[#25283b] hover:text-[#6554c0]"
+                        }`}
                       >
                         <div className="flex items-center space-x-2">
-                          <Icon className={`w-4 h-4 ${active ? "text-[#6554c0]" : "text-[#6e7685]"}`} />
+                          <Icon className={`w-4 h-4 ${active && activeView === "downloads" ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#6e7685]"}`} />
                           <span>{item.label}</span>
                         </div>
                         {item.count > 0 && (
-                          <span className={`text-[11px] font-mono ${active ? "text-[#6554c0]" : "text-[#6e7685]"}`}>
+                          <span className={`text-[11px] font-mono ${active && activeView === "downloads" ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#6e7685]"}`}>
                             {item.count}
                           </span>
                         )}
@@ -555,15 +720,19 @@ export function App() {
                     { id: "programs", label: t.programs, icon: Binary },
                   ].map((cat) => {
                     const Icon = cat.icon;
-                    const active = activeCategory === cat.id;
+                    const active = activeCategory === cat.id && activeView === "downloads";
                     return (
                       <button
                         key={cat.id}
-                        onClick={() => setActiveCategory(cat.id)}
-                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${active
-                            ? "bg-[#edeaf9] text-[#6554c0] font-semibold"
-                            : "text-[#6e7685] hover:bg-[#edeaf9]/40 hover:text-[#202631]"
-                          }`}
+                        onClick={() => {
+                          setActiveCategory(cat.id);
+                          setActiveView("downloads");
+                        }}
+                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${
+                          active
+                            ? "bg-[#edeaf9] dark:bg-[#6554c0]/20 text-[#6554c0] dark:text-[#a79be8] font-semibold"
+                            : "text-[#6e7685] hover:bg-[#edeaf9]/40 dark:hover:bg-[#25283b] hover:text-[#202631] dark:hover:text-white"
+                        }`}
                       >
                         <Icon className="w-4 h-4 text-[#6e7685]" />
                         <span>{cat.label}</span>
@@ -574,21 +743,29 @@ export function App() {
               </div>
 
               {/* Pemisah menu */}
-              <div className="h-px bg-[#e7e9ef] my-2" />
+              <div className="h-px bg-[#e7e9ef] dark:bg-[#2a2c3d] my-2" />
 
               <div className="space-y-0.5">
                 <button
-                  onClick={() => { }}
-                  className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] text-[#202631] hover:bg-[#edeaf9]/40 transition-colors"
+                  onClick={() => setActiveView("scheduler")}
+                  className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-colors ${
+                    activeView === "scheduler"
+                      ? "bg-[#edeaf9] dark:bg-[#6554c0]/20 text-[#6554c0] dark:text-[#a79be8] font-semibold"
+                      : "text-[#202631] dark:text-[#e2e4ea] hover:bg-[#edeaf9]/40 dark:hover:bg-[#25283b]"
+                  }`}
                 >
-                  <Clock className="w-4 h-4 text-[#6e7685]" />
+                  <Clock className={`w-4 h-4 ${activeView === "scheduler" ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#6e7685]"}`} />
                   <span>{lang === "en" ? "Scheduler" : "Penjadwal"}</span>
                 </button>
                 <button
-                  onClick={() => { }}
-                  className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] text-[#202631] hover:bg-[#edeaf9]/40 transition-colors"
+                  onClick={() => setActiveView("settings")}
+                  className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-colors ${
+                    activeView === "settings"
+                      ? "bg-[#edeaf9] dark:bg-[#6554c0]/20 text-[#6554c0] dark:text-[#a79be8] font-semibold"
+                      : "text-[#202631] dark:text-[#e2e4ea] hover:bg-[#edeaf9]/40 dark:hover:bg-[#25283b]"
+                  }`}
                 >
-                  <SettingsIcon className="w-4 h-4 text-[#6e7685]" />
+                  <SettingsIcon className={`w-4 h-4 ${activeView === "settings" ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#6e7685]"}`} />
                   <span>{t.settings}</span>
                 </button>
               </div>
@@ -607,7 +784,25 @@ export function App() {
           </aside>
 
           {/* AREA KERJA (Workspace) */}
-          <main className="flex-1 flex flex-col overflow-hidden bg-white/95">
+          {activeView === "settings" ? (
+            <SettingsView
+              lang={lang}
+              settings={settingsData}
+              onSave={handleSaveSettings}
+              onBrowseFolder={handleBrowseFolderForTarget}
+              onClose={() => setActiveView("downloads")}
+            />
+          ) : activeView === "scheduler" ? (
+            <SchedulerView
+              lang={lang}
+              config={schedulerConfig}
+              tasks={tasks}
+              onSave={handleSaveScheduler}
+              onRunNow={handleRunSchedulerNow}
+              onResumeTask={(id) => executeAction("task.resume", { id })}
+            />
+          ) : (
+            <main className="flex-1 flex flex-col overflow-hidden bg-white/95 dark:bg-[#14151f]/95">
             {/* Header Area Kerja: Judul, Subtitle, Search */}
             <div className="p-6 pb-3 space-y-4 flex-shrink-0">
               <div className="flex items-start justify-between">
@@ -1046,11 +1241,19 @@ export function App() {
                 </span>
               </div>
               <div className="flex items-center space-x-4 text-[#6e7685]">
-                <span className="text-[#202631] font-medium">↓ {fmtBytes(totalSpeed)}/s</span>
+                <span className="text-[#202631] dark:text-white font-medium flex items-center gap-1.5">
+                  ↓ {fmtBytes(totalSpeed)}/s
+                  {settingsData.speedLimiterEnabled && settingsData.speedLimitBytesPerSec > 0 && (
+                    <span className="text-[10px] text-[#6554c0] dark:text-[#a79be8] bg-[#edeaf9] dark:bg-[#6554c0]/20 px-1.5 py-0.5 rounded font-semibold">
+                      {lang === "en" ? `Limit: ${fmtBytes(settingsData.speedLimitBytesPerSec)}/s` : `Batas: ${fmtBytes(settingsData.speedLimitBytesPerSec)}/s`}
+                    </span>
+                  )}
+                </span>
                 <span>{lang === "en" ? "Available storage: 128 GB" : "Ruang tersedia: 128 GB"}</span>
               </div>
             </footer>
           </main>
+          )}
         </div>
       </div>
 

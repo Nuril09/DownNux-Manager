@@ -56,12 +56,20 @@ function parseFilenameFromHeader(header: string | null): string | null {
   return null;
 }
 
-export async function probeUrl(url: string, baseDownloadDir: string, customHeaders?: Record<string, string>): Promise<UrlProbeResult> {
+export async function probeUrl(
+  url: string,
+  baseDownloadDir: string,
+  customHeaders?: Record<string, string>,
+  categoryDirs?: Record<string, string>,
+): Promise<UrlProbeResult> {
   const isMedia = isMediaSite(url);
 
   // 1. YouTube / Social Video Probe via yt-dlp
   if (isMedia) {
     const ytDlpPath = path.join(process.env.HOME || "", ".local/bin/yt-dlp");
+    const customVideoDir = categoryDirs?.video;
+    const targetDir = customVideoDir && customVideoDir.trim() ? customVideoDir : path.join(baseDownloadDir, "Video");
+
     try {
       const output = execFileSync(ytDlpPath, [
         "--js-runtimes", "node:/usr/bin/node",
@@ -75,8 +83,6 @@ export async function probeUrl(url: string, baseDownloadDir: string, customHeade
       const sizeBytes = Number(parts[1]) || 0;
       const cleanTitle = title.replace(/[\/\\?%*:|"<>]/g, "_").trim();
       const filename = `${cleanTitle}.mp4`;
-
-      const targetDir = path.join(baseDownloadDir, "Video");
 
       return {
         url,
@@ -100,7 +106,7 @@ export async function probeUrl(url: string, baseDownloadDir: string, customHeade
         category: "video",
         contentType: "video/mp4",
         isMedia: true,
-        defaultDir: path.join(baseDownloadDir, "Video"),
+        defaultDir: targetDir,
       };
     }
   }
@@ -194,7 +200,10 @@ export async function probeUrl(url: string, baseDownloadDir: string, customHeade
     default: subDirName = ""; break;
   }
 
-  const defaultDir = subDirName ? path.join(baseDownloadDir, subDirName) : baseDownloadDir;
+  const customDir = categoryDirs?.[category];
+  const defaultDir = customDir && customDir.trim()
+    ? customDir
+    : (subDirName ? path.join(baseDownloadDir, subDirName) : baseDownloadDir);
 
   return {
     url,

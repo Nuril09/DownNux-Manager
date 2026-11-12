@@ -11,6 +11,7 @@ import { logger } from "./log.ts";
 import { DownloadManager } from "./manager.ts";
 import { IpcServer, assertSocketFree } from "./server.ts";
 import { SettingsStore } from "./settings.ts";
+import { SchedulerStore, SchedulerEngine } from "./scheduler.ts";
 import { probeUrl } from "./probe.ts";
 
 const execFileAsync = promisify(execFile);
@@ -35,6 +36,8 @@ async function main(): Promise<void> {
   });
   const engine = new HybridEngine(aria2);
   const manager = new DownloadManager(store, engine, settings);
+  const schedulerStore = new SchedulerStore(paths.configDir);
+  const schedulerEngine = new SchedulerEngine(schedulerStore, manager);
 
   let shuttingDown = false;
   const shutdown = async (reason: string, pauseAll = false) => {
@@ -42,6 +45,7 @@ async function main(): Promise<void> {
     shuttingDown = true;
     log.info(`Berhenti (${reason})...`);
     try {
+      schedulerEngine.stop();
       if (pauseAll) await manager.pauseAll();
       await manager.shutdown();
       await server.close();
@@ -73,7 +77,7 @@ async function main(): Promise<void> {
     "task.pauseAll": async () => ({ count: await manager.pauseAll() }),
     "task.resumeAll": () => ({ count: manager.resumeAll() }),
     "task.openFolder": (p) => manager.openFolder(p.id),
-    "task.probe": (p) => probeUrl(p.url, settings.downloadDir(), p.headers),
+    "task.probe": (p) => probeUrl(p.url, settings.downloadDir(), p.headers, settings.get().categoryDirs),
     "dialog.selectFolder": async () => {
       try {
         const { stdout } = await execFileAsync("zenity", [
@@ -100,6 +104,9 @@ async function main(): Promise<void> {
       manager.onSettingsChanged();
       return next;
     },
+    "scheduler.get": () => schedulerStore.get(),
+    "scheduler.update": (p) => schedulerStore.update(p),
+    "scheduler.runNow": () => schedulerEngine.runNow(),
     "daemon.shutdown": (p) => {
       setTimeout(() => void shutdown("diminta klien", p?.pauseAll ?? false), 50);
       return { ok: true } as const;

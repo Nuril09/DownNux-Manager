@@ -136,6 +136,21 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
     this.rt.set(t.id, emptyRuntime());
     this.store.upsert(t);
     log.info(`Tambah ${t.id} ${t.url}`);
+    if (s.notifyOnStart) {
+      try {
+        const title = s.language === "en" ? "DownNux Manager · Download Started" : "DownNux Manager · Unduhan Dimulai";
+        const body = t.filename || "Starting download...";
+        spawn("notify-send", ["-i", "downnux", "-a", "DownNux Manager", title, body], {
+          stdio: "ignore",
+          detached: true,
+          env: {
+            ...process.env,
+            DISPLAY: process.env.DISPLAY || ":0",
+            WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0",
+          },
+        }).unref();
+      } catch {}
+    }
     this.emitTask(t);
     this.schedule();
     return this.toPublic(t);
@@ -247,6 +262,45 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
       }
     }
     return { ok: true };
+  }
+
+  private notifyCompletion(t: StoredTask): void {
+    const s = this.settings.get();
+    if (s.notifyOnComplete) {
+      try {
+        const title = s.language === "en" ? "DownNux Manager · Download Completed" : "DownNux Manager · Unduhan Selesai";
+        const body = t.filename || "File";
+        spawn("notify-send", ["-i", "downnux", "-a", "DownNux Manager", title, body], {
+          stdio: "ignore",
+          detached: true,
+          env: {
+            ...process.env,
+            DISPLAY: process.env.DISPLAY || ":0",
+            WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0",
+          },
+        }).unref();
+      } catch (err) {
+        log.warn("Gagal mengirim notifikasi desktop:", err);
+      }
+    }
+
+    if (s.onCompleteAction === "openFolder") {
+      this.openFolder(t.id);
+    } else if (s.onCompleteAction === "openFile") {
+      const targetDir = t.dir || path.join(process.env.HOME || "", "Downloads");
+      const targetFile = t.filename ? path.join(targetDir, t.filename) : "";
+      if (targetFile && fs.existsSync(targetFile)) {
+        spawn("xdg-open", [targetFile], {
+          stdio: "ignore",
+          detached: true,
+          env: {
+            ...process.env,
+            DISPLAY: process.env.DISPLAY || ":0",
+            WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0",
+          },
+        }).unref();
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -418,6 +472,7 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
         this.restartCounts.delete(t.id);
         this.setStatus(t, "completed");
         log.info(`Selesai ${t.id} ${t.filename}`);
+        this.notifyCompletion(t);
         this.schedule();
         return;
       case "error":
@@ -521,7 +576,9 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
 
   /** Dipanggil setelah pengaturan berubah. */
   onSettingsChanged(): void {
-    void this.engine.setGlobalSpeedLimit(this.settings.get().globalSpeedLimit).catch(() => {});
+    const s = this.settings.get();
+    const limit = s.speedLimiterEnabled ? (s.speedLimitBytesPerSec || s.globalSpeedLimit) : 0;
+    void this.engine.setGlobalSpeedLimit(limit).catch(() => {});
     this.schedule();
   }
 }
