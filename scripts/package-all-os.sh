@@ -196,3 +196,4 @@ rm -rf "$TMP_STAGE"
 echo ""
 echo "=== Summary of Multiplatform Release Files ==="
 ls -lh "$DIST_DIR"/*${VERSION}*
+

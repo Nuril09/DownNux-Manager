@@ -204,7 +204,7 @@ export function App() {
           if (json.result.defaultConnections) setNewConnections(json.result.defaultConnections);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     fetch("http://127.0.0.1:44990/api/rpc", {
       method: "POST",
@@ -217,7 +217,7 @@ export function App() {
           setSchedulerConfig(json.result);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // WebKit Native Window Folder Chooser Callback
@@ -241,7 +241,7 @@ export function App() {
     (window as any).__downnux_pendingField = targetField;
     try {
       (window as any).webkit?.messageHandlers?.windowControl?.postMessage("selectFolder");
-    } catch {}
+    } catch { }
 
     try {
       const res = await fetch("http://127.0.0.1:44990/api/rpc", {
@@ -692,11 +692,10 @@ export function App() {
                           setActiveCategory(null);
                           setActiveView("downloads");
                         }}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${
-                          active && activeView === "downloads"
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${active && activeView === "downloads"
                             ? "bg-[#edeaf9] dark:bg-[#6554c0]/20 text-[#6554c0] dark:text-[#a79be8] font-semibold"
                             : "text-[#202631] dark:text-[#e2e4ea] hover:bg-[#edeaf9]/40 dark:hover:bg-[#25283b] hover:text-[#6554c0]"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center space-x-2">
                           <Icon className={`w-4 h-4 ${active && activeView === "downloads" ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#6e7685]"}`} />
@@ -735,11 +734,10 @@ export function App() {
                           setActiveCategory(cat.id);
                           setActiveView("downloads");
                         }}
-                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${
-                          active
+                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-all ${active
                             ? "bg-[#edeaf9] dark:bg-[#6554c0]/20 text-[#6554c0] dark:text-[#a79be8] font-semibold"
                             : "text-[#6e7685] hover:bg-[#edeaf9]/40 dark:hover:bg-[#25283b] hover:text-[#202631] dark:hover:text-white"
-                        }`}
+                          }`}
                       >
                         <Icon className="w-4 h-4 text-[#6e7685]" />
                         <span>{cat.label}</span>
@@ -755,22 +753,20 @@ export function App() {
               <div className="space-y-0.5">
                 <button
                   onClick={() => setActiveView("scheduler")}
-                  className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-colors ${
-                    activeView === "scheduler"
+                  className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-colors ${activeView === "scheduler"
                       ? "bg-[#edeaf9] dark:bg-[#6554c0]/20 text-[#6554c0] dark:text-[#a79be8] font-semibold"
                       : "text-[#202631] dark:text-[#e2e4ea] hover:bg-[#edeaf9]/40 dark:hover:bg-[#25283b]"
-                  }`}
+                    }`}
                 >
                   <Clock className={`w-4 h-4 ${activeView === "scheduler" ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#6e7685]"}`} />
                   <span>{lang === "en" ? "Scheduler" : "Penjadwal"}</span>
                 </button>
                 <button
                   onClick={() => setActiveView("settings")}
-                  className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-colors ${
-                    activeView === "settings"
+                  className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-colors ${activeView === "settings"
                       ? "bg-[#edeaf9] dark:bg-[#6554c0]/20 text-[#6554c0] dark:text-[#a79be8] font-semibold"
                       : "text-[#202631] dark:text-[#e2e4ea] hover:bg-[#edeaf9]/40 dark:hover:bg-[#25283b]"
-                  }`}
+                    }`}
                 >
                   <SettingsIcon className={`w-4 h-4 ${activeView === "settings" ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#6e7685]"}`} />
                   <span>{t.settings}</span>
@@ -811,460 +807,458 @@ export function App() {
             />
           ) : (
             <main className="flex-1 flex flex-col overflow-hidden bg-white/70 dark:bg-[#13141f]/75 backdrop-blur-xl">
-            {/* Header Area Kerja: Judul, Subtitle, Search */}
-            <div className="p-6 pb-3 space-y-4 flex-shrink-0">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-[24px] font-bold text-[#202631] dark:text-white leading-tight">
-                    {t.allDownloads}
-                  </h2>
-                  <p className="text-[12px] text-[#6e7685] dark:text-[#a0a6b8] mt-1">
-                    {lang === "en"
-                      ? "Manage your downloads. Fast, organized, uninterrupted."
-                      : "Kelola unduhanmu. Cepat, teratur, tanpa terputus."}
-                  </p>
+              {/* Header Area Kerja: Judul, Subtitle, Search */}
+              <div className="p-6 pb-3 space-y-4 flex-shrink-0">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-[24px] font-bold text-[#202631] dark:text-white leading-tight">
+                      {t.allDownloads}
+                    </h2>
+                    <p className="text-[12px] text-[#6e7685] dark:text-[#a0a6b8] mt-1">
+                      {lang === "en"
+                        ? "Manage your downloads. Fast, organized, uninterrupted."
+                        : "Kelola unduhanmu. Cepat, teratur, tanpa terputus."}
+                    </p>
+                  </div>
+
+                  {/* Pencarian (Figma w: 308px, h: 36px, bg: #f7f8fa) */}
+                  <div className="relative w-[308px] h-[36px] bg-[#f7f8fa] dark:bg-[#1a1c29] rounded-[6px] border border-[#e7e9ef] dark:border-[#2a2c3d] flex items-center px-3 shadow-inner">
+                    <Search className="w-4 h-4 text-[#6e7685] dark:text-[#a0a6b8] mr-2" />
+                    <input
+                      type="text"
+                      placeholder={lang === "en" ? "Search file name or URL..." : "Cari nama file atau URL..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="bg-transparent border-none text-[12px] text-[#202631] dark:text-white placeholder-[#6e7685] dark:placeholder-[#6e7487] focus:outline-none w-full"
+                    />
+                    <span className="text-[10px] text-[#6e7685] dark:text-[#888e9e] font-mono ml-1">Ctrl K</span>
+                  </div>
                 </div>
 
-                {/* Pencarian (Figma w: 308px, h: 36px, bg: #f7f8fa) */}
-                <div className="relative w-[308px] h-[36px] bg-[#f7f8fa] dark:bg-[#1a1c29] rounded-[6px] border border-[#e7e9ef] dark:border-[#2a2c3d] flex items-center px-3 shadow-inner">
-                  <Search className="w-4 h-4 text-[#6e7685] dark:text-[#a0a6b8] mr-2" />
-                  <input
-                    type="text"
-                    placeholder={lang === "en" ? "Search file name or URL..." : "Cari nama file atau URL..."}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-transparent border-none text-[12px] text-[#202631] dark:text-white placeholder-[#6e7685] dark:placeholder-[#6e7487] focus:outline-none w-full"
-                  />
-                  <span className="text-[10px] text-[#6e7685] dark:text-[#888e9e] font-mono ml-1">Ctrl K</span>
-                </div>
-              </div>
-
-              {/* Toolbar Tombol (Exact Figma: Tambah URL bg #6554c0, yang lain ios-glass-button border #e7e9ef) */}
-              <div className="flex items-center space-x-2 pt-1 overflow-x-auto">
-                <button
-                  onClick={() => setIsAddOpen(true)}
-                  className="h-[36px] px-4 rounded-[6px] ios-button-primary text-[12px] font-medium flex items-center space-x-2 shadow-sm flex-shrink-0"
-                >
-                  <Plus className="w-4 h-4 text-white" />
-                  <span>{t.addUrl}</span>
-                </button>
-
-                <button
-                  disabled={!selectedTask || selectedTask.status !== "paused"}
-                  onClick={() => selectedTask && executeAction("task.resume", { id: selectedTask.id })}
-                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
-                >
-                  <Play className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
-                  <span>{t.resume}</span>
-                </button>
-
-                <button
-                  disabled={!selectedTask || selectedTask.status !== "downloading"}
-                  onClick={() => selectedTask && executeAction("task.pause", { id: selectedTask.id })}
-                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
-                >
-                  <Pause className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
-                  <span>{t.pause}</span>
-                </button>
-
-                <button
-                  disabled={!selectedTask || selectedTask.status === "completed"}
-                  onClick={() => selectedTask && executeAction("task.cancel", { id: selectedTask.id })}
-                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
-                >
-                  <XCircle className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
-                  <span>{t.cancel}</span>
-                </button>
-
-                <button
-                  disabled={!selectedTask}
-                  onClick={() => selectedTask && executeAction("task.remove", { id: selectedTask.id, deleteFile: false })}
-                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
-                >
-                  <Trash2 className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
-                  <span>{t.delete}</span>
-                </button>
-
-                <button
-                  onClick={() => executeAction("task.pauseAll")}
-                  className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 flex-shrink-0"
-                >
-                  <PauseCircle className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
-                  <span>{t.pauseAll}</span>
-                </button>
-
-                <div className="flex-1" />
-
-                <button className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 flex-shrink-0">
-                  <Clock className="w-4 h-4 text-[#6e7685] dark:text-[#a0a6b8]" />
-                  <span>{lang === "en" ? "Recent" : "Terbaru"}</span>
-                </button>
-              </div>
-
-              {/* Filter Tabs (Exact Figma: "All" with indicator line #6554c0, "Active", "Completed") */}
-              <div className="flex items-center justify-between pt-2 border-b border-[#e7e9ef] dark:border-[#2a2c3d]">
-                <div className="flex items-center space-x-6">
+                {/* Toolbar Tombol (Exact Figma: Tambah URL bg #6554c0, yang lain ios-glass-button border #e7e9ef) */}
+                <div className="flex items-center space-x-2 pt-1 overflow-x-auto">
                   <button
-                    onClick={() => setActiveFilter("all")}
-                    className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "all" ? "text-[#6554c0] dark:text-[#a79be8] font-semibold" : "text-[#6e7685] hover:text-[#202631] dark:text-[#9ea4b5] dark:hover:text-white"
-                      }`}
+                    onClick={() => setIsAddOpen(true)}
+                    className="h-[36px] px-4 rounded-[6px] ios-button-primary text-[12px] font-medium flex items-center space-x-2 shadow-sm flex-shrink-0"
                   >
-                    {lang === "en" ? "All" : "Semua"}
-                    <span className="text-[10px] text-[#6e7685] dark:text-[#9ea4b5] font-normal ml-1.5">{tasks.length}</span>
-                    {activeFilter === "all" && (
-                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0] dark:bg-[#a79be8]" />
-                    )}
+                    <Plus className="w-4 h-4 text-white" />
+                    <span>{t.addUrl}</span>
                   </button>
+
                   <button
-                    onClick={() => setActiveFilter("downloading")}
-                    className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "downloading"
+                    disabled={!selectedTask || selectedTask.status !== "paused"}
+                    onClick={() => selectedTask && executeAction("task.resume", { id: selectedTask.id })}
+                    className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
+                  >
+                    <Play className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
+                    <span>{t.resume}</span>
+                  </button>
+
+                  <button
+                    disabled={!selectedTask || selectedTask.status !== "downloading"}
+                    onClick={() => selectedTask && executeAction("task.pause", { id: selectedTask.id })}
+                    className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
+                  >
+                    <Pause className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
+                    <span>{t.pause}</span>
+                  </button>
+
+                  <button
+                    disabled={!selectedTask || selectedTask.status === "completed"}
+                    onClick={() => selectedTask && executeAction("task.cancel", { id: selectedTask.id })}
+                    className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
+                  >
+                    <XCircle className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
+                    <span>{t.cancel}</span>
+                  </button>
+
+                  <button
+                    disabled={!selectedTask}
+                    onClick={() => selectedTask && executeAction("task.remove", { id: selectedTask.id, deleteFile: false })}
+                    className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
+                    <span>{t.delete}</span>
+                  </button>
+
+                  <button
+                    onClick={() => executeAction("task.pauseAll")}
+                    className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 flex-shrink-0"
+                  >
+                    <PauseCircle className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
+                    <span>{t.pauseAll}</span>
+                  </button>
+
+                  <div className="flex-1" />
+
+                  <button className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 flex-shrink-0">
+                    <Clock className="w-4 h-4 text-[#6e7685] dark:text-[#a0a6b8]" />
+                    <span>{lang === "en" ? "Recent" : "Terbaru"}</span>
+                  </button>
+                </div>
+
+                {/* Filter Tabs (Exact Figma: "All" with indicator line #6554c0, "Active", "Completed") */}
+                <div className="flex items-center justify-between pt-2 border-b border-[#e7e9ef] dark:border-[#2a2c3d]">
+                  <div className="flex items-center space-x-6">
+                    <button
+                      onClick={() => setActiveFilter("all")}
+                      className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "all" ? "text-[#6554c0] dark:text-[#a79be8] font-semibold" : "text-[#6e7685] hover:text-[#202631] dark:text-[#9ea4b5] dark:hover:text-white"
+                        }`}
+                    >
+                      {lang === "en" ? "All" : "Semua"}
+                      <span className="text-[10px] text-[#6e7685] dark:text-[#9ea4b5] font-normal ml-1.5">{tasks.length}</span>
+                      {activeFilter === "all" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0] dark:bg-[#a79be8]" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setActiveFilter("downloading")}
+                      className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "downloading"
                         ? "text-[#6554c0] dark:text-[#a79be8] font-semibold"
                         : "text-[#6e7685] hover:text-[#202631] dark:text-[#9ea4b5] dark:hover:text-white"
-                      }`}
-                  >
-                    {lang === "en" ? "Active" : "Aktif"}
-                    {activeFilter === "downloading" && (
-                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0] dark:bg-[#a79be8]" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setActiveFilter("completed")}
-                    className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "completed"
+                        }`}
+                    >
+                      {lang === "en" ? "Active" : "Aktif"}
+                      {activeFilter === "downloading" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0] dark:bg-[#a79be8]" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setActiveFilter("completed")}
+                      className={`pb-2 text-[12px] relative transition-colors ${activeFilter === "completed"
                         ? "text-[#6554c0] dark:text-[#a79be8] font-semibold"
                         : "text-[#6e7685] hover:text-[#202631] dark:text-[#9ea4b5] dark:hover:text-white"
-                      }`}
-                  >
-                    {lang === "en" ? "Completed" : "Selesai"}
-                    {activeFilter === "completed" && (
-                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0] dark:bg-[#a79be8]" />
-                    )}
-                  </button>
+                        }`}
+                    >
+                      {lang === "en" ? "Completed" : "Selesai"}
+                      {activeFilter === "completed" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0] dark:bg-[#a79be8]" />
+                      )}
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-[#6e7685] dark:text-[#9ea4b5]">
+                    {selectedTask ? (lang === "en" ? "1 selected" : "1 dipilih") : (lang === "en" ? "0 selected" : "0 dipilih")}
+                  </span>
                 </div>
-                <span className="text-[11px] text-[#6e7685] dark:text-[#9ea4b5]">
-                  {selectedTask ? (lang === "en" ? "1 selected" : "1 dipilih") : (lang === "en" ? "0 selected" : "0 dipilih")}
-                </span>
               </div>
-            </div>
 
-            {/* TABEL DAFTAR UNDUHAN */}
-            <div className="flex-1 overflow-y-auto px-6 pb-4">
-              <div className="border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[6px] overflow-hidden ios-glass-card">
-                <table className="w-full text-left border-collapse text-[11px]">
-                  <thead>
-                    <tr className="bg-[#f7f8fa] dark:bg-[#181a28] text-[#6e7685] dark:text-[#9ea4b5] font-medium border-b border-[#e7e9ef] dark:border-[#2a2c3d] text-[10px]">
-                      <th className="py-2.5 px-4 w-80">{t.filename}</th>
-                      <th className="py-2.5 px-3 w-28">{t.size}</th>
-                      <th className="py-2.5 px-3 w-40">{t.status} / {t.progress}</th>
-                      <th className="py-2.5 px-3 w-28">{t.speed}</th>
-                      <th className="py-2.5 px-3 w-24">{t.eta}</th>
-                      <th className="py-2.5 px-3 w-32">{t.added}</th>
-                      <th className="py-2.5 px-3 text-right">{lang === "en" ? "Action" : "Aksi"}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#e7e9ef] dark:divide-[#242738]">
-                    {filteredTasks.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="py-12 text-center text-[#6e7685] dark:text-[#888e9e]">
-                          <Folder className="w-8 h-8 mx-auto mb-2 opacity-30 text-[#6554c0] dark:text-[#a79be8]" />
-                          <p className="text-[12px] font-medium text-[#202631] dark:text-white">
-                            {lang === "en" ? "No downloads in this list" : "Tidak ada unduhan di daftar ini"}
-                          </p>
-                        </td>
+              {/* TABEL DAFTAR UNDUHAN */}
+              <div className="flex-1 overflow-y-auto px-6 pb-4">
+                <div className="border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[6px] overflow-hidden ios-glass-card">
+                  <table className="w-full text-left border-collapse text-[11px]">
+                    <thead>
+                      <tr className="bg-[#f7f8fa] dark:bg-[#181a28] text-[#6e7685] dark:text-[#9ea4b5] font-medium border-b border-[#e7e9ef] dark:border-[#2a2c3d] text-[10px]">
+                        <th className="py-2.5 px-4 w-80">{t.filename}</th>
+                        <th className="py-2.5 px-3 w-28">{t.size}</th>
+                        <th className="py-2.5 px-3 w-40">{t.status} / {t.progress}</th>
+                        <th className="py-2.5 px-3 w-28">{t.speed}</th>
+                        <th className="py-2.5 px-3 w-24">{t.eta}</th>
+                        <th className="py-2.5 px-3 w-32">{t.added}</th>
+                        <th className="py-2.5 px-3 text-right">{lang === "en" ? "Action" : "Aksi"}</th>
                       </tr>
-                    ) : (
-                      filteredTasks.map((task) => {
-                        const isSelected = selectedTask?.id === task.id;
-                        const pct = task.totalBytes > 0 ? (task.completedBytes / task.totalBytes) * 100 : 0;
-                        const remainingBytes = task.totalBytes - task.completedBytes;
-                        const etaSec = task.speed > 0 ? remainingBytes / task.speed : 0;
-                        const FileIcon = getFileIcon(task.filename || task.url);
+                    </thead>
+                    <tbody className="divide-y divide-[#e7e9ef] dark:divide-[#242738]">
+                      {filteredTasks.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-[#6e7685] dark:text-[#888e9e]">
+                            <Folder className="w-8 h-8 mx-auto mb-2 opacity-30 text-[#6554c0] dark:text-[#a79be8]" />
+                            <p className="text-[12px] font-medium text-[#202631] dark:text-white">
+                              {lang === "en" ? "No downloads in this list" : "Tidak ada unduhan di daftar ini"}
+                            </p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredTasks.map((task) => {
+                          const isSelected = selectedTask?.id === task.id;
+                          const pct = task.totalBytes > 0 ? (task.completedBytes / task.totalBytes) * 100 : 0;
+                          const remainingBytes = task.totalBytes - task.completedBytes;
+                          const etaSec = task.speed > 0 ? remainingBytes / task.speed : 0;
+                          const FileIcon = getFileIcon(task.filename || task.url);
 
-                        let hostname = "";
-                        try {
-                          hostname = new URL(task.url).hostname;
-                        } catch {
-                          hostname = task.url;
-                        }
+                          let hostname = "";
+                          try {
+                            hostname = new URL(task.url).hostname;
+                          } catch {
+                            hostname = task.url;
+                          }
 
-                        return (
-                          <tr
-                            key={task.id}
-                            onClick={() => setSelectedId(task.id)}
-                            className={`cursor-pointer transition-colors relative ${
-                              isSelected
-                                ? "bg-[#edeaf9] dark:bg-[#6554c0]/25 text-[#202631] dark:text-white"
-                                : "hover:bg-[#fbfbfd] dark:hover:bg-[#1c1e2d] bg-white/70 dark:bg-[#151724]/70 text-[#202631] dark:text-[#e2e4ea]"
-                            }`}
-                          >
-                            <td className="py-2.5 px-4 max-w-xs relative">
-                              {/* Penanda pilihan ungu #6554c0 */}
-                              {isSelected && (
-                                <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#6554c0] dark:bg-[#a79be8]" />
-                              )}
-                              <div className="flex items-center space-x-3">
-                                <div
-                                  className={`w-8 h-8 rounded-[6px] flex items-center justify-center flex-shrink-0 ${
-                                    isSelected ? "bg-[#e5def8] dark:bg-[#342e54]" : "bg-[#f1f3f6] dark:bg-[#202334]"
-                                  }`}
-                                >
-                                  <FileIcon
-                                    className={`w-4 h-4 ${isSelected ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#6e7685] dark:text-[#9ea4b5]"}`}
-                                  />
+                          return (
+                            <tr
+                              key={task.id}
+                              onClick={() => setSelectedId(task.id)}
+                              className={`cursor-pointer transition-colors relative ${isSelected
+                                  ? "bg-[#edeaf9] dark:bg-[#6554c0]/25 text-[#202631] dark:text-white"
+                                  : "hover:bg-[#fbfbfd] dark:hover:bg-[#1c1e2d] bg-white/70 dark:bg-[#151724]/70 text-[#202631] dark:text-[#e2e4ea]"
+                                }`}
+                            >
+                              <td className="py-2.5 px-4 max-w-xs relative">
+                                {/* Penanda pilihan ungu #6554c0 */}
+                                {isSelected && (
+                                  <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#6554c0] dark:bg-[#a79be8]" />
+                                )}
+                                <div className="flex items-center space-x-3">
+                                  <div
+                                    className={`w-8 h-8 rounded-[6px] flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-[#e5def8] dark:bg-[#342e54]" : "bg-[#f1f3f6] dark:bg-[#202334]"
+                                      }`}
+                                  >
+                                    <FileIcon
+                                      className={`w-4 h-4 ${isSelected ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#6e7685] dark:text-[#9ea4b5]"}`}
+                                    />
+                                  </div>
+                                  <div className="truncate">
+                                    <p className="font-semibold text-[11px] text-[#202631] dark:text-white truncate">
+                                      {task.filename || task.url}
+                                    </p>
+                                    <p className="text-[9px] text-[#6e7685] dark:text-[#888e9e] truncate">
+                                      {hostname}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="truncate">
-                                  <p className="font-semibold text-[11px] text-[#202631] dark:text-white truncate">
-                                    {task.filename || task.url}
-                                  </p>
-                                  <p className="text-[9px] text-[#6e7685] dark:text-[#888e9e] truncate">
-                                    {hostname}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
+                              </td>
 
-                            <td className="py-2.5 px-3 text-[#202631] dark:text-[#e2e4ea] whitespace-nowrap">
-                              {fmtBytes(task.totalBytes || task.completedBytes)}
-                            </td>
+                              <td className="py-2.5 px-3 text-[#202631] dark:text-[#e2e4ea] whitespace-nowrap">
+                                {fmtBytes(task.totalBytes || task.completedBytes)}
+                              </td>
 
-                            {/* Status & Progress bar (IDM enhanced visual) */}
-                            <td className="py-2.5 px-3 whitespace-nowrap">
-                              <div className="flex justify-between items-center mb-1">
-                                <span
-                                  className={`font-semibold text-[10px] flex items-center gap-1.5 ${task.status === "completed"
+                              {/* Status & Progress bar (IDM enhanced visual) */}
+                              <td className="py-2.5 px-3 whitespace-nowrap">
+                                <div className="flex justify-between items-center mb-1">
+                                  <span
+                                    className={`font-semibold text-[10px] flex items-center gap-1.5 ${task.status === "completed"
                                       ? "text-[#218163] dark:text-[#38d49a]"
                                       : task.status === "paused"
                                         ? "text-[#ac8433] dark:text-[#fbbf24]"
                                         : task.status === "failed"
                                           ? "text-[#c34a4a] dark:text-[#f87171]"
                                           : "text-[#6554c0] dark:text-[#a79be8]"
-                                    }`}
-                                >
-                                  {task.status === "downloading" && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#6554c0] dark:bg-[#a79be8] animate-ping" />
-                                  )}
-                                  {getStatusText(task.status)}
-                                </span>
-                                <span className="font-bold text-[10px] text-[#6554c0] dark:text-[#a79be8]">
-                                  {task.status === "completed" ? "100%" : `${pct.toFixed(0)}%`}
-                                </span>
-                              </div>
-                              <div className="w-[142px] h-[6px] bg-[#e3e4ea] dark:bg-[#252838] rounded-[3px] overflow-hidden p-[0.5px]">
-                                <div
-                                  className={`h-full rounded-[2px] transition-all duration-300 ${task.status === "completed"
+                                      }`}
+                                  >
+                                    {task.status === "downloading" && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#6554c0] dark:bg-[#a79be8] animate-ping" />
+                                    )}
+                                    {getStatusText(task.status)}
+                                  </span>
+                                  <span className="font-bold text-[10px] text-[#6554c0] dark:text-[#a79be8]">
+                                    {task.status === "completed" ? "100%" : `${pct.toFixed(0)}%`}
+                                  </span>
+                                </div>
+                                <div className="w-[142px] h-[6px] bg-[#e3e4ea] dark:bg-[#252838] rounded-[3px] overflow-hidden p-[0.5px]">
+                                  <div
+                                    className={`h-full rounded-[2px] transition-all duration-300 ${task.status === "completed"
                                       ? "bg-[#218163] dark:bg-[#38d49a]"
                                       : task.status === "paused"
                                         ? "bg-[#ac8433] dark:bg-[#fbbf24]"
                                         : task.status === "failed"
                                           ? "bg-[#c34a4a] dark:bg-[#f87171]"
                                           : "bg-gradient-to-r from-[#6554c0] via-[#8675ea] to-[#6554c0] animate-pulse"
-                                    }`}
-                                  style={{ width: `${task.status === "completed" ? 100 : Math.min(100, Math.max(2, pct))}%` }}
-                                />
-                              </div>
-                            </td>
+                                      }`}
+                                    style={{ width: `${task.status === "completed" ? 100 : Math.min(100, Math.max(2, pct))}%` }}
+                                  />
+                                </div>
+                              </td>
 
-                            <td className="py-2.5 px-3 text-[#202631] dark:text-[#e2e4ea] whitespace-nowrap font-semibold text-[11px]">
-                              {task.status === "downloading" ? (
-                                <span className="text-[#6554c0] dark:text-[#a79be8] flex items-center gap-1">
-                                  <ArrowDown className="w-3 h-3 text-[#6554c0] dark:text-[#a79be8] animate-bounce" />
-                                  {fmtBytes(task.speed)}/s
-                                </span>
-                              ) : "—"}
-                            </td>
-
-                            <td className="py-2.5 px-3 text-[#6e7685] dark:text-[#888e9e] whitespace-nowrap">
-                              {task.status === "downloading" ? fmtTime(etaSec, lang) : "—"}
-                            </td>
-
-                            <td className="py-2.5 px-3 text-[#6e7685] dark:text-[#888e9e] text-[10px] whitespace-nowrap">
-                              {lang === "en" ? "Today" : "Hari ini"}, {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </td>
-
-                            <td className="py-2.5 px-3 text-right">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (task.status === "downloading") executeAction("task.pause", { id: task.id });
-                                  else if (task.status === "paused") executeAction("task.resume", { id: task.id });
-                                  else if (task.status === "failed") executeAction("task.retry", { id: task.id });
-                                }}
-                                className="w-6 h-6 rounded hover:bg-[#edeaf9] dark:hover:bg-[#2a2840] inline-flex items-center justify-center text-[#6554c0] dark:text-[#a79be8] transition-colors"
-                              >
+                              <td className="py-2.5 px-3 text-[#202631] dark:text-[#e2e4ea] whitespace-nowrap font-semibold text-[11px]">
                                 {task.status === "downloading" ? (
-                                  <Pause className="w-3.5 h-3.5" />
-                                ) : task.status === "failed" ? (
-                                  <RefreshCw className="w-3.5 h-3.5" />
-                                ) : (
-                                  <Play className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                                  <span className="text-[#6554c0] dark:text-[#a79be8] flex items-center gap-1">
+                                    <ArrowDown className="w-3 h-3 text-[#6554c0] dark:text-[#a79be8] animate-bounce" />
+                                    {fmtBytes(task.speed)}/s
+                                  </span>
+                                ) : "—"}
+                              </td>
 
-              {/* Table Footer: Menampilkan X dari Y unduhan & Link Lihat semua */}
-              <div className="flex items-center justify-between text-[10px] text-[#6e7685] mt-2 px-1">
-                <span>
-                  {lang === "en"
-                    ? `Showing ${filteredTasks.length} of ${tasks.length} downloads`
-                    : `Menampilkan ${filteredTasks.length} dari ${tasks.length} unduhan`}
-                </span>
-                <button
-                  onClick={() => setActiveFilter("all")}
-                  className="text-[#6554c0] font-medium flex items-center hover:underline"
-                >
-                  {lang === "en" ? "View full history" : "Lihat semua riwayat"} <ArrowRight className="w-3 h-3 ml-1" />
-                </button>
-              </div>
+                              <td className="py-2.5 px-3 text-[#6e7685] dark:text-[#888e9e] whitespace-nowrap">
+                                {task.status === "downloading" ? fmtTime(etaSec, lang) : "—"}
+                              </td>
 
-              {/* 3. DETAIL UNDUHAN TERPILIH (Exact Figma Node 2:348) */}
-              {selectedTask && (
-                <div className="mt-3 p-4 bg-white/70 dark:bg-[#161826]/80 border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[8px] ios-glass-card space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#e7e9ef] dark:border-[#2a2c3d] pb-3">
-                    <div>
-                      <h3 className="font-semibold text-[12px] text-[#202631] dark:text-white">
-                        {selectedTask.filename || selectedTask.url}
-                      </h3>
-                      <p className="font-normal text-[10px] text-[#6e7685] dark:text-[#9ea4b5] mt-0.5">
-                        {fmtBytes(selectedTask.completedBytes)} {lang === "en" ? "of" : "dari"} {fmtBytes(selectedTask.totalBytes)} ·{" "}
-                        {selectedTask.connections || 8} {lang === "en" ? "active connections · Resume supported" : "koneksi aktif · Resume didukung"}
-                      </p>
+                              <td className="py-2.5 px-3 text-[#6e7685] dark:text-[#888e9e] text-[10px] whitespace-nowrap">
+                                {lang === "en" ? "Today" : "Hari ini"}, {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </td>
+
+                              <td className="py-2.5 px-3 text-right">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (task.status === "downloading") executeAction("task.pause", { id: task.id });
+                                    else if (task.status === "paused") executeAction("task.resume", { id: task.id });
+                                    else if (task.status === "failed") executeAction("task.retry", { id: task.id });
+                                  }}
+                                  className="w-6 h-6 rounded hover:bg-[#edeaf9] dark:hover:bg-[#2a2840] inline-flex items-center justify-center text-[#6554c0] dark:text-[#a79be8] transition-colors"
+                                >
+                                  {task.status === "downloading" ? (
+                                    <Pause className="w-3.5 h-3.5" />
+                                  ) : task.status === "failed" ? (
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <Play className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Table Footer: Menampilkan X dari Y unduhan & Link Lihat semua */}
+                <div className="flex items-center justify-between text-[10px] text-[#6e7685] mt-2 px-1">
+                  <span>
+                    {lang === "en"
+                      ? `Showing ${filteredTasks.length} of ${tasks.length} downloads`
+                      : `Menampilkan ${filteredTasks.length} dari ${tasks.length} unduhan`}
+                  </span>
+                  <button
+                    onClick={() => setActiveFilter("all")}
+                    className="text-[#6554c0] font-medium flex items-center hover:underline"
+                  >
+                    {lang === "en" ? "View full history" : "Lihat semua riwayat"} <ArrowRight className="w-3 h-3 ml-1" />
+                  </button>
+                </div>
+
+                {/* 3. DETAIL UNDUHAN TERPILIH (Exact Figma Node 2:348) */}
+                {selectedTask && (
+                  <div className="mt-3 p-4 bg-white/70 dark:bg-[#161826]/80 border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[8px] ios-glass-card space-y-3">
+                    <div className="flex items-center justify-between border-b border-[#e7e9ef] dark:border-[#2a2c3d] pb-3">
+                      <div>
+                        <h3 className="font-semibold text-[12px] text-[#202631] dark:text-white">
+                          {selectedTask.filename || selectedTask.url}
+                        </h3>
+                        <p className="font-normal text-[10px] text-[#6e7685] dark:text-[#9ea4b5] mt-0.5">
+                          {fmtBytes(selectedTask.completedBytes)} {lang === "en" ? "of" : "dari"} {fmtBytes(selectedTask.totalBytes)} ·{" "}
+                          {selectedTask.connections || 8} {lang === "en" ? "active connections · Resume supported" : "koneksi aktif · Resume didukung"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          executeAction("task.openFolder", { id: selectedTask.id });
+                          postWindowMessage(`openFolder:${selectedTask.dir || ""}`);
+                        }}
+                        className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2"
+                      >
+                        <FolderOpen className="w-4 h-4 text-[#6e7685] dark:text-[#a79be8]" />
+                        <span>{lang === "en" ? "Open Folder" : "Buka folder"}</span>
+                      </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        executeAction("task.openFolder", { id: selectedTask.id });
-                        postWindowMessage(`openFolder:${selectedTask.dir || ""}`);
-                      }}
-                      className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2"
-                    >
-                      <FolderOpen className="w-4 h-4 text-[#6e7685] dark:text-[#a79be8]" />
-                      <span>{lang === "en" ? "Open Folder" : "Buka folder"}</span>
-                    </button>
-                  </div>
 
-                  {/* TRANSFER STATS & PROGRES PER KONEKSI (Exact Figma layout) */}
-                  <div className="grid grid-cols-12 gap-4 items-center">
-                    {/* Kecepatan transfer */}
-                    <div className="col-span-5 flex flex-col justify-between border-r border-[#e7e9ef] dark:border-[#2a2c3d] pr-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-[9px] font-semibold text-[#6e7685] dark:text-[#9ea4b5] uppercase tracking-wide">
-                            {lang === "en" ? "TRANSFER SPEED" : "KECEPATAN TRANSFER"}
-                          </p>
-                          <div className="flex items-baseline space-x-1 mt-1">
-                            <span className="text-[24px] font-semibold text-[#202631] dark:text-white leading-none">
-                              {selectedTask.status === "downloading"
-                                ? (selectedTask.speed / (1024 * 1024)).toFixed(1).replace(".", ",")
-                                : "0,0"}
-                            </span>
-                            <span className="text-[11px] text-[#6e7685] dark:text-[#9ea4b5]">MB/s</span>
+                    {/* TRANSFER STATS & PROGRES PER KONEKSI (Exact Figma layout) */}
+                    <div className="grid grid-cols-12 gap-4 items-center">
+                      {/* Kecepatan transfer */}
+                      <div className="col-span-5 flex flex-col justify-between border-r border-[#e7e9ef] dark:border-[#2a2c3d] pr-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-[9px] font-semibold text-[#6e7685] dark:text-[#9ea4b5] uppercase tracking-wide">
+                              {lang === "en" ? "TRANSFER SPEED" : "KECEPATAN TRANSFER"}
+                            </p>
+                            <div className="flex items-baseline space-x-1 mt-1">
+                              <span className="text-[24px] font-semibold text-[#202631] dark:text-white leading-none">
+                                {selectedTask.status === "downloading"
+                                  ? (selectedTask.speed / (1024 * 1024)).toFixed(1).replace(".", ",")
+                                  : "0,0"}
+                              </span>
+                              <span className="text-[11px] text-[#6e7685] dark:text-[#9ea4b5]">MB/s</span>
+                            </div>
+                            <p className="text-[10px] text-[#6e7685] dark:text-[#9ea4b5] mt-1">
+                              {lang === "en" ? "Average" : "Rata-rata"} {(selectedTask.speed > 0 ? (selectedTask.speed / (1024 * 1024) * 0.95).toFixed(1) : "0,0").replace(".", ",")} MB/s
+                            </p>
                           </div>
-                          <p className="text-[10px] text-[#6e7685] dark:text-[#9ea4b5] mt-1">
-                            {lang === "en" ? "Average" : "Rata-rata"} {(selectedTask.speed > 0 ? (selectedTask.speed / (1024 * 1024) * 0.95).toFixed(1) : "0,0").replace(".", ",")} MB/s
-                          </p>
+
+                          {/* Figma Speed Graph SVG (Node 2:360) */}
+                          <div className="w-[160px] h-[45px] relative">
+                            <svg
+                              preserveAspectRatio="none"
+                              className="w-full h-full"
+                              viewBox="0 0 262 50"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <defs>
+                                <linearGradient id="speedGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#6554C0" stopOpacity="0.3" />
+                                  <stop offset="100%" stopColor="#6554C0" stopOpacity="0.0" />
+                                </linearGradient>
+                              </defs>
+                              <path
+                                d="M0.75 49.8L9.75 39.3L18.75 43L27.75 31.8L36.75 37L45.75 33.3L54.75 28.8L63.75 36.3L72.75 23.5L81.75 26.5L90.75 16.8L99.75 25L108.75 20.5L117.75 22.8L126.75 15.3L135.75 19L144.75 13.8L153.75 17.5L162.75 9.3L171.75 14.5L180.75 8.5L189.75 10.8L198.75 4L207.75 10L216.75 5.5L225.75 7L234.75 3.3L243.75 6.3L252.75 1L261.75 4"
+                                strokeWidth="2"
+                                stroke="#6554C0"
+                              />
+                              <path
+                                d="M0.75 49.8L9.75 39.3L18.75 43L27.75 31.8L36.75 37L45.75 33.3L54.75 28.8L63.75 36.3L72.75 23.5L81.75 26.5L90.75 16.8L99.75 25L108.75 20.5L117.75 22.8L126.75 15.3L135.75 19L144.75 13.8L153.75 17.5L162.75 9.3L171.75 14.5L180.75 8.5L189.75 10.8L198.75 4L207.75 10L216.75 5.5L225.75 7L234.75 3.3L243.75 6.3L252.75 1L261.75 4 L261.75 50 L0.75 50 Z"
+                                fill="url(#speedGrad)"
+                              />
+                            </svg>
+                          </div>
                         </div>
 
-                        {/* Figma Speed Graph SVG (Node 2:360) */}
-                        <div className="w-[160px] h-[45px] relative">
-                          <svg
-                            preserveAspectRatio="none"
-                            className="w-full h-full"
-                            viewBox="0 0 262 50"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <defs>
-                              <linearGradient id="speedGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#6554C0" stopOpacity="0.3" />
-                                <stop offset="100%" stopColor="#6554C0" stopOpacity="0.0" />
-                              </linearGradient>
-                            </defs>
-                            <path
-                              d="M0.75 49.8L9.75 39.3L18.75 43L27.75 31.8L36.75 37L45.75 33.3L54.75 28.8L63.75 36.3L72.75 23.5L81.75 26.5L90.75 16.8L99.75 25L108.75 20.5L117.75 22.8L126.75 15.3L135.75 19L144.75 13.8L153.75 17.5L162.75 9.3L171.75 14.5L180.75 8.5L189.75 10.8L198.75 4L207.75 10L216.75 5.5L225.75 7L234.75 3.3L243.75 6.3L252.75 1L261.75 4"
-                              strokeWidth="2"
-                              stroke="#6554C0"
-                            />
-                            <path
-                              d="M0.75 49.8L9.75 39.3L18.75 43L27.75 31.8L36.75 37L45.75 33.3L54.75 28.8L63.75 36.3L72.75 23.5L81.75 26.5L90.75 16.8L99.75 25L108.75 20.5L117.75 22.8L126.75 15.3L135.75 19L144.75 13.8L153.75 17.5L162.75 9.3L171.75 14.5L180.75 8.5L189.75 10.8L198.75 4L207.75 10L216.75 5.5L225.75 7L234.75 3.3L243.75 6.3L252.75 1L261.75 4 L261.75 50 L0.75 50 Z"
-                              fill="url(#speedGrad)"
-                            />
-                          </svg>
+                        <div className="flex justify-between text-[9px] text-[#6e7685] dark:text-[#9ea4b5] mt-1 pt-1">
+                          <span>{lang === "en" ? "60s ago" : "60 d lalu"}</span>
+                          <span>{lang === "en" ? "Now" : "Sekarang"}</span>
                         </div>
                       </div>
 
-                      <div className="flex justify-between text-[9px] text-[#6e7685] dark:text-[#9ea4b5] mt-1 pt-1">
-                        <span>{lang === "en" ? "60s ago" : "60 d lalu"}</span>
-                        <span>{lang === "en" ? "Now" : "Sekarang"}</span>
-                      </div>
-                    </div>
-
-                    {/* Progres per koneksi (Figma 8 segmen paralel) */}
-                    <div className="col-span-7">
-                      <p className="text-[9px] font-semibold text-[#6e7685] dark:text-[#9ea4b5] uppercase tracking-wide mb-2">
-                        {lang === "en" ? "PROGRESS PER CONNECTION" : "PROGRES PER KONEKSI"}
-                      </p>
-                      <div className="grid grid-cols-4 gap-x-4 gap-y-2">
-                        {Array.from({ length: selectedTask.connections || 8 }).map((_, idx) => (
-                          <div key={idx} className="flex items-center space-x-2">
-                            <span className="text-[9px] text-[#6e7685] dark:text-[#9ea4b5] font-mono">
-                              {String(idx + 1).padStart(2, "0")}
-                            </span>
-                            <div className="flex-1 h-[5px] bg-[#eceaf4] dark:bg-[#252838] rounded-[2px] overflow-hidden">
-                              <div
-                                className="h-full bg-[#6554c0] dark:bg-[#8b7ce0] rounded-[2px] transition-all duration-300"
-                                style={{
-                                  width: `${selectedTask.status === "downloading"
+                      {/* Progres per koneksi (Figma 8 segmen paralel) */}
+                      <div className="col-span-7">
+                        <p className="text-[9px] font-semibold text-[#6e7685] dark:text-[#9ea4b5] uppercase tracking-wide mb-2">
+                          {lang === "en" ? "PROGRESS PER CONNECTION" : "PROGRES PER KONEKSI"}
+                        </p>
+                        <div className="grid grid-cols-4 gap-x-4 gap-y-2">
+                          {Array.from({ length: selectedTask.connections || 8 }).map((_, idx) => (
+                            <div key={idx} className="flex items-center space-x-2">
+                              <span className="text-[9px] text-[#6e7685] dark:text-[#9ea4b5] font-mono">
+                                {String(idx + 1).padStart(2, "0")}
+                              </span>
+                              <div className="flex-1 h-[5px] bg-[#eceaf4] dark:bg-[#252838] rounded-[2px] overflow-hidden">
+                                <div
+                                  className="h-full bg-[#6554c0] dark:bg-[#8b7ce0] rounded-[2px] transition-all duration-300"
+                                  style={{
+                                    width: `${selectedTask.status === "downloading"
                                       ? Math.min(100, Math.max(15, ((idx + 1) * 14.5) % 100))
                                       : selectedTask.status === "completed"
                                         ? 100
                                         : 0
-                                    }%`,
-                                }}
-                              />
+                                      }%`,
+                                  }}
+                                />
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                        <p className="text-[9px] text-[#6e7685] dark:text-[#9ea4b5] mt-2">
+                          {lang === "en" ? "Location:" : "Lokasi:"} {selectedTask.dir || "~/Downloads"}
+                        </p>
                       </div>
-                      <p className="text-[9px] text-[#6e7685] dark:text-[#9ea4b5] mt-2">
-                        {lang === "en" ? "Location:" : "Lokasi:"} {selectedTask.dir || "~/Downloads"}
-                      </p>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            {/* 4. STATUS LAYANAN (Exact Figma Node 2:6, h: 36px, bg: #f7f8fa) */}
-            <footer className="h-[36px] ios-glass-bar border-t border-[#e7e9ef] dark:border-[#2a2c3d] px-4 flex items-center justify-between text-[11px] text-[#202631] dark:text-[#d1d5e0] flex-shrink-0">
-              <div className="flex items-center space-x-4">
-                <span className="text-[#218163] dark:text-[#38d49a] font-medium flex items-center gap-1.5">
-                  <span className="text-[10px]">●</span>{" "}
-                  {lang === "en" ? "Background service active" : "Layanan background aktif"}
-                </span>
-                <span className="text-[#6e7685] dark:text-[#9ea4b5]">
-                  {lang === "en"
-                    ? "Downloads continue when window is closed"
-                    : "Unduhan tetap berjalan saat jendela ditutup"}
-                </span>
-              </div>
-              <div className="flex items-center space-x-4 text-[#6e7685] dark:text-[#9ea4b5]">
-                <span className="text-[#202631] dark:text-white font-medium flex items-center gap-1.5">
-                  ↓ {fmtBytes(totalSpeed)}/s
-                  {settingsData.speedLimiterEnabled && settingsData.speedLimitBytesPerSec > 0 && (
-                    <span className="text-[10px] text-[#6554c0] dark:text-[#a79be8] bg-[#edeaf9] dark:bg-[#6554c0]/20 px-1.5 py-0.5 rounded font-semibold">
-                      {lang === "en" ? `Limit: ${fmtBytes(settingsData.speedLimitBytesPerSec)}/s` : `Batas: ${fmtBytes(settingsData.speedLimitBytesPerSec)}/s`}
-                    </span>
-                  )}
-                </span>
-                <span>{lang === "en" ? "Available storage: 128 GB" : "Ruang tersedia: 128 GB"}</span>
-              </div>
-            </footer>
-          </main>
+              {/* 4. STATUS LAYANAN (Exact Figma Node 2:6, h: 36px, bg: #f7f8fa) */}
+              <footer className="h-[36px] ios-glass-bar border-t border-[#e7e9ef] dark:border-[#2a2c3d] px-4 flex items-center justify-between text-[11px] text-[#202631] dark:text-[#d1d5e0] flex-shrink-0">
+                <div className="flex items-center space-x-4">
+                  <span className="text-[#218163] dark:text-[#38d49a] font-medium flex items-center gap-1.5">
+                    <span className="text-[10px]">●</span>{" "}
+                    {lang === "en" ? "Background service active" : "Layanan background aktif"}
+                  </span>
+                  <span className="text-[#6e7685] dark:text-[#9ea4b5]">
+                    {lang === "en"
+                      ? "Downloads continue when window is closed"
+                      : "Unduhan tetap berjalan saat jendela ditutup"}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-4 text-[#6e7685] dark:text-[#9ea4b5]">
+                  <span className="text-[#202631] dark:text-white font-medium flex items-center gap-1.5">
+                    ↓ {fmtBytes(totalSpeed)}/s
+                    {settingsData.speedLimiterEnabled && settingsData.speedLimitBytesPerSec > 0 && (
+                      <span className="text-[10px] text-[#6554c0] dark:text-[#a79be8] bg-[#edeaf9] dark:bg-[#6554c0]/20 px-1.5 py-0.5 rounded font-semibold">
+                        {lang === "en" ? `Limit: ${fmtBytes(settingsData.speedLimitBytesPerSec)}/s` : `Batas: ${fmtBytes(settingsData.speedLimitBytesPerSec)}/s`}
+                      </span>
+                    )}
+                  </span>
+                  <span>{lang === "en" ? "Available storage: 128 GB" : "Ruang tersedia: 128 GB"}</span>
+                </div>
+              </footer>
+            </main>
           )}
         </div>
       </div>
@@ -1327,9 +1321,8 @@ export function App() {
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-[#6e7685] dark:text-[#9ea4b5] font-medium">Resume Capability:</span>
-                    <span className={`font-semibold flex items-center gap-1 ${
-                      probeResult.resumeSupported ? "text-[#218163] dark:text-[#38d49a]" : "text-[#ac8433] dark:text-[#fbbf24]"
-                    }`}>
+                    <span className={`font-semibold flex items-center gap-1 ${probeResult.resumeSupported ? "text-[#218163] dark:text-[#38d49a]" : "text-[#ac8433] dark:text-[#fbbf24]"
+                      }`}>
                       {probeResult.resumeSupported ? (
                         <>
                           <Check className="w-3.5 h-3.5" /> {t.resumeSupported}
@@ -1402,11 +1395,10 @@ export function App() {
                           setNewFilename(newFilename.replace(/\.mp3$/, ".mp4"));
                         }
                       }}
-                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${
-                        downloadFormat === "mp4"
+                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp4"
                           ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
                           : "bg-white dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b]"
-                      }`}
+                        }`}
                     >
                       🎬 Video (MP4)
                     </button>
@@ -1418,11 +1410,10 @@ export function App() {
                           setNewFilename(newFilename.replace(/\.mp4$/, ".mp3"));
                         }
                       }}
-                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${
-                        downloadFormat === "mp3"
+                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp3"
                           ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
                           : "bg-white dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b]"
-                      }`}
+                        }`}
                     >
                       🎵 Audio Only (MP3)
                     </button>
@@ -1439,11 +1430,10 @@ export function App() {
                       key={num}
                       type="button"
                       onClick={() => setNewConnections(num)}
-                      className={`px-3 py-1 rounded-[6px] text-[11px] font-medium border transition-colors ${
-                        newConnections === num
+                      className={`px-3 py-1 rounded-[6px] text-[11px] font-medium border transition-colors ${newConnections === num
                           ? "bg-[#6554c0] text-white border-[#5a4ab0]"
                           : "bg-[#f7f8fa] dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#eceaf4] dark:hover:bg-[#25283b]"
-                      }`}
+                        }`}
                     >
                       {num} {lang === "en" ? "conns" : "koneksi"}
                     </button>
