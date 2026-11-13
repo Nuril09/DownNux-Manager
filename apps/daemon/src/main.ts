@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { PROTOCOL_VERSION, type DaemonInfo, type Method, type MethodResults } from "@downnux/shared";
 import { ensurePrivateDir, getAppPaths } from "@downnux/shared/node";
 import { TaskStore } from "./db.ts";
@@ -112,6 +112,73 @@ async function main(): Promise<void> {
     "daemon.shutdown": (p) => {
       setTimeout(() => void shutdown("diminta klien", p?.pauseAll ?? false), 50);
       return { ok: true } as const;
+    },
+    "app.checkUpdate": async () => {
+      const CURRENT_VERSION = VERSION || "0.0.3";
+      try {
+        const res = await fetch("https://api.github.com/repos/Nuril09/DownNux-Manager/releases/latest", {
+          headers: { "User-Agent": "DownNux-Manager-Updater" },
+        });
+        const isDev = fs.existsSync(path.join(process.cwd(), "scripts/install-dev.sh"));
+        if (!res.ok) {
+          return {
+            currentVersion: CURRENT_VERSION,
+            latestVersion: CURRENT_VERSION,
+            hasUpdate: false,
+            releaseName: `DownNux Manager v${CURRENT_VERSION}`,
+            releaseUrl: "https://github.com/Nuril09/DownNux-Manager/releases",
+            releaseNotes: "Local build active. No remote releases returned.",
+            publishedAt: new Date().toISOString(),
+            isDev,
+          };
+        }
+        const data = await res.json() as any;
+        const tag = (data.tag_name || "").replace(/^v/, "");
+        const hasUpdate = Boolean(tag && tag !== CURRENT_VERSION);
+        return {
+          currentVersion: CURRENT_VERSION,
+          latestVersion: tag || CURRENT_VERSION,
+          hasUpdate,
+          releaseName: data.name || data.tag_name,
+          releaseUrl: data.html_url,
+          releaseNotes: data.body || "",
+          publishedAt: data.published_at || new Date().toISOString(),
+          assets: (data.assets || []).map((a: any) => ({
+            name: a.name,
+            size: a.size,
+            downloadUrl: a.browser_download_url,
+          })),
+          isDev,
+        };
+      } catch {
+        return {
+          currentVersion: CURRENT_VERSION,
+          latestVersion: CURRENT_VERSION,
+          hasUpdate: false,
+          releaseName: `DownNux Manager v${CURRENT_VERSION}`,
+          releaseUrl: "https://github.com/Nuril09/DownNux-Manager/releases",
+          releaseNotes: "Unable to connect to GitHub releases.",
+          publishedAt: new Date().toISOString(),
+          isDev: fs.existsSync(path.join(process.cwd(), "scripts/install-dev.sh")),
+        };
+      }
+    },
+    "app.rebuildDev": async () => {
+      const scriptPath = path.join(process.cwd(), "scripts/install-dev.sh");
+      if (!fs.existsSync(scriptPath)) {
+        return { ok: false, error: "Not in dev workspace" };
+      }
+      try {
+        const child = spawn("bash", [scriptPath], {
+          cwd: process.cwd(),
+          detached: true,
+          stdio: "ignore",
+        });
+        child.unref();
+        return { ok: true, message: "Rebuilding and refreshing in background..." };
+      } catch (err: any) {
+        return { ok: false, error: err.message };
+      }
     },
   };
 

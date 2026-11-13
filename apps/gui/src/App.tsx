@@ -40,6 +40,7 @@ import { translations, type Lang } from "./i18n";
 import { SettingsView, type SettingsData } from "./components/SettingsView";
 import { SchedulerView, type ScheduleConfigData } from "./components/SchedulerView";
 import { DownloadDetailModal } from "./components/DownloadDetailModal";
+import { UpdateModal, type UpdateInfo } from "./components/UpdateModal";
 
 export interface Task {
   id: string;
@@ -168,6 +169,33 @@ export function App() {
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [inspectingTaskId, setInspectingTaskId] = useState<string | null>(null);
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+
+  const handleCheckUpdates = async (openModal = false) => {
+    if (openModal) setIsUpdateModalOpen(true);
+    setIsCheckingUpdate(true);
+    try {
+      const res = await fetch("http://127.0.0.1:44990/api/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "app.checkUpdate", params: {} }),
+      });
+      const json = await res.json();
+      if (json.result) {
+        setUpdateInfo(json.result);
+      }
+    } catch (err) {
+      console.error("Update check error:", err);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  useEffect(() => {
+    handleCheckUpdates(false);
+  }, []);
 
   // Close action menu on outside click
   useEffect(() => {
@@ -700,15 +728,23 @@ export function App() {
           onDoubleClick={handleHeaderDoubleClick}
           className="h-[48px] ios-glass-bar border-b border-[#e7e9ef] dark:border-[#2a2c3d] flex items-center justify-between px-4 relative z-30 flex-shrink-0 cursor-default select-none"
         >
-          <div className="flex items-center space-x-3 pointer-events-none">
+          <div className="flex items-center space-x-3">
             {/* Custom Icon user dengan container rounded 6px ungu #6554c0 */}
-            <div className="w-6 h-6 rounded-[6px] bg-[#6554c0] flex items-center justify-center p-0.5 shadow-sm shadow-[#6554c0]/30 overflow-hidden">
+            <div className="w-6 h-6 rounded-[6px] bg-[#6554c0] flex items-center justify-center p-0.5 shadow-sm shadow-[#6554c0]/30 overflow-hidden pointer-events-none">
               <img src="/app-icon.png" alt="DownNux" className="w-full h-full object-contain" />
             </div>
-            <span className="font-bold text-[12px] text-[#202631] dark:text-white tracking-tight">DownNux Manager</span>
-            <span className="text-[10px] font-bold text-[#6554c0] bg-[#edeaf9] dark:bg-[#6554c0]/20 dark:text-[#a79be8] px-2 py-0.5 rounded-full border border-[#d8d2f5] dark:border-[#4d4287] tracking-wide shadow-xs">
-              BETA 0.0.3
-            </span>
+            <span className="font-bold text-[12px] text-[#202631] dark:text-white tracking-tight pointer-events-none">DownNux Manager</span>
+            <button
+              type="button"
+              onClick={() => handleCheckUpdates(true)}
+              className="text-[10px] font-bold text-[#6554c0] bg-[#edeaf9] dark:bg-[#6554c0]/20 dark:text-[#a79be8] px-2 py-0.5 rounded-full border border-[#d8d2f5] dark:border-[#4d4287] tracking-wide shadow-xs hover:border-[#6554c0] hover:scale-105 transition-all cursor-pointer flex items-center space-x-1"
+              title={lang === "en" ? "Click to check for updates" : "Klik untuk periksa pembaruan"}
+            >
+              <span>BETA 0.0.3</span>
+              {updateInfo?.hasUpdate && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-ping" />
+              )}
+            </button>
           </div>
 
           {/* Dynamic OS indicator matching Figma node 2:18 "Ubuntu · Desktop" */}
@@ -884,6 +920,17 @@ export function App() {
                 >
                   <SettingsIcon className={`w-4 h-4 ${activeView === "settings" ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#6e7685]"}`} />
                   <span>{t.settings}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCheckUpdates(true)}
+                  className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-[6px] text-[12px] transition-colors text-[#202631] dark:text-[#e2e4ea] hover:bg-[#edeaf9]/40 dark:hover:bg-[#25283b]"
+                >
+                  <RefreshCw className="w-4 h-4 text-[#6e7685]" />
+                  <span>{t.checkForUpdates}</span>
+                  {updateInfo?.hasUpdate && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] ml-auto animate-ping" />
+                  )}
                 </button>
               </div>
             </div>
@@ -1808,6 +1855,17 @@ export function App() {
           lang={lang}
           onClose={() => setInspectingTaskId(null)}
           onAction={executeAction}
+        />
+      )}
+
+      {/* UPDATE CHECKER MODAL */}
+      {isUpdateModalOpen && (
+        <UpdateModal
+          lang={lang}
+          updateInfo={updateInfo}
+          isChecking={isCheckingUpdate}
+          onCheck={() => handleCheckUpdates(true)}
+          onClose={() => setIsUpdateModalOpen(false)}
         />
       )}
     </div>

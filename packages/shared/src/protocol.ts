@@ -37,6 +37,8 @@ export const MethodParams = {
   "scheduler.runNow": z.object({}).optional(),
   /** Dipakai menu tray "Keluar": hentikan daemon. pauseAll=true menjeda semua dulu. */
   "daemon.shutdown": z.object({ pauseAll: z.boolean().default(false) }).optional(),
+  "app.checkUpdate": z.object({}).optional(),
+  "app.rebuildDev": z.object({}).optional(),
 } as const;
 
 export type Method = keyof typeof MethodParams;
@@ -84,6 +86,18 @@ export interface MethodResults {
   "scheduler.update": ScheduleConfig;
   "scheduler.runNow": { ok: boolean };
   "daemon.shutdown": { ok: true };
+  "app.checkUpdate": {
+    currentVersion: string;
+    latestVersion: string;
+    hasUpdate: boolean;
+    releaseName?: string;
+    releaseUrl?: string;
+    releaseNotes?: string;
+    publishedAt?: string;
+    assets?: Array<{ name: string; size: number; downloadUrl: string }>;
+    isDev?: boolean;
+  };
+  "app.rebuildDev": { ok: boolean; message?: string; error?: string };
 }
 
 export interface RpcRequest {
