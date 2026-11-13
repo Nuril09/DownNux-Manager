@@ -484,6 +484,30 @@ export function App() {
       .catch(() => { });
   }, []);
 
+  // Native Window Control Handlers (CSD / Frameless window bridge)
+  const postWindowMessage = (action: string) => {
+    try {
+      (window as any).webkit?.messageHandlers?.windowControl?.postMessage(action);
+    } catch (err) {
+      console.warn("windowControl message failed:", err);
+    }
+  };
+
+  const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const standaloneInspectId = urlParams.get("inspect");
+  const isStandalone = urlParams.get("standalone") === "true" || !!standaloneInspectId;
+
+  const openStandaloneInspector = (taskId: string) => {
+    if ((window as any).webkit?.messageHandlers?.windowControl) {
+      postWindowMessage(`openDownloadWindow:${taskId}`);
+    } else {
+      window.open(`/?inspect=${taskId}&standalone=true`, `downnux_inspect_${taskId}`, "width=720,height=620,resizable=yes");
+    }
+  };
+
+  const knownTaskIdsRef = useRef<Set<string>>(new Set());
+  const initialFetchDoneRef = useRef(false);
+
   // Poll daemon RPC tasks & auto-focus active downloading task
   useEffect(() => {
     const fetchTasks = async () => {
@@ -495,16 +519,35 @@ export function App() {
         });
         const json = await res.json();
         if (json.result && Array.isArray(json.result)) {
-          setTasks(json.result);
+          const list: Task[] = json.result;
+          setTasks(list);
+
+          // Auto popup standalone inspector when ANY new download starts
+          if (!isStandalone) {
+            if (!initialFetchDoneRef.current) {
+              list.forEach((t) => knownTaskIdsRef.current.add(t.id));
+              initialFetchDoneRef.current = true;
+            } else {
+              const newDownloadingTask = list.find(
+                (t) => !knownTaskIdsRef.current.has(t.id) && (t.status === "downloading" || t.status === "retrying")
+              );
+              if (newDownloadingTask) {
+                knownTaskIdsRef.current.add(newDownloadingTask.id);
+                openStandaloneInspector(newDownloadingTask.id);
+              }
+              list.forEach((t) => knownTaskIdsRef.current.add(t.id));
+            }
+          }
+
           // Auto focus active downloading task so transfer stats card is never stuck on completed
-          const activeTask = json.result.find((t: Task) => t.status === "downloading" || t.status === "retrying");
+          const activeTask = list.find((t: Task) => t.status === "downloading" || t.status === "retrying" || t.status === "paused");
           if (activeTask) {
-            const currentSelected = json.result.find((t: Task) => t.id === selectedId);
+            const currentSelected = list.find((t: Task) => t.id === selectedId);
             if (!currentSelected || currentSelected.status === "completed" || currentSelected.status === "failed") {
               setSelectedId(activeTask.id);
             }
-          } else if (!selectedId && json.result.length > 0) {
-            setSelectedId(json.result[0].id);
+          } else if (!selectedId && list.length > 0) {
+            setSelectedId(list[0].id);
           }
         }
       } catch { }
@@ -513,7 +556,7 @@ export function App() {
     fetchTasks();
     const interval = setInterval(fetchTasks, 1200);
     return () => clearInterval(interval);
-  }, [selectedId]);
+  }, [selectedId, isStandalone]);
 
   const executeAction = async (method: string, params: Record<string, unknown> = {}) => {
     try {
@@ -603,7 +646,8 @@ export function App() {
     if (activeCategory) {
       return getCategory(task.filename || task.url, task.url, task.isTorrent) === activeCategory;
     }
-    if (activeFilter === "downloading") return task.status === "downloading" || task.status === "retrying";
+    if (activeFilter === "downloading") return task.status === "downloading" || task.status === "retrying" || task.status === "paused";
+    if (activeFilter === "paused") return task.status === "paused";
     if (activeFilter === "completed") return task.status === "completed";
     if (activeFilter === "queued") return task.status === "queued";
     if (activeFilter === "paused") return task.status === "paused";
@@ -664,27 +708,6 @@ export function App() {
       case "merging": return "Menggabungkan";
       case "retrying": return "Mencoba lagi";
       default: return status;
-    }
-  };
-
-  // Native Window Control Handlers (CSD / Frameless window bridge)
-  const postWindowMessage = (action: string) => {
-    try {
-      (window as any).webkit?.messageHandlers?.windowControl?.postMessage(action);
-    } catch (err) {
-      console.warn("windowControl message failed:", err);
-    }
-  };
-
-  const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
-  const standaloneInspectId = urlParams.get("inspect");
-  const isStandalone = urlParams.get("standalone") === "true" || !!standaloneInspectId;
-
-  const openStandaloneInspector = (taskId: string) => {
-    if ((window as any).webkit?.messageHandlers?.windowControl) {
-      postWindowMessage(`openDownloadWindow:${taskId}`);
-    } else {
-      window.open(`/?inspect=${taskId}&standalone=true`, `downnux_inspect_${taskId}`, "width=720,height=620,resizable=yes");
     }
   };
 
@@ -858,6 +881,12 @@ export function App() {
                       label: t.downloading,
                       icon: Download,
                       count: tasks.filter((t) => t.status === "downloading" || t.status === "retrying").length,
+                    },
+                    {
+                      id: "paused",
+                      label: t.paused,
+                      icon: PauseCircle,
+                      count: tasks.filter((t) => t.status === "paused").length,
                     },
                     {
                       id: "completed",
@@ -1067,7 +1096,12 @@ export function App() {
 
                   <button
                     disabled={!selectedTask || selectedTask.status !== "paused"}
-                    onClick={() => selectedTask && executeAction("task.resume", { id: selectedTask.id })}
+                    onClick={() => {
+                      if (selectedTask) {
+                        executeAction("task.resume", { id: selectedTask.id });
+                        openStandaloneInspector(selectedTask.id);
+                      }
+                    }}
                     className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
                   >
                     <Play className="w-4 h-4 text-[#202631] dark:text-[#d1d5e0]" />
@@ -1139,6 +1173,9 @@ export function App() {
                         }`}
                     >
                       {lang === "en" ? "Active" : "Aktif"}
+                      <span className="text-[10px] text-[#6e7685] dark:text-[#9ea4b5] font-normal ml-1.5">
+                        {tasks.filter((t) => t.status === "downloading" || t.status === "retrying" || t.status === "paused").length}
+                      </span>
                       {activeFilter === "downloading" && (
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0] dark:bg-[#a79be8]" />
                       )}
@@ -1151,6 +1188,9 @@ export function App() {
                         }`}
                     >
                       {lang === "en" ? "Completed" : "Selesai"}
+                      <span className="text-[10px] text-[#6e7685] dark:text-[#9ea4b5] font-normal ml-1.5">
+                        {tasks.filter((t) => t.status === "completed").length}
+                      </span>
                       {activeFilter === "completed" && (
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6554c0] dark:bg-[#a79be8]" />
                       )}
@@ -1164,7 +1204,7 @@ export function App() {
 
               {/* TABEL DAFTAR UNDUHAN */}
               <div className="flex-1 overflow-y-auto px-6 pb-4">
-                <div className="border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[6px] overflow-hidden ios-glass-card">
+                <div className="border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[6px] ios-glass-card min-h-[300px] relative">
                   <table className="w-full text-left border-collapse text-[11px]">
                     <thead>
                       <tr className="bg-[#f7f8fa] dark:bg-[#181a28] text-[#6e7685] dark:text-[#9ea4b5] font-medium border-b border-[#e7e9ef] dark:border-[#2a2c3d] text-[10px]">
@@ -1228,6 +1268,7 @@ export function App() {
                       ) : (
                         filteredTasks.map((task) => {
                           const isSelected = selectedTask?.id === task.id;
+                          const isNearBottom = filteredTasks.indexOf(task) >= filteredTasks.length - 2 && filteredTasks.length > 2;
                           const pct = task.totalBytes > 0 ? (task.completedBytes / task.totalBytes) * 100 : 0;
                           const remainingBytes = task.totalBytes - task.completedBytes;
                           const etaSec = task.speed > 0 ? remainingBytes / task.speed : 0;
@@ -1344,7 +1385,7 @@ export function App() {
                                 {lang === "en" ? "Today" : "Hari ini"}, {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </td>
 
-                              <td className="py-2.5 px-3 text-right relative">
+                              <td className={`py-2.5 px-3 text-right relative ${openActionMenuId === task.id ? "z-50" : ""}`}>
                                 <div className="inline-flex items-center space-x-1 action-menu-container">
                                   {/* Quick action button: Play/Open for completed, Pause for downloading, Resume for paused, Repair for failed */}
                                   <button
@@ -1352,7 +1393,10 @@ export function App() {
                                       e.stopPropagation();
                                       if (task.status === "completed") handleOpenFile(task);
                                       else if (task.status === "downloading") executeAction("task.pause", { id: task.id });
-                                      else if (task.status === "paused") executeAction("task.resume", { id: task.id });
+                                      else if (task.status === "paused") {
+                                        executeAction("task.resume", { id: task.id });
+                                        openStandaloneInspector(task.id);
+                                      }
                                       else if (task.status === "failed") handleRepair(task);
                                     }}
                                     title={
@@ -1391,7 +1435,9 @@ export function App() {
                                   {openActionMenuId === task.id && (
                                     <div
                                       onClick={(e) => e.stopPropagation()}
-                                      className="absolute right-3 top-9 z-50 w-52 bg-white/95 dark:bg-[#181a28]/95 backdrop-blur-xl border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[8px] shadow-2xl py-1 text-[11px] font-medium text-[#202631] dark:text-white"
+                                      className={`absolute right-2 ${
+                                        isNearBottom ? "bottom-full mb-1.5" : "top-full mt-1.5"
+                                      } z-50 w-52 bg-white dark:bg-[#181a28] border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[8px] shadow-2xl py-1 text-[11px] font-medium text-[#202631] dark:text-white`}
                                     >
                                       {/* 1. Open File */}
                                       <button

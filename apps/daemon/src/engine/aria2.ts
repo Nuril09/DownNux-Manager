@@ -225,9 +225,13 @@ export class Aria2Engine extends EventEmitter<EngineEvents> implements DownloadE
       "--enable-dht=true",
       "--enable-peer-exchange=true",
       "--bt-enable-lpd=true",
-      "--bt-max-peers=55",
+      "--bt-max-peers=128",
       "--follow-torrent=mem",
       "--seed-time=0",
+      "--peer-id-prefix=-DN0040-",
+      "--bt-tracker-connect-timeout=10",
+      "--bt-tracker-timeout=10",
+      "--bt-tracker=udp://tracker.opentrackr.org:1337/announce,udp://open.tracker.cl:1337/announce,udp://tracker.torrent.eu.org:451/announce,udp://open.stealth.si:80/announce,udp://tracker.moeking.me:6969/announce,http://tracker.openbittorrent.com:80/announce",
     ];
     if (this.globalLimit > 0) args.push(`--max-overall-download-limit=${this.globalLimit}`);
 

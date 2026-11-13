@@ -116,7 +116,7 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
     let defaultReferer = "";
     try {
       defaultReferer = new URL(input.url).origin + "/";
-    } catch {}
+    } catch { }
 
     const headers = {
       userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -160,7 +160,7 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
             WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0",
           },
         }).unref();
-      } catch {}
+      } catch { }
     }
     this.emitTask(t);
     this.schedule();
@@ -424,7 +424,7 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
           this.store.upsert(t);
           this.emitTask(t);
         }
-      } catch {}
+      } catch { }
     } catch (err) {
       r.jobId = null;
       log.warn(`Gagal memulai ${t.id}`, err);
@@ -627,7 +627,7 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
         this.setStatus(t, "queued");
       }
     }
-    void this.engine.setGlobalSpeedLimit(this.settings.get().globalSpeedLimit).catch(() => {});
+    void this.engine.setGlobalSpeedLimit(this.settings.get().globalSpeedLimit).catch(() => { });
     this.schedule();
   }
 
@@ -669,7 +669,7 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
   onSettingsChanged(): void {
     const s = this.settings.get();
     const limit = s.speedLimiterEnabled ? (s.speedLimitBytesPerSec || s.globalSpeedLimit) : 0;
-    void this.engine.setGlobalSpeedLimit(limit).catch(() => {});
+    void this.engine.setGlobalSpeedLimit(limit).catch(() => { });
     this.schedule();
   }
 }

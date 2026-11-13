@@ -43,9 +43,7 @@ function fmtTime(sec: number, lang: Lang): string {
 }
 
 export function DownloadDetailModal({ task, lang, onClose, onAction, isStandalone }: DownloadDetailModalProps) {
-  const [activeTab, setActiveTab] = useState<"speed" | "segments" | "torrent">(
-    task.isTorrent ? "torrent" : "segments"
-  );
+  const [activeTab, setActiveTab] = useState<"speed" | "segments" | "torrent">("segments");
 
   const pct = useMemo(() => {
     if (!task.totalBytes || task.totalBytes <= 0) {
