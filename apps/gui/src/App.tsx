@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Download,
   Play,
@@ -29,10 +29,15 @@ import {
   Loader2,
   ArrowDown,
   Check,
+  Magnet,
+  Maximize2,
+  Radio,
+  ArrowUp,
 } from "lucide-react";
 import { translations, type Lang } from "./i18n";
 import { SettingsView, type SettingsData } from "./components/SettingsView";
 import { SchedulerView, type ScheduleConfigData } from "./components/SchedulerView";
+import { DownloadDetailModal } from "./components/DownloadDetailModal";
 
 export interface Task {
   id: string;
@@ -48,6 +53,15 @@ export interface Task {
   createdAt: number;
   updatedAt: number;
   error?: { code: string; message: string } | null;
+
+  isTorrent?: boolean;
+  uploadSpeed?: number;
+  uploadBytes?: number;
+  numSeeders?: number;
+  pieceLength?: number;
+  numPieces?: number;
+  bitfield?: string;
+  speedHistory?: number[];
 }
 
 function fmtBytes(n: number): string {
@@ -67,7 +81,12 @@ function fmtTime(sec: number, lang: Lang = "en"): string {
   return `${h} ${lang === "en" ? "h" : "j"} ${m % 60} ${lang === "en" ? "m" : "m"}`;
 }
 
-function getCategory(filename: string): "video" | "music" | "documents" | "compressed" | "programs" | "other" {
+function getCategory(
+  filename: string,
+  url?: string,
+  isTorrent?: boolean,
+): "video" | "music" | "documents" | "compressed" | "programs" | "torrents" | "other" {
+  if (isTorrent || (url && url.startsWith("magnet:?")) || filename.endsWith(".torrent")) return "torrents";
   const ext = filename.split(".").pop()?.toLowerCase() || "";
   if (["mp4", "mkv", "webm", "avi", "mov", "flv"].includes(ext)) return "video";
   if (["mp3", "flac", "wav", "m4a", "aac", "ogg", "opus"].includes(ext)) return "music";
@@ -77,9 +96,11 @@ function getCategory(filename: string): "video" | "music" | "documents" | "compr
   return "other";
 }
 
-function getFileIcon(filename: string) {
-  const cat = getCategory(filename);
+function getFileIcon(filename: string, url?: string, isTorrent?: boolean) {
+  const cat = getCategory(filename, url, isTorrent);
   switch (cat) {
+    case "torrents":
+      return Magnet;
     case "video":
       return Film;
     case "music":
@@ -143,6 +164,7 @@ export function App() {
   // Dialogs
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
+  const [inspectingTaskId, setInspectingTaskId] = useState<string | null>(null);
 
   // Form & IDM Pre-download states
   const [newUrl, setNewUrl] = useState("");
@@ -150,6 +172,34 @@ export function App() {
   const [saveDir, setSaveDir] = useState<string>("");
   const [newConnections, setNewConnections] = useState(8);
   const [downloadFormat, setDownloadFormat] = useState<"mp4" | "mp3">("mp4");
+  const [torrentBase64, setTorrentBase64] = useState<string>("");
+  const torrentFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleTorrentFileSelected = (file: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.includes(",") ? result.split(",")[1] : result;
+      setTorrentBase64(base64 || "");
+      setNewUrl(file.name);
+      setNewFilename(file.name.replace(/\.torrent$/i, ""));
+      setProbeResult({
+        url: file.name,
+        filename: file.name.replace(/\.torrent$/i, ""),
+        size: file.size,
+        formattedSize: `${(file.size / 1024).toFixed(1)} KB (Torrent)`,
+        resumeSupported: true,
+        category: "torrents",
+        contentType: "application/x-bittorrent",
+        isMedia: false,
+        defaultDir: settingsData.downloadDir || "~/Downloads",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const inspectingTask = tasks.find((t) => t.id === inspectingTaskId) || null;
   const [probeResult, setProbeResult] = useState<{
     url: string;
     filename: string;
@@ -453,6 +503,7 @@ export function App() {
             headers: {
               format: downloadFormat === "mp3" ? "audio" : "video",
             },
+            torrentBase64: torrentBase64 || undefined,
             start: startImmediately,
           },
         }),
@@ -470,6 +521,7 @@ export function App() {
     setNewFilename("");
     setSaveDir("");
     setProbeResult(null);
+    setTorrentBase64("");
     setDownloadFormat("mp4");
   };
 
@@ -481,7 +533,7 @@ export function App() {
     if (!matchesSearch) return false;
 
     if (activeCategory) {
-      return getCategory(task.filename || task.url) === activeCategory;
+      return getCategory(task.filename || task.url, task.url, task.isTorrent) === activeCategory;
     }
     if (activeFilter === "downloading") return task.status === "downloading" || task.status === "retrying";
     if (activeFilter === "completed") return task.status === "completed";
@@ -492,6 +544,28 @@ export function App() {
   });
 
   const selectedTask = tasks.find((t) => t.id === selectedId) || tasks[0];
+
+  const speedSvgPaths = useMemo(() => {
+    if (!selectedTask?.speedHistory || selectedTask.speedHistory.length < 2) {
+      return {
+        line: "M0.75 49.8L9.75 39.3L18.75 43L27.75 31.8L36.75 37L45.75 33.3L54.75 28.8L63.75 36.3L72.75 23.5L81.75 26.5L90.75 16.8L99.75 25L108.75 20.5L117.75 22.8L126.75 15.3L135.75 19L144.75 13.8L153.75 17.5L162.75 9.3L171.75 14.5L180.75 8.5L189.75 10.8L198.75 4L207.75 10L216.75 5.5L225.75 7L234.75 3.3L243.75 6.3L252.75 1L261.75 4",
+        area: "M0.75 49.8L9.75 39.3L18.75 43L27.75 31.8L36.75 37L45.75 33.3L54.75 28.8L63.75 36.3L72.75 23.5L81.75 26.5L90.75 16.8L99.75 25L108.75 20.5L117.75 22.8L126.75 15.3L135.75 19L144.75 13.8L153.75 17.5L162.75 9.3L171.75 14.5L180.75 8.5L189.75 10.8L198.75 4L207.75 10L216.75 5.5L225.75 7L234.75 3.3L243.75 6.3L252.75 1L261.75 4 L261.75 50 L0.75 50 Z",
+      };
+    }
+    const history = selectedTask.speedHistory;
+    const max = Math.max(...history, 1024 * 1024);
+    const width = 262;
+    const height = 50;
+    const step = width / (history.length - 1);
+    const points = history.map((val, idx) => {
+      const x = idx * step;
+      const y = height - Math.max(2, (val / max) * (height - 4));
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const line = "M" + points.join(" L");
+    const area = `${line} L${width},${height} L0,${height} Z`;
+    return { line, area };
+  }, [selectedTask?.speedHistory]);
   const totalSpeed = tasks
     .filter((t) => t.status === "downloading")
     .reduce((sum, t) => sum + (t.speed || 0), 0);
@@ -719,6 +793,7 @@ export function App() {
                 </div>
                 <div className="space-y-0.5">
                   {[
+                    { id: "torrents", label: t.torrents, icon: Magnet },
                     { id: "video", label: t.video, icon: Film },
                     { id: "music", label: t.music, icon: Music },
                     { id: "documents", label: t.documents, icon: FileText },
@@ -973,19 +1048,21 @@ export function App() {
                           const pct = task.totalBytes > 0 ? (task.completedBytes / task.totalBytes) * 100 : 0;
                           const remainingBytes = task.totalBytes - task.completedBytes;
                           const etaSec = task.speed > 0 ? remainingBytes / task.speed : 0;
-                          const FileIcon = getFileIcon(task.filename || task.url);
+                          const FileIcon = getFileIcon(task.filename || task.url, task.url, task.isTorrent);
 
                           let hostname = "";
                           try {
                             hostname = new URL(task.url).hostname;
                           } catch {
-                            hostname = task.url;
+                            hostname = task.url.startsWith("magnet:?") ? "magnet: P2P Swarm" : task.url;
                           }
 
                           return (
                             <tr
                               key={task.id}
                               onClick={() => setSelectedId(task.id)}
+                              onDoubleClick={() => setInspectingTaskId(task.id)}
+                              title={lang === "en" ? "Double click to inspect segments & speed (IDM Dialog)" : "Klik 2x untuk buka inspektor segmen & kecepatan (IDM)"}
                               className={`cursor-pointer transition-colors relative ${isSelected
                                   ? "bg-[#edeaf9] dark:bg-[#6554c0]/25 text-[#202631] dark:text-white"
                                   : "hover:bg-[#fbfbfd] dark:hover:bg-[#1c1e2d] bg-white/70 dark:bg-[#151724]/70 text-[#202631] dark:text-[#e2e4ea]"
@@ -1129,16 +1206,26 @@ export function App() {
                           {selectedTask.connections || 8} {lang === "en" ? "active connections · Resume supported" : "koneksi aktif · Resume didukung"}
                         </p>
                       </div>
-                      <button
-                        onClick={() => {
-                          executeAction("task.openFolder", { id: selectedTask.id });
-                          postWindowMessage(`openFolder:${selectedTask.dir || ""}`);
-                        }}
-                        className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2"
-                      >
-                        <FolderOpen className="w-4 h-4 text-[#6e7685] dark:text-[#a79be8]" />
-                        <span>{lang === "en" ? "Open Folder" : "Buka folder"}</span>
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setInspectingTaskId(selectedTask.id)}
+                          className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 border border-[#6554c0]/30 hover:border-[#6554c0]"
+                          title={lang === "en" ? "Inspect Segments & Speed" : "Inspeksi Segmen & Kecepatan"}
+                        >
+                          <Maximize2 className="w-4 h-4 text-[#6554c0] dark:text-[#a79be8]" />
+                          <span>{lang === "en" ? "Inspect" : "Inspeksi"}</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            executeAction("task.openFolder", { id: selectedTask.id });
+                            postWindowMessage(`openFolder:${selectedTask.dir || ""}`);
+                          }}
+                          className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2"
+                        >
+                          <FolderOpen className="w-4 h-4 text-[#6e7685] dark:text-[#a79be8]" />
+                          <span>{lang === "en" ? "Open Folder" : "Buka folder"}</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* TRANSFER STATS & PROGRES PER KONEKSI (Exact Figma layout) */}
@@ -1163,7 +1250,7 @@ export function App() {
                             </p>
                           </div>
 
-                          {/* Figma Speed Graph SVG (Node 2:360) */}
+                          {/* Dynamic Speed Graph SVG */}
                           <div className="w-[160px] h-[45px] relative">
                             <svg
                               preserveAspectRatio="none"
@@ -1174,17 +1261,17 @@ export function App() {
                             >
                               <defs>
                                 <linearGradient id="speedGrad" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="#6554C0" stopOpacity="0.3" />
+                                  <stop offset="0%" stopColor="#6554C0" stopOpacity="0.35" />
                                   <stop offset="100%" stopColor="#6554C0" stopOpacity="0.0" />
                                 </linearGradient>
                               </defs>
                               <path
-                                d="M0.75 49.8L9.75 39.3L18.75 43L27.75 31.8L36.75 37L45.75 33.3L54.75 28.8L63.75 36.3L72.75 23.5L81.75 26.5L90.75 16.8L99.75 25L108.75 20.5L117.75 22.8L126.75 15.3L135.75 19L144.75 13.8L153.75 17.5L162.75 9.3L171.75 14.5L180.75 8.5L189.75 10.8L198.75 4L207.75 10L216.75 5.5L225.75 7L234.75 3.3L243.75 6.3L252.75 1L261.75 4"
+                                d={speedSvgPaths.line}
                                 strokeWidth="2"
                                 stroke="#6554C0"
                               />
                               <path
-                                d="M0.75 49.8L9.75 39.3L18.75 43L27.75 31.8L36.75 37L45.75 33.3L54.75 28.8L63.75 36.3L72.75 23.5L81.75 26.5L90.75 16.8L99.75 25L108.75 20.5L117.75 22.8L126.75 15.3L135.75 19L144.75 13.8L153.75 17.5L162.75 9.3L171.75 14.5L180.75 8.5L189.75 10.8L198.75 4L207.75 10L216.75 5.5L225.75 7L234.75 3.3L243.75 6.3L252.75 1L261.75 4 L261.75 50 L0.75 50 Z"
+                                d={speedSvgPaths.area}
                                 fill="url(#speedGrad)"
                               />
                             </svg>
@@ -1197,33 +1284,67 @@ export function App() {
                         </div>
                       </div>
 
-                      {/* Progres per koneksi (Figma 8 segmen paralel) */}
+                      {/* Progres per koneksi (Figma 8 segmen paralel) atau Torrent Swarm */}
                       <div className="col-span-7">
-                        <p className="text-[9px] font-semibold text-[#6e7685] dark:text-[#9ea4b5] uppercase tracking-wide mb-2">
-                          {lang === "en" ? "PROGRESS PER CONNECTION" : "PROGRES PER KONEKSI"}
-                        </p>
-                        <div className="grid grid-cols-4 gap-x-4 gap-y-2">
-                          {Array.from({ length: selectedTask.connections || 8 }).map((_, idx) => (
-                            <div key={idx} className="flex items-center space-x-2">
-                              <span className="text-[9px] text-[#6e7685] dark:text-[#9ea4b5] font-mono">
-                                {String(idx + 1).padStart(2, "0")}
-                              </span>
-                              <div className="flex-1 h-[5px] bg-[#eceaf4] dark:bg-[#252838] rounded-[2px] overflow-hidden">
-                                <div
-                                  className="h-full bg-[#6554c0] dark:bg-[#8b7ce0] rounded-[2px] transition-all duration-300"
-                                  style={{
-                                    width: `${selectedTask.status === "downloading"
-                                      ? Math.min(100, Math.max(15, ((idx + 1) * 14.5) % 100))
-                                      : selectedTask.status === "completed"
-                                        ? 100
-                                        : 0
-                                      }%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ))}
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[9px] font-semibold text-[#6e7685] dark:text-[#9ea4b5] uppercase tracking-wide">
+                            {selectedTask.isTorrent
+                              ? (lang === "en" ? "BITTORRENT SWARM" : "SWARM BITTORRENT")
+                              : (lang === "en" ? "PROGRESS PER CONNECTION" : "PROGRES PER KONEKSI")}
+                          </p>
+                          {selectedTask.isTorrent && (
+                            <span className="text-[10px] text-[#218163] dark:text-[#38d49a] font-medium flex items-center gap-1">
+                              <Radio className="w-3 h-3" />
+                              {selectedTask.numSeeders || 0} {lang === "en" ? "seeders" : "seeder"}
+                            </span>
+                          )}
                         </div>
+                        {selectedTask.isTorrent ? (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[10px] text-[#6e7685] dark:text-[#9ea4b5]">
+                              <span className="flex items-center gap-1">
+                                <ArrowUp className="w-3 h-3 text-[#3b82f6]" />
+                                {lang === "en" ? "Upload:" : "Unggah:"} {(selectedTask.uploadSpeed ? (selectedTask.uploadSpeed / (1024 * 1024)).toFixed(2) : "0.00")} MB/s
+                              </span>
+                              <span>
+                                {selectedTask.numPieces ? `${selectedTask.numPieces} ${lang === "en" ? "pieces" : "bagian"}` : "P2P Mesh"}
+                              </span>
+                            </div>
+                            <div className="h-[7px] bg-[#eceaf4] dark:bg-[#252838] rounded-[3px] overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-[#6554c0] to-[#3b82f6] rounded-[3px] transition-all duration-300"
+                                style={{
+                                  width: `${selectedTask.totalBytes > 0
+                                    ? Math.min(100, (selectedTask.completedBytes / selectedTask.totalBytes) * 100)
+                                    : 0}%`
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-4 gap-x-4 gap-y-2">
+                            {Array.from({ length: selectedTask.connections || 8 }).map((_, idx) => (
+                              <div key={idx} className="flex items-center space-x-2">
+                                <span className="text-[9px] text-[#6e7685] dark:text-[#9ea4b5] font-mono">
+                                  {String(idx + 1).padStart(2, "0")}
+                                </span>
+                                <div className="flex-1 h-[5px] bg-[#eceaf4] dark:bg-[#252838] rounded-[2px] overflow-hidden">
+                                  <div
+                                    className="h-full bg-[#6554c0] dark:bg-[#8b7ce0] rounded-[2px] transition-all duration-300"
+                                    style={{
+                                      width: `${selectedTask.status === "downloading"
+                                        ? Math.min(100, Math.max(15, ((idx + 1) * 14.5) % 100))
+                                        : selectedTask.status === "completed"
+                                          ? 100
+                                          : 0
+                                        }%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <p className="text-[9px] text-[#6e7685] dark:text-[#9ea4b5] mt-2">
                           {lang === "en" ? "Location:" : "Lokasi:"} {selectedTask.dir || "~/Downloads"}
                         </p>
@@ -1288,11 +1409,31 @@ export function App() {
             <div className="space-y-3.5 text-[12px]">
               {/* URL Input */}
               <div>
-                <label className="block text-[#6e7685] dark:text-[#9ea4b5] mb-1 font-medium">{t.enterUrl}</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[#6e7685] dark:text-[#9ea4b5] font-medium">{t.enterUrl}</label>
+                  <button
+                    type="button"
+                    onClick={() => torrentFileInputRef.current?.click()}
+                    className="text-[11px] text-[#6554c0] dark:text-[#a79be8] hover:underline font-normal cursor-pointer flex items-center gap-1"
+                  >
+                    <Magnet className="w-3 h-3" />
+                    <span>{lang === "en" ? "Select .torrent file" : "Pilih file .torrent"}</span>
+                  </button>
+                  <input
+                    type="file"
+                    ref={torrentFileInputRef}
+                    accept=".torrent"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleTorrentFileSelected(f);
+                    }}
+                  />
+                </div>
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="https://example.com/file.zip or YouTube URL"
+                    placeholder="https://example.com/file.zip or magnet:?xt=... or YouTube URL"
                     value={newUrl}
                     onChange={(e) => handleUrlChange(e.target.value)}
                     className="w-full bg-[#f7f8fa] dark:bg-[#12131b] border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[6px] px-3 py-2 text-[#202631] dark:text-white focus:outline-none focus:border-[#6554c0] pr-8"
@@ -1511,6 +1652,15 @@ export function App() {
             </div>
           </div>
         </div>
+      )}
+      {/* DETAIL UNDUHAN & INSPEKTOR SEGMEN MODAL (IDM Style) */}
+      {inspectingTask && (
+        <DownloadDetailModal
+          task={inspectingTask}
+          lang={lang}
+          onClose={() => setInspectingTaskId(null)}
+          onAction={executeAction}
+        />
       )}
     </div>
   );

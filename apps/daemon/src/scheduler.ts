@@ -116,11 +116,13 @@ export class SchedulerEngine {
     if (slotsAvailable > 0 && pending.length > 0) {
       this.hasTriggeredFinish = false;
       for (let i = 0; i < Math.min(slotsAvailable, pending.length); i++) {
-        log.info(`Scheduler mengaktifkan unduhan: ${pending[i].filename || pending[i].url}`);
+        const task = pending[i];
+        if (!task) continue;
+        log.info(`Scheduler mengaktifkan unduhan: ${task.filename || task.url}`);
         try {
-          this.manager.resume(pending[i].id);
+          this.manager.resume(task.id);
         } catch (err) {
-          log.warn(`Scheduler gagal melanjutkan ${pending[i].id}:`, err);
+          log.warn(`Scheduler gagal melanjutkan ${task.id}:`, err);
         }
       }
     }

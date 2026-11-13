@@ -28,6 +28,15 @@ interface Runtime {
   nextRetryAt: number | null;
   retryTimer: NodeJS.Timeout | null;
   dirty: boolean;
+  isTorrent?: boolean;
+  uploadSpeed?: number;
+  uploadBytes?: number;
+  numSeeders?: number;
+  pieceLength?: number;
+  numPieces?: number;
+  bitfield?: string;
+  speedHistory?: number[];
+  torrentBase64?: string;
 }
 
 const TICK_MS = 1000;
@@ -132,8 +141,10 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
       updatedAt: now,
       completedAt: null,
     };
+    const rt = emptyRuntime();
+    if (input.torrentBase64) rt.torrentBase64 = input.torrentBase64;
     this.tasks.set(t.id, t);
-    this.rt.set(t.id, emptyRuntime());
+    this.rt.set(t.id, rt);
     this.store.upsert(t);
     log.info(`Tambah ${t.id} ${t.url}`);
     if (s.notifyOnStart) {
@@ -351,6 +362,7 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
         filename: t.filename || undefined,
         connections: t.connections,
         headers: t.headers ?? undefined,
+        torrentBase64: r.torrentBase64,
       });
       // Pengguna bisa saja menjeda/membatalkan selama addUri berjalan.
       if (t.status !== "downloading" || !this.tasks.has(t.id)) {
@@ -452,6 +464,28 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
     r.speed = s.speed;
     r.activeConnections = s.connections;
     r.dirty = true;
+
+    // Real-time speed history for IDM sparkline chart
+    const history = r.speedHistory || [];
+    history.push(s.speed);
+    if (history.length > 40) history.shift();
+    r.speedHistory = history;
+
+    // BitTorrent & Segment tracking
+    r.isTorrent = s.isTorrent || t.url.startsWith("magnet:?") || t.url.endsWith(".torrent");
+    if (s.uploadSpeed !== undefined) r.uploadSpeed = s.uploadSpeed;
+    if (s.uploadBytes !== undefined) r.uploadBytes = s.uploadBytes;
+    if (s.numSeeders !== undefined) r.numSeeders = s.numSeeders;
+    if (s.pieceLength !== undefined) r.pieceLength = s.pieceLength;
+    if (s.numPieces !== undefined) r.numPieces = s.numPieces;
+    if (s.bitfield !== undefined) r.bitfield = s.bitfield;
+
+    // Magnet links: transition from metadata GID to payload GID
+    if (s.followedBy && s.followedBy[0] && (s.state === "complete" || s.state === "active")) {
+      log.info(`Magnet link metadata downloaded for ${t.id}, transitioning to payload GID ${s.followedBy[0]}`);
+      r.jobId = s.followedBy[0];
+      return;
+    }
 
     switch (s.state) {
       case "active":
@@ -567,7 +601,19 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
 
   private toPublic(t: StoredTask): Task {
     const r = this.runtime(t.id);
-    return toPublicTask(t, { speed: r.speed, activeConnections: r.activeConnections, nextRetryAt: r.nextRetryAt });
+    return toPublicTask(t, {
+      speed: r.speed,
+      activeConnections: r.activeConnections,
+      nextRetryAt: r.nextRetryAt,
+      isTorrent: r.isTorrent,
+      uploadSpeed: r.uploadSpeed,
+      uploadBytes: r.uploadBytes,
+      numSeeders: r.numSeeders,
+      pieceLength: r.pieceLength,
+      numPieces: r.numPieces,
+      bitfield: r.bitfield,
+      speedHistory: r.speedHistory,
+    });
   }
 
   private emitTask(t: StoredTask): void {

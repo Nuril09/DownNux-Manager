@@ -62,6 +62,31 @@ export async function probeUrl(
   customHeaders?: Record<string, string>,
   categoryDirs?: Record<string, string>,
 ): Promise<UrlProbeResult> {
+  // 0. Magnet Link Probe
+  if (url.startsWith("magnet:?")) {
+    const dnMatch = url.match(/[?&]dn=([^&]+)/i);
+    const xtMatch = url.match(/[?&]xt=urn:btih:([^&]+)/i);
+    const dnStr = dnMatch?.[1];
+    const xtStr = xtMatch?.[1];
+    const name = dnStr
+      ? decodeURIComponent(dnStr.replace(/\+/g, " "))
+      : xtStr
+        ? `torrent-${xtStr.slice(0, 8)}`
+        : "torrent-download";
+
+    return {
+      url,
+      filename: name,
+      size: 0,
+      formattedSize: "P2P Swarm",
+      resumeSupported: true,
+      category: "compressed",
+      contentType: "application/x-bittorrent",
+      isMedia: false,
+      defaultDir: baseDownloadDir,
+    };
+  }
+
   const isMedia = isMediaSite(url);
 
   // 1. YouTube / Social Video Probe via yt-dlp
@@ -180,7 +205,7 @@ export async function probeUrl(
       const u = new URL(url);
       const last = u.pathname.split("/").filter(Boolean).pop();
       if (last) {
-        filename = decodeURIComponent(last).split("?")[0];
+        filename = decodeURIComponent(last).split("?")[0] || "download.bin";
       }
     } catch {}
   }

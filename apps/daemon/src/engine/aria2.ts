@@ -103,10 +103,22 @@ interface RpcStatus {
   totalLength: string;
   completedLength: string;
   downloadSpeed: string;
+  uploadSpeed?: string;
+  uploadLength?: string;
   connections: string;
+  numSeeders?: string;
+  pieceLength?: string;
+  numPieces?: string;
+  bitfield?: string;
   errorCode?: string;
   errorMessage?: string;
   files?: { path: string }[];
+  bittorrent?: {
+    info?: { name?: string };
+    mode?: string;
+  };
+  infoHash?: string;
+  followedBy?: string[];
 }
 
 export function findAria2Binary(preferred?: string): string | null {
@@ -209,6 +221,13 @@ export class Aria2Engine extends EventEmitter<EngineEvents> implements DownloadE
       `--log=${path.join(this.opts.logDir, "aria2.log")}`,
       "--check-certificate=true",
       "--http-accept-gzip=false",
+      // BitTorrent & Magnet engine settings
+      "--enable-dht=true",
+      "--enable-peer-exchange=true",
+      "--bt-enable-lpd=true",
+      "--bt-max-peers=55",
+      "--follow-torrent=mem",
+      "--seed-time=0",
     ];
     if (this.globalLimit > 0) args.push(`--max-overall-download-limit=${this.globalLimit}`);
 
@@ -284,6 +303,22 @@ export class Aria2Engine extends EventEmitter<EngineEvents> implements DownloadE
     if (h?.cookie) options.header = [`Cookie: ${h.cookie}`];
     if (h?.referer) options.referer = h.referer;
     if (h?.userAgent) options["user-agent"] = h.userAgent;
+
+    // 1. BitTorrent from Base64
+    if (spec.torrentBase64) {
+      return this.rpc<string>("aria2.addTorrent", [spec.torrentBase64, [], options]);
+    }
+
+    // 2. BitTorrent from local .torrent file
+    if (spec.url.startsWith("file://") || spec.url.startsWith("/")) {
+      const filePath = spec.url.replace(/^file:\/\//, "");
+      if (filePath.endsWith(".torrent") && fs.existsSync(filePath)) {
+        const b64 = fs.readFileSync(filePath).toString("base64");
+        return this.rpc<string>("aria2.addTorrent", [b64, [], options]);
+      }
+    }
+
+    // 3. Magnet or Standard HTTP/HTTPS
     return this.rpc<string>("aria2.addUri", [[spec.url], options]);
   }
 
@@ -320,10 +355,19 @@ export class Aria2Engine extends EventEmitter<EngineEvents> implements DownloadE
       "totalLength",
       "completedLength",
       "downloadSpeed",
+      "uploadSpeed",
+      "uploadLength",
       "connections",
+      "numSeeders",
+      "pieceLength",
+      "numPieces",
+      "bitfield",
       "errorCode",
       "errorMessage",
       "files",
+      "bittorrent",
+      "infoHash",
+      "followedBy",
     ];
     const calls = gids.map((gid) => ({
       methodName: "aria2.tellStatus",
@@ -339,13 +383,25 @@ export class Aria2Engine extends EventEmitter<EngineEvents> implements DownloadE
       }
       const s = r[0] as RpcStatus;
       const isError = s.status === "error";
+      const isTorrent = Boolean(s.bittorrent || s.infoHash);
+      const torrentName = s.bittorrent?.info?.name;
+      const filePath = s.files?.[0]?.path ?? "";
+
       out.set(gid, {
         state: s.status as JobStatus["state"],
         totalBytes: Number(s.totalLength) || 0,
         completedBytes: Number(s.completedLength) || 0,
         speed: Number(s.downloadSpeed) || 0,
+        uploadSpeed: Number(s.uploadSpeed) || 0,
+        uploadBytes: Number(s.uploadLength) || 0,
         connections: Number(s.connections) || 0,
-        path: s.files?.[0]?.path ?? "",
+        numSeeders: Number(s.numSeeders) || 0,
+        pieceLength: Number(s.pieceLength) || 0,
+        numPieces: Number(s.numPieces) || 0,
+        bitfield: s.bitfield || "",
+        isTorrent,
+        followedBy: s.followedBy,
+        path: filePath || torrentName || "",
         error: isError
           ? {
               code: `aria2:${s.errorCode ?? "?"}`,

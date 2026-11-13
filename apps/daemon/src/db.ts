@@ -157,7 +157,19 @@ function fromRow(r: Row): StoredTask {
 
 export function toPublicTask(
   t: StoredTask,
-  runtime: { speed: number; activeConnections: number; nextRetryAt: number | null },
+  runtime: {
+    speed: number;
+    activeConnections: number;
+    nextRetryAt: number | null;
+    isTorrent?: boolean;
+    uploadSpeed?: number;
+    uploadBytes?: number;
+    numSeeders?: number;
+    pieceLength?: number;
+    numPieces?: number;
+    bitfield?: string;
+    speedHistory?: number[];
+  },
 ): Task {
   return {
     id: t.id,
@@ -177,6 +189,15 @@ export function toPublicTask(
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
     completedAt: t.completedAt,
+
+    isTorrent: runtime.isTorrent ?? (t.url.startsWith("magnet:?") || t.url.endsWith(".torrent") || false),
+    uploadSpeed: runtime.uploadSpeed ?? 0,
+    uploadBytes: runtime.uploadBytes ?? 0,
+    numSeeders: runtime.numSeeders ?? 0,
+    pieceLength: runtime.pieceLength ?? 0,
+    numPieces: runtime.numPieces ?? 0,
+    bitfield: runtime.bitfield ?? "",
+    speedHistory: runtime.speedHistory ?? [],
   };
 }
 

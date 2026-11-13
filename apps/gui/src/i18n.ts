@@ -26,6 +26,8 @@ export const translations = {
     documents: "Documents",
     compressed: "Compressed / Archive",
     programs: "Programs & Installers",
+    torrents: "Torrents & Magnet",
+    torrent: "Torrents",
     other: "Other",
     // Table Headers
     filename: "File Name",
@@ -37,7 +39,9 @@ export const translations = {
     added: "Added On",
     // Dialogs
     addUrlTitle: "Add New Download",
-    enterUrl: "Enter download URL (HTTP/HTTPS):",
+    enterUrl: "Enter URL (HTTP/HTTPS), Magnet link, or select .torrent:",
+    uploadTorrent: "Choose .torrent File",
+    orDropTorrent: "or drop .torrent file here",
     customFilename: "Custom File Name (optional):",
     saveFolder: "Save Folder:",
     browseFolder: "Browse...",
@@ -53,6 +57,16 @@ export const translations = {
     startDownloadBtn: "Start Download",
     close: "Close",
     save: "Save",
+    // IDM Inspector
+    seeders: "Seeders / Peers",
+    uploadSpeed: "Upload Speed",
+    transferred: "Transferred",
+    segmentMap: "Segment & Connection Map (IDM)",
+    downloadStatus: "Download Status & Connection Inspector",
+    thread: "Thread",
+    realtimeSpeed: "Real-Time Speed Chart",
+    peakSpeed: "Peak Speed",
+    avgSpeed: "Average Speed",
     // Settings
     settingsTitle: "Preferences & Settings",
     language: "Display Language",
@@ -146,6 +160,8 @@ export const translations = {
     documents: "Dokumen",
     compressed: "Kompresi / Arsip",
     programs: "Program & Installer",
+    torrents: "Torrent & Magnet",
+    torrent: "Torrent",
     other: "Lainnya",
     // Table Headers
     filename: "Nama File",
@@ -157,7 +173,9 @@ export const translations = {
     added: "Ditambahkan",
     // Dialogs
     addUrlTitle: "Tambah Download Baru",
-    enterUrl: "Tempel URL download (HTTP/HTTPS):",
+    enterUrl: "Tempel URL (HTTP/HTTPS), link Magnet, atau pilih .torrent:",
+    uploadTorrent: "Pilih File .torrent",
+    orDropTorrent: "atau lepas file .torrent ke sini",
     customFilename: "Nama File Khusus (opsional):",
     saveFolder: "Simpan ke Folder:",
     browseFolder: "Pilih Folder...",
@@ -173,6 +191,16 @@ export const translations = {
     startDownloadBtn: "Mulai Unduh",
     close: "Tutup",
     save: "Simpan",
+    // IDM Inspector
+    seeders: "Seeder / Peer",
+    uploadSpeed: "Kecepatan Upload",
+    transferred: "Ditransfer",
+    segmentMap: "Peta Segmen & Koneksi (IDM)",
+    downloadStatus: "Status Unduhan & Inspektor Koneksi",
+    thread: "Thread",
+    realtimeSpeed: "Grafik Kecepatan Real-Time",
+    peakSpeed: "Kecepatan Puncak",
+    avgSpeed: "Rata-rata Kecepatan",
     // Settings
     settingsTitle: "Pengaturan Aplikasi",
     language: "Bahasa Tampilan",

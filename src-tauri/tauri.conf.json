@@ -27,13 +27,22 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage", "nsis", "msi", "dmg"],
+    "targets": [
+      "deb",
+      "appimage",
+      "nsis",
+      "msi",
+      "dmg"
+    ],
     "icon": [
       "icons/icon.png"
     ],
     "linux": {
       "deb": {
-        "depends": ["aria2", "libwebkit2gtk-4.1-0"]
+        "depends": [
+          "aria2",
+          "libwebkit2gtk-4.1-0"
+        ]
       }
     },
     "windows": {

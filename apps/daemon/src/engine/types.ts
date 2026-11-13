@@ -15,6 +15,8 @@ export interface JobSpec {
   headers?: RequestHeaders;
   /** byte/detik, 0 = tanpa batas. */
   speedLimit?: number;
+  /** Optional base64-encoded torrent data for .torrent uploads */
+  torrentBase64?: string;
 }
 
 /** Cara manager harus menanggapi error dari engine. */
@@ -45,6 +47,16 @@ export interface JobStatus {
   /** Path file final jika sudah diketahui. */
   path: string;
   error: JobError | null;
+
+  // Extended BitTorrent & Segment data
+  isTorrent?: boolean;
+  uploadSpeed?: number;
+  uploadBytes?: number;
+  numSeeders?: number;
+  pieceLength?: number;
+  numPieces?: number;
+  bitfield?: string;
+  followedBy?: string[];
 }
 
 export interface EngineEvents {
@@ -64,4 +76,3 @@ export interface DownloadEngine extends EventEmitter<EngineEvents> {
   statusMany(jobIds: string[]): Promise<Map<string, JobStatus | null>>;
   setGlobalSpeedLimit(bytesPerSec: number): Promise<void>;
 }
-

@@ -102,7 +102,8 @@ export class IpcServer {
               res.end(JSON.stringify({ error: { code: "UNKNOWN_METHOD", message: "Method unknown" } }));
               return;
             }
-            const params = MethodParams[parsed.method].parse(parsed.params ?? {});
+            const schema = (MethodParams as Record<string, any>)[parsed.method];
+            const params = schema ? schema.parse(parsed.params ?? {}) : (parsed.params ?? {});
             const result = await this.handler(parsed.method, params);
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ result }));

@@ -26,14 +26,22 @@ export const RequestHeaders = z.object({
   cookie: z.string().max(64 * 1024).optional(),
   referer: z.string().max(8 * 1024).optional(),
   userAgent: z.string().max(1024).optional(),
+  format: z.string().optional(),
 });
 export type RequestHeaders = z.infer<typeof RequestHeaders>;
 
 export const AddTaskInput = z.object({
   url: z
     .string()
-    .url()
-    .refine((u) => /^https?:\/\//i.test(u), "Hanya URL http/https yang didukung"),
+    .min(1)
+    .refine(
+      (u) =>
+        /^(https?:\/\/|magnet:\?|file:\/\/|\/)/i.test(u) ||
+        u.endsWith(".torrent") ||
+        u.startsWith("data:application/x-bittorrent"),
+      "URL harus berupa http/https, magnet link (magnet:?), atau file .torrent",
+    ),
+  torrentBase64: z.string().optional(),
   /** Folder tujuan absolut. Kosong = folder default dari pengaturan. */
   dir: z.string().optional(),
   /** Nama file. Kosong = ditentukan dari server (Content-Disposition / URL). */
@@ -73,6 +81,15 @@ export const Task = z.object({
   createdAt: z.number(),
   updatedAt: z.number(),
   completedAt: z.number().nullable(),
+
+  // Extended fields for BitTorrent & Advanced Segment/Speed Inspector
+  isTorrent: z.boolean().optional(),
+  uploadSpeed: z.number().optional(),
+  uploadBytes: z.number().optional(),
+  numSeeders: z.number().optional(),
+  pieceLength: z.number().optional(),
+  numPieces: z.number().optional(),
+  bitfield: z.string().optional(),
+  speedHistory: z.array(z.number()).optional(),
 });
 export type Task = z.infer<typeof Task>;
-
