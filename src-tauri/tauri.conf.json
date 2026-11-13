@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm --prefix apps/gui run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm --prefix apps/gui run build",
+    "beforeBuildCommand": "",
     "frontendDist": "../apps/gui/dist"
   },
   "app": {

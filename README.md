@@ -13,7 +13,7 @@
   <a href="https://github.com/Nuril09/DownNux-Manager/releases/latest"><img src="https://img.shields.io/badge/Release-v0.0.4-6554c0?style=flat-square" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License GPL-3.0"></a>
   <a href="#"><img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-informational?style=flat-square" alt="Platforms"></a>
-  <a href="https://github.com/Nuril09/DownNux-Manager"><img src="https://img.shields.io/badge/Maintained%20by-HoodTech-8a2be2?style=flat-square" alt="HoodTech"></a>
+  <a href="https://hoodtech.my.id/"><img src="https://img.shields.io/badge/Maintained%20by-HoodTech-8a2be2?style=flat-square" alt="HoodTech"></a>
 </p>
 
 ---
@@ -22,7 +22,7 @@
 
 DownNux Manager brings the battle-tested multi-threaded acceleration workflow of Internet Download Manager (IDM) into a modern, cross-platform ecosystem. Instead of relying on a single HTTP stream, DownNux splits downloads into up to **32 parallel Range connections**, monitors chunk transfers in real time, and persists byte offsets in SQLite WAL storage so interrupted downloads resume instantly without losing data.
 
-Engineered and maintained by **HoodTech**.
+Engineered and maintained by [**HoodTech**](https://hoodtech.my.id/).
 
 ---
 
@@ -239,10 +239,10 @@ systemctl --user restart downnux-daemon
 
 ## Credits & License
 
-DownNux Manager is engineered with ❤️ by the **HoodTech** team.
+DownNux Manager is engineered with ❤️ by the [**HoodTech**](https://hoodtech.my.id/) team.
 
-* **Project Lead**: HoodTech (<https://github.com/Nuril09/DownNux-Manager>)
+* **Project Lead & Organization**: [HoodTech](https://hoodtech.my.id/) (<https://hoodtech.my.id/>)
 * **Underlying Engines**: `aria2`, `yt-dlp`, `FFmpeg`, `Tauri`
 * **License**: Released under the **GNU General Public License v3.0 (GPLv3)**. See [LICENSE](LICENSE) for details.
 
-Copyright (C) 2026 **HoodTech**.
+Copyright (C) 2026 [**HoodTech**](https://hoodtech.my.id/).
