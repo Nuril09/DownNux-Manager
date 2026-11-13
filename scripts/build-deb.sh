@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # DownNux Manager — Official Debian / Ubuntu (.deb) Package Builder
-# Developed by CreativeMichiz <https://github.com/CreativeMichiz>
+# Developed by HoodTech <https://github.com/Nuril09/DownNux-Manager>
 # GNU General Public License v3.0
 # ==============================================================================
 
@@ -66,7 +66,7 @@ Version: $PKG_VERSION
 Section: utils
 Priority: optional
 Architecture: amd64
-Maintainer: CreativeMichiz <https://github.com/CreativeMichiz>
+Maintainer: HoodTech <https://github.com/Nuril09/DownNux-Manager>
 Depends: nodejs (>= 18.0.0), python3, python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1 | gir1.2-webkit2-4.0
 Recommends: aria2, ffmpeg
 Description: Professional, segmented multi-connection download manager for Linux

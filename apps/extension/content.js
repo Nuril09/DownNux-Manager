@@ -1,5 +1,5 @@
 // DownNux Manager — Premium Video Sniffing & Floating Download Widget (MV3)
-// CreativeMichiz <https://github.com/CreativeMichiz>
+// HoodTech <https://github.com/Nuril09/DownNux-Manager>
 
 (function () {
   "use strict";

@@ -1,5 +1,5 @@
 // DownNux Manager — Popup Script
-// CreativeMichiz
+// HoodTech
 
 function fmtBytes(n) {
   if (!n) return "Unknown size";

@@ -2,7 +2,8 @@
   "name": "downnux-manager",
   "private": true,
   "version": "0.0.4",
-  "description": "DownNux Manager for Linux by CreativeMichiz",
+  "description": "DownNux Manager — Modern High-Speed Download Accelerator by HoodTech",
+  "author": "HoodTech <https://github.com/Nuril09/DownNux-Manager>",
   "type": "module",
   "packageManager": "pnpm@10.34.9",
   "engines": {
@@ -20,6 +21,7 @@
     "install-dev": "bash scripts/install-dev.sh"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^22.10.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"

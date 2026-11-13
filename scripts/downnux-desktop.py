@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ==============================================================================
 # DownNux Manager — Native Linux GTK3/WebKit Desktop Window
-# CreativeMichiz <https://github.com/CreativeMichiz>
+# HoodTech <https://github.com/Nuril09/DownNux-Manager>
 # GNU General Public License v3.0
 # ==============================================================================
 

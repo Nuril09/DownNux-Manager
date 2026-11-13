@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # DownNux Manager — Local Developer / User Installer
-# CreativeMichiz <https://github.com/CreativeMichiz>
+# HoodTech <https://github.com/Nuril09/DownNux-Manager>
 # GNU General Public License v3.0
 
 set -e
@@ -18,7 +18,7 @@ else
   ESBUILD=$(find "$ROOT_DIR/node_modules" -name esbuild -type f -perm /111 2>/dev/null | head -n 1)
 fi
 
-echo "=== DownNux Manager Setup by CreativeMichiz ==="
+echo "=== DownNux Manager Setup by HoodTech ==="
 
 # 1. Generate Extension Key and ID
 EXT_ID=$(node --import tsx "$ROOT_DIR/scripts/extension-id.ts")
@@ -120,7 +120,7 @@ HOST_PATH="$ROOT_DIR/apps/native-host/dist/downnux-native-host"
 CHROMIUM_MANIFEST=$(cat <<EOF
 {
   "name": "com.creativemichiz.downnux.native_host",
-  "description": "DownNux Manager by CreativeMichiz",
+  "description": "DownNux Manager by HoodTech",
   "path": "$HOST_PATH",
   "type": "stdio",
   "allowed_origins": [
@@ -134,7 +134,7 @@ EOF
 FIREFOX_MANIFEST=$(cat <<EOF
 {
   "name": "com.creativemichiz.downnux.native_host",
-  "description": "DownNux Manager by CreativeMichiz",
+  "description": "DownNux Manager by HoodTech",
   "path": "$HOST_PATH",
   "type": "stdio",
   "allowed_extensions": [
@@ -167,7 +167,7 @@ mkdir -p "$HOME/.config/systemd/user"
 # Daemon service
 cat > "$HOME/.config/systemd/user/downnux-daemon.service" <<EOF
 [Unit]
-Description=DownNux Manager Background Daemon (CreativeMichiz)
+Description=DownNux Manager Background Daemon (HoodTech)
 After=network.target
 
 [Service]
@@ -185,7 +185,7 @@ EOF
 # GUI service
 cat > "$HOME/.config/systemd/user/downnux-gui.service" <<EOF
 [Unit]
-Description=DownNux Manager GUI Web Server (CreativeMichiz)
+Description=DownNux Manager GUI Web Server (HoodTech)
 After=network.target downnux-daemon.service
 
 [Service]

@@ -3,7 +3,7 @@ export type Lang = "en" | "id";
 export const translations = {
   en: {
     appTitle: "DownNux Manager",
-    developer: "CreativeMichiz",
+    developer: "HoodTech",
     // Toolbar
     addUrl: "Add URL",
     resume: "Resume",
@@ -156,7 +156,7 @@ export const translations = {
   },
   id: {
     appTitle: "DownNux Manager",
-    developer: "CreativeMichiz",
+    developer: "HoodTech",
     // Toolbar
     addUrl: "Tambah URL",
     resume: "Lanjutkan",

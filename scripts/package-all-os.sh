@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # DownNux Manager — Multiplatform Release Packager (Linux, Windows, macOS)
-# Developed by CreativeMichiz <https://github.com/CreativeMichiz>
+# Developed by HoodTech <https://github.com/Nuril09/DownNux-Manager>
 # GNU General Public License v3.0
 # ==============================================================================
 
@@ -108,7 +108,7 @@ EOF
 cat > "$WIN_STAGE/README.txt" << 'EOF'
 ==========================================================
 DownNux Manager - Windows Portable Edition (v0.0.4)
-Developed by CreativeMichiz <https://github.com/CreativeMichiz>
+Developed by HoodTech <https://github.com/Nuril09/DownNux-Manager>
 ==========================================================
 
 Prerequisites:
@@ -168,7 +168,7 @@ chmod +x "$MAC_STAGE/start-downnux.command"
 cat > "$MAC_STAGE/README.txt" << 'EOF'
 ==========================================================
 DownNux Manager - macOS Portable Edition (v0.0.4)
-Developed by CreativeMichiz <https://github.com/CreativeMichiz>
+Developed by HoodTech <https://github.com/Nuril09/DownNux-Manager>
 ==========================================================
 
 Prerequisites:

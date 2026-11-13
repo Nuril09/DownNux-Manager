@@ -1,7 +1,7 @@
-/** Identitas resmi aplikasi DownNux Manager oleh CreativeMichiz */
+/** Identitas resmi aplikasi DownNux Manager oleh HoodTech */
 export const APP_ID = "downnux";
 export const APP_NAME = "DownNux Manager";
-export const DEVELOPER_NAME = "CreativeMichiz";
+export const DEVELOPER_NAME = "HoodTech";
 
 /** Nama host native messaging (huruf kecil, titik, garis bawah saja). */
 export const NATIVE_HOST_NAME = "com.creativemichiz.downnux.native_host";

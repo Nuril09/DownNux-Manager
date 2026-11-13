@@ -1,4 +1,4 @@
-// Service worker ekstensi DownNux Manager (MV3) by CreativeMichiz.
+// Service worker ekstensi DownNux Manager (MV3) by HoodTech.
 // Spike M0: ditulis sebagai JS biasa tanpa build. Dipindah ke WXT + TypeScript di M3.
 
 const HOST = "com.creativemichiz.downnux.native_host";

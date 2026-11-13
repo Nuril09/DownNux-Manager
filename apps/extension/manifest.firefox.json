@@ -3,8 +3,8 @@
   "name": "DownNux Manager — Browser Integration",
   "short_name": "DownNux",
   "version": "0.0.4",
-  "description": "Capture downloads and video streams automatically for DownNux Manager by CreativeMichiz.",
-  "author": "CreativeMichiz",
+  "description": "Capture downloads and video streams automatically for DownNux Manager by HoodTech.",
+  "author": "HoodTech",
   "permissions": [
     "downloads",
     "nativeMessaging",

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # DownNux Manager — Official Linux Installer
-# Developed by CreativeMichiz <https://github.com/CreativeMichiz>
+# Developed by HoodTech <https://github.com/Nuril09/DownNux-Manager>
 # Licensed under GNU General Public License v3.0
 # ==============================================================================
 
 set -euo pipefail
 
 APP_NAME="DownNux Manager"
-DEVELOPER="CreativeMichiz"
+DEVELOPER="HoodTech"
 INSTALL_DIR="${DOWNNUX_DIR:-$HOME/.local/share/downnux}"
 BIN_DIR="$HOME/.local/bin"
 

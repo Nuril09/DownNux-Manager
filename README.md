@@ -1,35 +1,203 @@
 # DownNux Manager
 
-DownNux Manager is a high-performance, segmented download manager and media accelerator built natively for Linux (Ubuntu, Debian, and derivatives). Inspired by the workflow and capabilities of Internet Download Manager (IDM), DownNux Manager splits downloads into multiple parallel HTTP connections, automatically recovers interrupted downloads, runs an independent background daemon via systemd, and integrates directly with modern web browsers to capture downloads and sniff video streams.
+<p align="center">
+  <img src="docs/assets/downnux-hero.png" alt="DownNux Manager Desktop Showcase" width="920" style="border-radius: 8px;" />
+</p>
 
-Developed by **CreativeMichiz**. Licensed under the **GNU General Public License v3.0 (GPLv3)**.
+<p align="center">
+  <strong>High-performance, multi-segmented download accelerator and media grabber.</strong><br>
+  Built with a decoupled background daemon architecture, dynamic connection chunking, BitTorrent support, and a modern glassmorphism interface.
+</p>
 
----
-
-## Key Capabilities
-
-- **Segmented Acceleration Engine**: Splits files dynamically into up to 16/32 parallel Range connections (default: 8) powered by a hybrid `aria2` + `yt-dlp` core.
-- **Independent Background Daemon**: Downloads are executed and monitored by a persistent background service (`systemd --user`). Closing the GUI window or logging out never terminates active downloads.
-- **Native Desktop GUI & iOS Glassmorphism Aesthetic**: A dedicated native desktop window built with GTK3, WebKit2, React, and Tailwind CSS. Features frosted translucent glass panels, live 60-second speed curve graphs, and real-time segment progress meters.
-- **Native Debian/Ubuntu (.deb) Package**: Installs natively into `/usr/bin/downnux`, `/usr/bin/downnux-gui`, and adds an application launcher to the GNOME/Ubuntu Application Menu.
-- **Browser Integration (Chrome, Brave, Edge, Chromium, Firefox)**:
-  - Intercepts file downloads and forwards cookies, referrers, and user-agent headers.
-  - Floating download badge over HTML5 video elements with quality selection (Best Quality, 1080p Full HD, 720p HD, 480p SD, and Audio Only).
-  - Native video platform support (YouTube, TikTok, Vimeo, Twitter/X, and HLS/DASH streams) with automatic audio/video muxing via FFmpeg.
-- **Crash Resistance & SQLite WAL State Store**: Tracks byte offsets and checksums in an embedded SQLite database. Recovers seamlessly after system reboots, network drops, or kernel panics.
-- **Bilingual Interface**: Full support for English (default) and Indonesian (Bahasa Indonesia).
+<p align="center">
+  <a href="https://github.com/Nuril09/DownNux-Manager/releases/latest"><img src="https://img.shields.io/badge/Release-v0.0.4-6554c0?style=flat-square" alt="Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License GPL-3.0"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-informational?style=flat-square" alt="Platforms"></a>
+  <a href="https://github.com/Nuril09/DownNux-Manager"><img src="https://img.shields.io/badge/Maintained%20by-HoodTech-8a2be2?style=flat-square" alt="HoodTech"></a>
+</p>
 
 ---
 
-## Architectural Breakdown
+## Overview
 
-DownNux Manager follows a decoupled 4-tier service architecture:
+DownNux Manager brings the battle-tested multi-threaded acceleration workflow of Internet Download Manager (IDM) into a modern, cross-platform ecosystem. Instead of relying on a single HTTP stream, DownNux splits downloads into up to **32 parallel Range connections**, monitors chunk transfers in real time, and persists byte offsets in SQLite WAL storage so interrupted downloads resume instantly without losing data.
+
+Engineered and maintained by **HoodTech**.
+
+---
+
+## Key Highlights
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/assets/feature-inspector.png" alt="Floating Chunk Visualizer" width="100%" style="border-radius: 6px;" />
+      <br>
+      <strong>Dynamic Chunk Allocation Visualizer</strong><br>
+      A standalone floating progress window inspired by IDM. Displays a 32-segment real-time chunk map, active connection threads, transfer speeds, and remaining time.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/assets/feature-add-modal.png" alt="Smart Link Inspector" width="100%" style="border-radius: 6px;" />
+      <br>
+      <strong>Smart Pre-Download Inspection</strong><br>
+      Validates file size, Range resume capability, and content type before starting. Automatically detects video links (YouTube, HLS, DASH) and provides format presets.
+    </td>
+  </tr>
+</table>
+
+### Core Capabilities
+
+* **Multi-Connection Acceleration Engine**: Dynamic file splitting across 1 to 32 parallel connections via a hybrid `aria2` + `yt-dlp` core.
+* **Independent Background Daemon**: Active downloads run inside a background system service (`systemd --user` on Linux). Closing the GUI or logging out will **not** cancel active downloads.
+* **Standalone Floating Inspector**: Each active download can be monitored in its own compact floating window with real-time transfer sparklines and segment blocks.
+* **BitTorrent & Magnet Support**: Built-in support for `.torrent` file imports and Magnet URLs with automatic DHT peer discovery and high-speed public tracker integration.
+* **Dedicated Paused Management**: Paused tasks stay accessible under the `Paused` library filter and `Active` subtab for quick one-click resume.
+* **Browser Integration Extension**: Native Manifest V3 extensions for Chrome, Brave, Edge, and Firefox. Intercepts file downloads and injects floating video download badges.
+* **Crash Resilience**: Embedded SQLite database with Write-Ahead Logging (WAL) ensures atomic progress saves and zero file corruption across system reboots.
+* **Bilingual UI**: Toggle between English and Indonesian with instant localization.
+
+---
+
+## Quick Comparison
+
+| Feature | Default Browser | Traditional Tools | DownNux Manager |
+| :--- | :---: | :---: | :---: |
+| **Multi-Threaded HTTP Chunking** | Single stream | 4 - 8 connections | **Up to 32 parallel connections** |
+| **Crash / Reboot Recovery** | Fails / restarts | Basic | **SQLite WAL Atomic Recovery** |
+| **Video Sniffer & Muxer** | No | Separate CLI | **Integrated extension + FFmpeg** |
+| **Standalone Progress Window** | No | Window only | **Detached floating inspector** |
+| **Background Daemon** | Closes with browser | Background tray | **Independent system daemon** |
+| **BitTorrent Client** | No | External client | **Native .torrent & Magnet core** |
+
+---
+
+## Installation Guide
+
+### Option 1: Ubuntu / Debian (`.deb` Package) — Recommended
+
+DownNux provides a native `.deb` package that sets up binaries, desktop menu shortcuts, and auto-starts background user services.
+
+```bash
+# 1. Download the latest .deb from GitHub Releases
+wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.4/downnux-manager_0.0.4_amd64.deb
+
+# 2. Install using apt (resolves system dependencies automatically)
+sudo apt install ./downnux-manager_0.0.4_amd64.deb
+```
+
+Once installed, open **DownNux Manager** from your desktop application launcher or run `downnux-gui` in terminal.
+
+---
+
+### Option 2: Linux Portable (`.tar.gz`)
+
+For environments where you prefer not to install system packages:
+
+```bash
+# Extract the archive
+tar -xzf downnux-manager_0.0.4_linux_x64.tar.gz
+cd downnux-manager_0.0.4_linux_x64
+
+# Start the application
+bash start-downnux.sh
+```
+
+---
+
+### Option 3: Developer Setup (Build from Source)
+
+```bash
+# Clone the repository
+git clone https://github.com/Nuril09/DownNux-Manager.git
+cd DownNux-Manager
+
+# Install dependencies and build bundles
+pnpm install
+bash scripts/install-dev.sh
+```
+
+---
+
+### Multiplatform Status (Windows & macOS)
+
+* **Windows (`.exe` NSIS Installer)**: Configuration is set up under `src-tauri` and automated via GitHub Actions CI/CD to build standalone `.exe` installers.
+* **macOS (`.dmg` Disk Image)**: Configured for Universal Apple Silicon / Intel builds via GitHub Actions.
+* Portable fallback scripts (`start-downnux.bat` and `start-downnux.command`) are available in the [Releases section](https://github.com/Nuril09/DownNux-Manager/releases).
+
+---
+
+## Browser Integration Setup
+
+The browser extension allows DownNux to intercept file downloads automatically and adds a floating download badge on video players (YouTube, Vimeo, Twitter/X, TikTok).
+
+### Chromium Browsers (Google Chrome, Brave, Microsoft Edge, Opera)
+
+1. Open `chrome://extensions` or `brave://extensions`.
+2. Enable **Developer mode** (top-right toggle).
+3. Click **Load unpacked** and select the folder:
+   ```
+   DownNux-Manager/apps/extension
+   ```
+4. The extension icon will appear in your toolbar and the DownNux sidebar will show `Browser Connected`.
+
+### Mozilla Firefox
+
+1. Open `about:debugging#/runtime/this-firefox`.
+2. Click **Load Temporary Add-on...**
+3. Select the file:
+   ```
+   DownNux-Manager/apps/extension/manifest.firefox.json
+   ```
+
+---
+
+## How to Use
+
+### 1. Adding a Download
+* **Via GUI**: Click **+ Add URL** in the top toolbar. Paste any direct HTTP/HTTPS link, video URL, or Magnet link.
+* **Via Torrent File**: Click **Select .torrent file** in the dialog or drag & drop `.torrent` files directly.
+* **Via Browser**: Click any download link in your browser; the extension relays it directly to DownNux with session cookies and referrers intact.
+
+### 2. Monitoring Progress
+* When a download starts, the **Floating Inspector** opens automatically showing 32 chunk allocations and real-time speed.
+* To reopen the inspector at any time, click the **Inspect** button or the **Play** button on any active row.
+
+### 3. Managing Downloads
+* **3-Dots Action Menu**: Click the three dots (`⋮`) on any row to:
+  * **Open File**: Launch the completed file directly with your default desktop app.
+  * **Open Folder**: Open the destination directory in your file manager.
+  * **Repair Download**: Re-verify checksums and re-download broken or corrupted segments.
+  * **Delete**: Remove the task from the list and delete the downloaded file from disk.
+* **Paused Library**: View all paused tasks under the `Paused` sidebar tab and resume them in batch.
+
+### 4. Command Line Interface (CLI)
+
+You can manage all downloads headlessly using the `downnux` CLI:
+
+```bash
+# Check daemon status
+downnux ping
+
+# List active downloads
+downnux ls
+
+# Start a download with 16 connections
+downnux add "https://example.com/largefile.iso" -c 16
+
+# Pause or resume a task
+downnux pause <task-id>
+downnux resume <task-id>
+```
+
+---
+
+## Architecture
 
 ```
 ┌────────────────────────────────────────────────────────┐
 │                   Web Browsers                         │
 │  Chrome  ·  Brave  ·  Edge  ·  Chromium  ·  Firefox    │
-│  (Manifest V3 Extension with Floating Video Sniffer)   │
+│  (Manifest V3 Extension + Floating Video Sniffer)      │
 └──────────────────────────┬─────────────────────────────┘
                            │ Native Messaging (stdio)
 ┌──────────────────────────▼─────────────────────────────┐
@@ -39,182 +207,42 @@ DownNux Manager follows a decoupled 4-tier service architecture:
                            │ Unix Domain Socket
 ┌──────────────────────────▼─────────────────────────────┐
 │                   apps/daemon                          │
-│   Background Service (systemd --user, node:sqlite)     │
-│   Hybrid Engine: aria2c (Files) + yt-dlp/ffmpeg (Video)│
-│   HTTP/WebSocket Local API Server (127.0.0.1:44990)    │
+│   Background Service (systemd --user, SQLite WAL)      │
+│   Hybrid Engine: aria2c (Files/Torrents) + yt-dlp      │
+│   HTTP / WebSocket Local RPC Server (Port 44990)       │
 └──────────────┬──────────────────────────┬──────────────┘
                │                          │
 ┌──────────────▼────────────┐  ┌──────────▼──────────────┐
-│       apps/gui            │  │      CLI (downnux)      │
-│ Native GTK3/WebKit Window │  │ Terminal control tool   │
-└───────────────────────────┘  └─────────────────────────┘
-```
-
-1. **`apps/daemon`**: Background system service. Manages the download queue, SQLite WAL database, connection limits, and child processes (`aria2c` and `yt-dlp`). Exposes a Unix domain socket at `~/.local/state/downnux/daemon.sock` and a local HTTP/WebSocket API on port `44990`.
-2. **`apps/gui`**: Desktop application interface with real-time transfer stats, connection segment bars, search filters, and task controls.
-3. **`apps/native-host`**: Stdio native messaging executable invoked by web browsers to relay captured download URLs, HTTP headers, and cookies to the daemon.
-4. **`apps/extension`**: Browser extension capturing downloads and injecting the floating video download badge into web pages.
-
----
-
-## System Requirements
-
-- **Operating System**: Linux (Ubuntu 22.04 LTS, 24.04 LTS, 26.04 or compatible Debian/apt distribution)
-- **Runtime**: Node.js >= 18 (Node.js 22 LTS recommended), Python 3 with GTK3 and WebKit2 (`python3-gi`, `gir1.2-webkit2-4.1` or `gir1.2-webkit2-4.0`)
-- **Download Engines**: `aria2` (`aria2c`) and `ffmpeg` (bundled or system-installed)
-
----
-
-## Installation
-
-### Option A: Install via Official Debian Package (.deb) (Recommended)
-
-You can build and install the native `.deb` package directly on Ubuntu or Debian:
-
-```bash
-# 1. Build the .deb package
-bash scripts/build-deb.sh
-
-# 2. Install using apt (automatically resolves dependencies)
-sudo apt install ./dist/downnux-manager_0.0.1_amd64.deb
-```
-
-Once installed, DownNux Manager is accessible in your Ubuntu Applications Menu ("Show Applications"), or by running `downnux-gui` in any terminal.
-
-### Option B: Quick Terminal Installer (Developer / Git Clone)
-
-If you are developing or running directly from the source repository:
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/Nuril09/DownNux-Manager.git
-cd DownNux-Manager
-
-# 2. Run the automated installer
-bash install.sh
-```
-
-The script configures binaries, registers browser manifests, compiles the hybrid engine, and activates the `downnux-daemon` systemd service.
-
----
-
-## Running the Application
-
-### 1. Launching the Native Desktop GUI
-
-You can launch the native desktop application at any time:
-
-```bash
-downnux-gui
-```
-*(Or click the **DownNux Manager** icon in your desktop app launcher).*
-
-### 2. Command Line Interface (CLI)
-
-The `downnux` CLI command connects to the background daemon and provides full management capabilities:
-
-```bash
-# Test connection to daemon and view engine status
-downnux ping
-
-# List all current, active, completed, or failed downloads
-downnux ls
-
-# Add a download with 8 parallel connections
-downnux add "https://releases.ubuntu.com/noble/ubuntu-24.04.1-desktop-amd64.iso" -c 8
-
-# Add a YouTube / online video download
-downnux add "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-
-# Pause an active download by its task ID prefix
-downnux pause 9e18e613
-
-# Resume a paused or interrupted download
-downnux resume 9e18e613
-
-# Cancel a download and remove partial files
-downnux cancel 9e18e613
-
-# View daemon system information
-curl -s http://127.0.0.1:44990/api/sysinfo
+               │                          │
+        apps/gui                   CLI (downnux)
+ Native Desktop Window / UI     Terminal Control Client
 ```
 
 ---
 
-## Browser Extension Setup
+## Service Management
 
-To enable automatic download interception and floating video download buttons:
-
-### Chromium-based Browsers (Google Chrome, Brave, Microsoft Edge, Opera)
-1. Open `chrome://extensions` or `brave://extensions`.
-2. Toggle on **Developer mode** in the top-right corner.
-3. Click **Load unpacked** and select the folder:
-   `/home/<user>/.../DownNux-Manager/apps/extension`
-4. The DownNux status in the sidebar will indicate `Browser Connected`.
-
-### Mozilla Firefox
-1. Open `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on...**
-3. Select the file:
-   `/home/<user>/.../DownNux-Manager/apps/extension/manifest.firefox.json`
-
-### Video Sniffing Workflow
-When browsing video sites (YouTube, Vimeo, TikTok, etc.):
-1. Hover over any active video player.
-2. The frosted purple **DownNux · Download** button will appear in the top-right corner.
-3. Click the button to select your desired format:
-   - **Best Quality (Auto)**: Combines highest video track and audio track via FFmpeg.
-   - **Full HD (1080p)**
-   - **HD Ready (720p)**
-   - **Audio Only (MP3 / M4A)**
-4. The download task will immediately appear in your DownNux Manager GUI and CLI.
-
----
-
-## Directory & File Locations
-
-- **Configuration**: `~/.config/downnux/settings.json`
-- **Database (SQLite WAL)**: `~/.local/share/downnux/downnux.db`
-- **Runtime Socket & Locks**: `~/.local/state/downnux/daemon.sock`
-- **Daemon Logs**: `~/.local/state/downnux/log/daemon.log`
-- **Systemd User Units**: `~/.config/systemd/user/downnux-daemon.service`
-- **Default Downloads Directory**: `~/Downloads`
-
----
-
-## Systemd Daemon Management
-
-DownNux Manager is managed as a user-level systemd service:
+DownNux runs as a user-level systemd service:
 
 ```bash
-# Check daemon service status
+# Check daemon status
 systemctl --user status downnux-daemon
-
-# Restart daemon service
-systemctl --user restart downnux-daemon
-
-# Stop daemon service
-systemctl --user stop downnux-daemon
 
 # View live daemon logs
 journalctl --user -u downnux-daemon -f
+
+# Restart daemon
+systemctl --user restart downnux-daemon
 ```
 
 ---
 
-## Automated Verification & Tests
+## Credits & License
 
-To execute the end-to-end test suite (testing HTTP Range splitting, sha256 integrity verification, auto-retry on network drop, and crash recovery):
+DownNux Manager is engineered with ❤️ by the **HoodTech** team.
 
-```bash
-npm test
-```
+* **Project Lead**: HoodTech (<https://github.com/Nuril09/DownNux-Manager>)
+* **Underlying Engines**: `aria2`, `yt-dlp`, `FFmpeg`, `Tauri`
+* **License**: Released under the **GNU General Public License v3.0 (GPLv3)**. See [LICENSE](LICENSE) for details.
 
----
-
-## License
-
-This project is licensed under the **GNU General Public License v3.0 (GPLv3)**.  
-See the [LICENSE](LICENSE) file for the full license text.
-
-Copyright (C) 2026 CreativeMichiz.
+Copyright (C) 2026 **HoodTech**.
