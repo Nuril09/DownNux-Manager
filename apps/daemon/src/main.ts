@@ -114,7 +114,7 @@ async function main(): Promise<void> {
       return { ok: true } as const;
     },
     "app.checkUpdate": async () => {
-      const CURRENT_VERSION = VERSION || "0.0.3";
+      const CURRENT_VERSION = VERSION || "0.0.4";
       try {
         const res = await fetch("https://api.github.com/repos/Nuril09/DownNux-Manager/releases/latest", {
           headers: { "User-Agent": "DownNux-Manager-Updater" },

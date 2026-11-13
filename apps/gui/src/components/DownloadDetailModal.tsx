@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   ArrowUp,
   Download,
+  Minus,
 } from "lucide-react";
 import type { Task } from "../App";
 import { type Lang } from "../i18n";
@@ -20,6 +21,7 @@ interface DownloadDetailModalProps {
   lang: Lang;
   onClose: () => void;
   onAction: (method: string, params: Record<string, unknown>) => void;
+  isStandalone?: boolean;
 }
 
 function fmtBytes(n: number): string {
@@ -40,7 +42,7 @@ function fmtTime(sec: number, lang: Lang): string {
   return `${h} ${lang === "en" ? "h" : "j"} ${remM} ${lang === "en" ? "m" : "m"}`;
 }
 
-export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadDetailModalProps) {
+export function DownloadDetailModal({ task, lang, onClose, onAction, isStandalone }: DownloadDetailModalProps) {
   const [activeTab, setActiveTab] = useState<"speed" | "segments" | "torrent">(
     task.isTorrent ? "torrent" : "segments"
   );
@@ -106,16 +108,42 @@ export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadD
     return { pathD: p, areaD: a };
   }, [history, maxSpeed]);
 
-  // IDM 32/64 Micro-Segments Grid
+  // 32 Micro-Segments Parallel Allocation Grid
   const totalSegments = 32;
   const activeSegmentCount = Math.min(totalSegments, Math.max(1, task.activeConnections || task.connections || 8));
   const completedSegments = Math.floor((pct / 100) * totalSegments);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-      <div className="bg-white/95 dark:bg-[#181a28]/95 backdrop-blur-2xl border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[14px] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div
+      className={
+        isStandalone
+          ? "h-screen w-screen bg-[#f7f8fa] dark:bg-[#12131f] flex flex-col overflow-hidden select-none"
+          : "fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in"
+      }
+    >
+      <div
+        className={
+          isStandalone
+            ? "w-full h-full flex flex-col overflow-hidden"
+            : "bg-white/95 dark:bg-[#181a28]/95 backdrop-blur-2xl border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[14px] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        }
+      >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-[#e7e9ef] dark:border-[#2a2c3d] flex items-center justify-between flex-shrink-0 bg-white/40 dark:bg-[#151724]/60">
+        <div
+          onMouseDown={(e) => {
+            if (isStandalone && e.button === 0 && !(e.target as HTMLElement).closest("button, a")) {
+              (window as any).webkit?.messageHandlers?.windowControl?.postMessage("drag");
+            }
+          }}
+          onDoubleClick={() => {
+            if (isStandalone) {
+              (window as any).webkit?.messageHandlers?.windowControl?.postMessage("maximize");
+            }
+          }}
+          className={`px-5 py-4 border-b border-[#e7e9ef] dark:border-[#2a2c3d] flex items-center justify-between flex-shrink-0 bg-white/40 dark:bg-[#151724]/60 ${
+            isStandalone ? "cursor-move" : ""
+          }`}
+        >
           <div className="flex items-center space-x-3 min-w-0">
             <div className={`w-8 h-8 rounded-[8px] flex items-center justify-center flex-shrink-0 text-white ${
               task.isTorrent ? "bg-gradient-to-tr from-[#7c3aed] to-[#a855f7]" : "bg-[#6554c0]"
@@ -181,7 +209,12 @@ export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadD
             ) : null}
 
             <button
-              onClick={() => onAction("task.openFolder", { id: task.id })}
+              onClick={() => {
+                onAction("task.openFolder", { id: task.id });
+                try {
+                  (window as any).webkit?.messageHandlers?.windowControl?.postMessage(`openFolder:${task.dir || ""}`);
+                } catch {}
+              }}
               className="h-[30px] px-2.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[11px] font-medium flex items-center space-x-1"
               title={lang === "en" ? "Open Containing Folder" : "Buka Folder Lokasi"}
             >
@@ -189,9 +222,28 @@ export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadD
               <span>{lang === "en" ? "Folder" : "Folder"}</span>
             </button>
 
+            {isStandalone && (
+              <button
+                onClick={() => {
+                  try {
+                    (window as any).webkit?.messageHandlers?.windowControl?.postMessage("minimize");
+                  } catch {}
+                }}
+                className="w-7 h-7 rounded-[6px] hover:bg-[#e7e9ef] dark:hover:bg-[#25283b] flex items-center justify-center text-[#6e7685] hover:text-[#202631] dark:hover:text-white"
+                title={lang === "en" ? "Minimize" : "Kecilkan"}
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+            )}
+
             <button
               onClick={onClose}
-              className="w-7 h-7 rounded-[6px] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b] flex items-center justify-center text-[#6e7685] hover:text-[#202631] dark:hover:text-white ml-1"
+              className={`w-7 h-7 rounded-[6px] flex items-center justify-center transition-colors ${
+                isStandalone
+                  ? "hover:bg-[#e81123] hover:text-white text-[#6e7685] dark:text-[#9ea4b5]"
+                  : "hover:bg-[#f7f8fa] dark:hover:bg-[#25283b] text-[#6e7685] hover:text-[#202631] dark:hover:text-white ml-1"
+              }`}
+              title={lang === "en" ? "Close" : "Tutup"}
             >
               <X className="w-4 h-4" />
             </button>
@@ -200,7 +252,7 @@ export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadD
 
         {/* Big Progres & Speed Metrics */}
         <div className="px-5 py-3.5 bg-[#f7f8fa]/60 dark:bg-[#12131b]/60 border-b border-[#e7e9ef] dark:border-[#2a2c3d] flex-shrink-0">
-          {/* Main Progress Bar (Iconic IDM Style) */}
+          {/* Main Progress Bar */}
           <div className="flex items-center justify-between text-[11px] mb-1.5 font-medium">
             <span className="text-[#6e7685] dark:text-[#9ea4b5] font-semibold flex items-center gap-1.5">
               <Download className="w-3.5 h-3.5 text-[#6554c0] dark:text-[#a79be8]" />
@@ -280,7 +332,7 @@ export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadD
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>{lang === "en" ? "IDM Segment & Pieces Map" : "Peta Segmen & Potongan (IDM)"}</span>
+            <span>{lang === "en" ? "Dynamic Segment & Pieces Map" : "Peta Alokasi Segmen Dinamis"}</span>
           </button>
 
           <button
@@ -312,7 +364,7 @@ export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadD
 
         {/* Tab Content */}
         <div className="p-5 overflow-y-auto space-y-4 flex-1">
-          {/* TAB 1: IDM SEGMENT & PIECE MAP */}
+          {/* TAB 1: DYNAMIC SEGMENT & PIECE MAP */}
           {activeTab === "segments" && (
             <div className="space-y-4">
               <div>
@@ -326,7 +378,7 @@ export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadD
                   </span>
                 </div>
 
-                {/* Iconic 32 Micro-Segment Blocks (Classic IDM Visualizer) */}
+                {/* 32 Micro-Segment Blocks Visualizer */}
                 <div className="p-3.5 bg-[#f7f8fa] dark:bg-[#12131b] border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[10px]">
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(16, minmax(0, 1fr))", gap: "5px" }}>
                     {Array.from({ length: totalSegments }).map((_, idx) => {
@@ -582,7 +634,9 @@ export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadD
             onClick={onClose}
             className="h-[32px] px-4 rounded-[6px] bg-[#6554c0] hover:bg-[#5a4ab0] text-white font-medium"
           >
-            {lang === "en" ? "Close Inspector" : "Tutup"}
+            {isStandalone
+              ? (lang === "en" ? "Close Window" : "Tutup Jendela")
+              : (lang === "en" ? "Close Inspector" : "Tutup")}
           </button>
         </div>
       </div>

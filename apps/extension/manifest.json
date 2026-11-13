@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DownNux Manager — Browser Integration",
   "short_name": "DownNux",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Capture downloads and video streams automatically for DownNux Manager by CreativeMichiz.",
   "author": "CreativeMichiz",
   "minimum_chrome_version": "116",

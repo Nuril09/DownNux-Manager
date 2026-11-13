@@ -129,7 +129,7 @@ export function SettingsView({
             {t.settingsTitle}
           </h2>
           <span className="text-[10px] text-[#6554c0] bg-[#edeaf9] dark:bg-[#6554c0]/20 dark:text-[#a79be8] px-2 py-0.5 rounded font-semibold">
-            IDM Engine · v0.0.3
+            DownNux Engine · v0.0.4
           </span>
         </div>
 
@@ -395,7 +395,7 @@ export function SettingsView({
                 </div>
               </div>
 
-              {/* Category-specific download folders (IDM Feature) */}
+              {/* Category-specific download folders */}
               <div className="pt-4 border-t border-[#e7e9ef] dark:border-[#2a2c3d] space-y-3">
                 <div>
                   <h3 className="text-[13px] font-bold text-[#202631] dark:text-white">
@@ -403,8 +403,8 @@ export function SettingsView({
                   </h3>
                   <p className="text-[11px] text-[#6e7685] dark:text-[#8f96a8]">
                     {lang === "en"
-                      ? "Direct downloaded files automatically into specific folders by category (like IDM)."
-                      : "Arahkan file unduhan secara otomatis ke folder khusus per kategori (seperti IDM)."}
+                      ? "Direct downloaded files automatically into specific folders by category."
+                      : "Arahkan file unduhan secara otomatis ke folder khusus per kategori."}
                   </p>
                 </div>
 
@@ -529,8 +529,8 @@ export function SettingsView({
                   </h3>
                   <p className="text-[11px] text-[#6e7685] dark:text-[#8f96a8] mb-2.5">
                     {lang === "en"
-                      ? "Number of simultaneous segmented HTTP connections per file (IDM standard: 8)."
-                      : "Jumlah segmen koneksi HTTP simultan per file (standar IDM: 8 koneksi)."}
+                      ? "Number of simultaneous segmented HTTP connections per file (Recommended: 8)."
+                      : "Jumlah segmen koneksi HTTP simultan per file (Rekomendasi: 8 koneksi)."}
                   </p>
                   <div className="flex items-center space-x-2">
                     {[1, 4, 8, 16, 32].map((n) => (

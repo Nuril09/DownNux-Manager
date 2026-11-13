@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 TMP_STAGE="$ROOT_DIR/build/stage"
-VERSION="0.0.3"
+VERSION="0.0.4"
 
 echo "=== Packaging DownNux Manager Multiplatform Bundles v${VERSION} ==="
 mkdir -p "$DIST_DIR"
@@ -86,7 +86,7 @@ cat > "$WIN_STAGE/start-downnux.bat" << 'EOF'
 @echo off
 setlocal
 cd /d "%~dp0"
-title DownNux Manager v0.0.3
+title DownNux Manager v0.0.4
 
 echo ==========================================================
 echo        DownNux Manager - High Speed Download Accelerator
@@ -107,7 +107,7 @@ EOF
 
 cat > "$WIN_STAGE/README.txt" << 'EOF'
 ==========================================================
-DownNux Manager - Windows Portable Edition (v0.0.3)
+DownNux Manager - Windows Portable Edition (v0.0.4)
 Developed by CreativeMichiz <https://github.com/CreativeMichiz>
 ==========================================================
 
@@ -117,7 +117,7 @@ Prerequisites:
 How to Run:
 1. Double click "start-downnux.bat".
 2. Your default web browser will open http://localhost:1420.
-3. Enjoy IDM-level multi-threaded speed and glassmorphism interface!
+3. Enjoy multi-threaded download speed and glassmorphism interface!
 
 Browser Extension Integration:
 1. Open Brave, Google Chrome, or Microsoft Edge.
@@ -167,7 +167,7 @@ chmod +x "$MAC_STAGE/start-downnux.command"
 
 cat > "$MAC_STAGE/README.txt" << 'EOF'
 ==========================================================
-DownNux Manager - macOS Portable Edition (v0.0.3)
+DownNux Manager - macOS Portable Edition (v0.0.4)
 Developed by CreativeMichiz <https://github.com/CreativeMichiz>
 ==========================================================
 

@@ -96,6 +96,92 @@ def ensure_services():
             if os.path.exists(gui_script):
                 subprocess.Popen([NODE_BIN, gui_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+class StandaloneInspectorWindow(Gtk.Window):
+    def __init__(self, task_id):
+        super().__init__(title="DownNux Download Progress")
+        self.set_default_size(720, 620)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_decorated(False)
+        self.set_resizable(True)
+
+        if os.path.exists(ICON_PATH):
+            self.set_icon_from_file(ICON_PATH)
+
+        screen = self.get_screen()
+        visual = screen.get_rgba_visual()
+        if visual:
+            self.set_visual(visual)
+        self.set_app_paintable(True)
+
+        settings = WebKit2.Settings()
+        settings.set_enable_developer_extras(False)
+        settings.set_enable_webgl(True)
+        settings.set_enable_smooth_scrolling(True)
+        settings.set_enable_write_console_messages_to_stdout(False)
+
+        self.webview = WebKit2.WebView.new_with_settings(settings)
+        ucm = self.webview.get_user_content_manager()
+        ucm.register_script_message_handler("windowControl")
+        ucm.connect("script-message-received::windowControl", self.on_window_control)
+
+        bg_color = Gdk.RGBA()
+        bg_color.parse("rgba(0, 0, 0, 0.0)")
+        self.webview.set_background_color(bg_color)
+
+        self.add(self.webview)
+        self.task_id = task_id
+        GLib.timeout_add(100, self.load_gui)
+
+    def on_window_control(self, manager, js_result):
+        try:
+            val = js_result.get_js_value()
+            msg = val.to_string() if val else ""
+            if msg == "close":
+                self.destroy()
+            elif msg == "minimize":
+                self.iconify()
+            elif msg == "maximize":
+                if self.is_maximized():
+                    self.unmaximize()
+                else:
+                    self.maximize()
+            elif msg.startswith("openFolder:"):
+                try:
+                    target = msg.split(":", 1)[1]
+                    if target and os.path.exists(target):
+                        subprocess.Popen(["xdg-open", target])
+                    else:
+                        subprocess.Popen(["xdg-open", os.path.expanduser("~/Downloads")])
+                except Exception as ex:
+                    sys.stderr.write(f"Open folder error: {ex}\n")
+            elif msg.startswith("openFile:"):
+                try:
+                    target = msg.split(":", 1)[1]
+                    if target and os.path.exists(target):
+                        subprocess.Popen(["xdg-open", target])
+                except Exception as ex:
+                    sys.stderr.write(f"Open file error: {ex}\n")
+            elif msg == "drag":
+                disp = Gdk.Display.get_default()
+                seat = disp.get_default_seat()
+                ptr = seat.get_pointer()
+                screen, x, y = ptr.get_position()
+                self.begin_move_drag(1, x, y, Gtk.get_current_event_time())
+        except Exception as e:
+            sys.stderr.write(f"inspector window control error: {e}\n")
+
+    def load_gui(self):
+        for _ in range(25):
+            try:
+                r = urllib.request.urlopen("http://127.0.0.1:1420", timeout=1)
+                if r.getcode() == 200:
+                    self.webview.load_uri(f"http://localhost:1420/?inspect={self.task_id}&standalone=true")
+                    return False
+            except Exception:
+                time.sleep(0.2)
+        self.webview.load_uri(f"http://localhost:1420/?inspect={self.task_id}&standalone=true")
+        return False
+
 class DownNuxNativeWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="DownNux Manager")
@@ -136,6 +222,7 @@ class DownNuxNativeWindow(Gtk.Window):
         bg_color.parse("rgba(0, 0, 0, 0.0)")
         self.webview.set_background_color(bg_color)
 
+        self.standalone_windows = []
         self.add(self.webview)
         self.connect("destroy", Gtk.main_quit)
 
@@ -171,6 +258,15 @@ class DownNuxNativeWindow(Gtk.Window):
                         subprocess.Popen(["xdg-open", target])
                 except Exception as ex:
                     sys.stderr.write(f"Open file error: {ex}\n")
+            elif msg.startswith("openDownloadWindow:"):
+                try:
+                    task_id = msg.split(":", 1)[1]
+                    win = StandaloneInspectorWindow(task_id)
+                    self.standalone_windows.append(win)
+                    win.connect("destroy", lambda w: self.standalone_windows.remove(w) if w in self.standalone_windows else None)
+                    win.show_all()
+                except Exception as ex:
+                    sys.stderr.write(f"Open standalone download window error: {ex}\n")
             elif msg == "selectFolder":
                 try:
                     import json
@@ -238,6 +334,20 @@ class DownNuxNativeWindow(Gtk.Window):
 
 def main():
     ensure_services()
+    inspect_id = None
+    for i, arg in enumerate(sys.argv[1:]):
+        if arg.startswith("--inspect="):
+            inspect_id = arg.split("=", 1)[1]
+        elif arg == "--inspect" and i + 1 < len(sys.argv[1:]):
+            inspect_id = sys.argv[1:][i + 1]
+
+    if inspect_id:
+        win = StandaloneInspectorWindow(inspect_id)
+        win.connect("destroy", Gtk.main_quit)
+        win.show_all()
+        Gtk.main()
+        return
+
     win = DownNuxNativeWindow()
     win.show_all()
     Gtk.main()

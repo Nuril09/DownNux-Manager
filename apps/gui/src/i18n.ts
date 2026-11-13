@@ -57,11 +57,11 @@ export const translations = {
     startDownloadBtn: "Start Download",
     close: "Close",
     save: "Save",
-    // IDM Inspector
+    // Progress & Segment Inspector
     seeders: "Seeders / Peers",
     uploadSpeed: "Upload Speed",
     transferred: "Transferred",
-    segmentMap: "Segment & Connection Map (IDM)",
+    segmentMap: "Dynamic Segment & Connection Map",
     downloadStatus: "Download Status & Connection Inspector",
     thread: "Thread",
     realtimeSpeed: "Real-Time Speed Chart",
@@ -210,11 +210,11 @@ export const translations = {
     startDownloadBtn: "Mulai Unduh",
     close: "Tutup",
     save: "Simpan",
-    // IDM Inspector
+    // Progress & Segment Inspector
     seeders: "Seeder / Peer",
     uploadSpeed: "Kecepatan Upload",
     transferred: "Ditransfer",
-    segmentMap: "Peta Segmen & Koneksi (IDM)",
+    segmentMap: "Peta Alokasi Segmen Dinamis",
     downloadStatus: "Status Unduhan & Inspektor Koneksi",
     thread: "Thread",
     realtimeSpeed: "Grafik Kecepatan Real-Time",

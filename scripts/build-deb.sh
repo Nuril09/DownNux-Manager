@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$ROOT_DIR/build/deb-pkg"
 DIST_DIR="$ROOT_DIR/dist"
-PKG_VERSION="0.0.3"
+PKG_VERSION="0.0.4"
 PKG_NAME="downnux-manager_${PKG_VERSION}_amd64"
 
 echo "=== Building Native Linux (.deb) Package for DownNux Manager ==="
@@ -70,7 +70,7 @@ Maintainer: CreativeMichiz <https://github.com/CreativeMichiz>
 Depends: nodejs (>= 18.0.0), python3, python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1 | gir1.2-webkit2-4.0
 Recommends: aria2, ffmpeg
 Description: Professional, segmented multi-connection download manager for Linux
- DownNux Manager is a native Linux download manager mirroring Internet Download Manager (IDM).
+ DownNux Manager is a native Linux multi-connection download accelerator and manager.
  Features segmented parallel engine, background daemon, browser integration (Chrome, Brave, Firefox),
  video sniffing, and an authentic iOS glassmorphism interface.
 EOF

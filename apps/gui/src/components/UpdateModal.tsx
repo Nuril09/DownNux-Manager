@@ -102,7 +102,7 @@ export function UpdateModal({
                   DownNux Manager
                 </span>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#edeaf9] dark:bg-[#6554c0]/20 text-[#6554c0] dark:text-[#a79be8] font-bold">
-                  v{updateInfo?.currentVersion || "0.0.3"}
+                  v{updateInfo?.currentVersion || "0.0.4"}
                 </span>
               </div>
               <div className="text-[11px] mt-1 text-[#6e7685] dark:text-[#9ea4b5]">
@@ -214,3 +214,4 @@ export function UpdateModal({
     </div>
   );
 }
+

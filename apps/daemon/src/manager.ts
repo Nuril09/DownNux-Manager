@@ -510,7 +510,7 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
     r.activeConnections = s.connections;
     r.dirty = true;
 
-    // Real-time speed history for IDM sparkline chart
+    // Real-time speed history for sparkline chart
     const history = r.speedHistory || [];
     history.push(s.speed);
     if (history.length > 40) history.shift();

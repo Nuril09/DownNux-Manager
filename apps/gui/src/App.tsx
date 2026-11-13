@@ -208,7 +208,7 @@ export function App() {
     return () => window.removeEventListener("click", handleOutsideClick);
   }, []);
 
-  // Form & IDM Pre-download states
+  // Form & Pre-download states
   const [newUrl, setNewUrl] = useState("");
   const [newFilename, setNewFilename] = useState("");
   const [saveDir, setSaveDir] = useState<string>("");
@@ -237,6 +237,7 @@ export function App() {
         isMedia: false,
         defaultDir: settingsData.downloadDir || "~/Downloads",
       });
+      setIsAddOpen(true);
     };
     reader.readAsDataURL(file);
   };
@@ -428,7 +429,7 @@ export function App() {
     } catch { }
   };
 
-  // Live URL inspection & metadata probing (IDM Style)
+  // Live URL inspection & metadata probing
   useEffect(() => {
     const trimmed = newUrl.trim();
     if (!trimmed || !/^https?:\/\//i.test(trimmed)) {
@@ -539,7 +540,7 @@ export function App() {
 
   const handleRepair = async (task: Task) => {
     await executeAction("task.repair", { id: task.id });
-    setInspectingTaskId(task.id);
+    openStandaloneInspector(task.id);
   };
 
   const handleDeleteWithFile = async (task: Task) => {
@@ -576,7 +577,7 @@ export function App() {
       if (json.result?.id) {
         setSelectedId(json.result.id);
         if (startImmediately) {
-          setInspectingTaskId(json.result.id); // Auto popup IDM progress window!
+          openStandaloneInspector(json.result.id);
         }
       }
     } catch (err) {
@@ -675,6 +676,18 @@ export function App() {
     }
   };
 
+  const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const standaloneInspectId = urlParams.get("inspect");
+  const isStandalone = urlParams.get("standalone") === "true" || !!standaloneInspectId;
+
+  const openStandaloneInspector = (taskId: string) => {
+    if ((window as any).webkit?.messageHandlers?.windowControl) {
+      postWindowMessage(`openDownloadWindow:${taskId}`);
+    } else {
+      window.open(`/?inspect=${taskId}&standalone=true`, `downnux_inspect_${taskId}`, "width=720,height=620,resizable=yes");
+    }
+  };
+
   const handleMinimize = () => {
     postWindowMessage("minimize");
   };
@@ -709,6 +722,40 @@ export function App() {
     postWindowMessage(`resize:${edge}`);
   };
 
+  if (isStandalone && standaloneInspectId) {
+    const standaloneTask = tasks.find((t) => t.id === standaloneInspectId);
+    if (standaloneTask) {
+      return (
+        <DownloadDetailModal
+          task={standaloneTask}
+          lang={lang}
+          onClose={() => {
+            postWindowMessage("close");
+            window.close();
+          }}
+          onAction={executeAction}
+          isStandalone={true}
+        />
+      );
+    }
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#f7f8fa] dark:bg-[#12131f] text-[#202631] dark:text-white p-6 select-none">
+        <Loader2 className="w-8 h-8 text-[#6554c0] animate-spin mb-3" />
+        <p className="text-[13px] font-semibold">{lang === "en" ? "Connecting to download stream..." : "Menghubungkan ke aliran unduhan..."}</p>
+        <span className="text-[11px] text-[#6e7685] dark:text-[#888e9e] mt-1 font-mono">Task ID: {standaloneInspectId}</span>
+        <button
+          onClick={() => {
+            postWindowMessage("close");
+            window.close();
+          }}
+          className="mt-6 px-4 py-1.5 rounded-[6px] ios-glass-button text-[11px]"
+        >
+          {lang === "en" ? "Close" : "Tutup"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="ios-glass-canvas h-screen w-screen flex flex-col box-border overflow-hidden select-none relative">
       {/* Native window resize edge handles */}
@@ -740,7 +787,7 @@ export function App() {
               className="text-[10px] font-bold text-[#6554c0] bg-[#edeaf9] dark:bg-[#6554c0]/20 dark:text-[#a79be8] px-2 py-0.5 rounded-full border border-[#d8d2f5] dark:border-[#4d4287] tracking-wide shadow-xs hover:border-[#6554c0] hover:scale-105 transition-all cursor-pointer flex items-center space-x-1"
               title={lang === "en" ? "Click to check for updates" : "Klik untuk periksa pembaruan"}
             >
-              <span>BETA 0.0.3</span>
+              <span>BETA 0.0.4</span>
               {updateInfo?.hasUpdate && (
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-ping" />
               )}
@@ -1007,6 +1054,18 @@ export function App() {
                   </button>
 
                   <button
+                    type="button"
+                    onClick={() => {
+                      torrentFileInputRef.current?.click();
+                    }}
+                    className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 hover:border-[#6554c0]/60 flex-shrink-0"
+                    title={lang === "en" ? "Import and download .torrent file from computer" : "Impor dan download file .torrent dari komputer"}
+                  >
+                    <Magnet className="w-4 h-4 text-[#6554c0] dark:text-[#a79be8]" />
+                    <span>{lang === "en" ? "Open Torrent" : "Buka Torrent"}</span>
+                  </button>
+
+                  <button
                     disabled={!selectedTask || selectedTask.status !== "paused"}
                     onClick={() => selectedTask && executeAction("task.resume", { id: selectedTask.id })}
                     className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 disabled:opacity-40 flex-shrink-0"
@@ -1121,11 +1180,49 @@ export function App() {
                     <tbody className="divide-y divide-[#e7e9ef] dark:divide-[#242738]">
                       {filteredTasks.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-12 text-center text-[#6e7685] dark:text-[#888e9e]">
-                            <Folder className="w-8 h-8 mx-auto mb-2 opacity-30 text-[#6554c0] dark:text-[#a79be8]" />
-                            <p className="text-[12px] font-medium text-[#202631] dark:text-white">
-                              {lang === "en" ? "No downloads in this list" : "Tidak ada unduhan di daftar ini"}
-                            </p>
+                          <td colSpan={7} className="py-14 text-center text-[#6e7685] dark:text-[#888e9e]">
+                            {activeCategory === "torrents" ? (
+                              <div className="flex flex-col items-center justify-center space-y-3 py-2">
+                                <div className="w-12 h-12 rounded-full bg-[#6554c0]/15 dark:bg-[#6554c0]/25 flex items-center justify-center">
+                                  <Magnet className="w-6 h-6 text-[#6554c0] dark:text-[#a79be8]" />
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-[13px] font-semibold text-[#202631] dark:text-white">
+                                    {lang === "en" ? "No Torrent Downloads Yet" : "Belum Ada Unduhan Torrent"}
+                                  </p>
+                                  <p className="text-[11px] text-[#6e7685] dark:text-[#888e9e] mt-1 max-w-sm">
+                                    {lang === "en"
+                                      ? "Import a .torrent file directly from your computer or paste a magnet link to start peer-to-peer downloading."
+                                      : "Impor file .torrent langsung dari komputer Anda atau tempel link magnet untuk mulai download peer-to-peer."}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => torrentFileInputRef.current?.click()}
+                                    className="px-3.5 py-1.5 rounded-[6px] ios-button-primary text-white text-[11px] font-medium flex items-center space-x-1.5 shadow-sm"
+                                  >
+                                    <Magnet className="w-3.5 h-3.5" />
+                                    <span>{lang === "en" ? "Import .torrent File" : "Impor File .torrent"}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsAddOpen(true)}
+                                    className="px-3.5 py-1.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[11px] font-medium flex items-center space-x-1.5"
+                                  >
+                                    <Plus className="w-3.5 h-3.5 text-[#6554c0] dark:text-[#a79be8]" />
+                                    <span>{lang === "en" ? "Add Magnet Link" : "Tambah Magnet Link"}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <Folder className="w-8 h-8 mx-auto mb-2 opacity-30 text-[#6554c0] dark:text-[#a79be8]" />
+                                <p className="text-[12px] font-medium text-[#202631] dark:text-white">
+                                  {lang === "en" ? "No downloads in this list" : "Tidak ada unduhan di daftar ini"}
+                                </p>
+                              </>
+                            )}
                           </td>
                         </tr>
                       ) : (
@@ -1151,13 +1248,13 @@ export function App() {
                                 if (task.status === "completed") {
                                   handleOpenFile(task);
                                 } else {
-                                  setInspectingTaskId(task.id);
+                                  openStandaloneInspector(task.id);
                                 }
                               }}
                               title={
                                 task.status === "completed"
                                   ? (lang === "en" ? "Double click to open file" : "Klik 2x untuk buka file")
-                                  : (lang === "en" ? "Double click to inspect segments & speed (IDM Dialog)" : "Klik 2x untuk buka inspektor segmen & kecepatan (IDM)")
+                                  : (lang === "en" ? "Double click to inspect dynamic segments & speed" : "Klik 2x untuk buka inspektor segmen & kecepatan")
                               }
                               className={`cursor-pointer transition-colors relative ${isSelected
                                   ? "bg-[#edeaf9] dark:bg-[#6554c0]/25 text-[#202631] dark:text-white"
@@ -1193,7 +1290,7 @@ export function App() {
                                 {fmtBytes(task.totalBytes || task.completedBytes)}
                               </td>
 
-                              {/* Status & Progress bar (IDM enhanced visual) */}
+                              {/* Status & Progress bar */}
                               <td className="py-2.5 px-3 whitespace-nowrap">
                                 <div className="flex justify-between items-center mb-1">
                                   <span
@@ -1324,16 +1421,16 @@ export function App() {
                                         <span>{t.openFolder}</span>
                                       </button>
 
-                                      {/* 3. Inspect Segments (IDM Visualizer) */}
+                                      {/* 3. Inspect Segments */}
                                       <button
                                         onClick={() => {
                                           setOpenActionMenuId(null);
-                                          setInspectingTaskId(task.id);
+                                          openStandaloneInspector(task.id);
                                         }}
                                         className="w-full px-3 py-2 flex items-center space-x-2 hover:bg-[#f7f8fa] dark:hover:bg-[#25283b] text-left transition-colors text-[#3b82f6]"
                                       >
                                         <Maximize2 className="w-3.5 h-3.5" />
-                                        <span>{lang === "en" ? "Inspect Segments (IDM)" : "Inspeksi Segmen (IDM)"}</span>
+                                        <span>{lang === "en" ? "Inspect Segments" : "Inspeksi Segmen"}</span>
                                       </button>
 
                                       {/* 4. Repair / Re-download */}
@@ -1403,7 +1500,7 @@ export function App() {
                       </div>
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => setInspectingTaskId(selectedTask.id)}
+                          onClick={() => openStandaloneInspector(selectedTask.id)}
                           className="h-[36px] px-3.5 rounded-[6px] ios-glass-button text-[#202631] dark:text-white text-[12px] font-medium flex items-center space-x-2 border border-[#6554c0]/30 hover:border-[#6554c0]"
                           title={lang === "en" ? "Inspect Segments & Speed" : "Inspeksi Segmen & Kecepatan"}
                         >
@@ -1579,7 +1676,7 @@ export function App() {
         </div>
       </div>
 
-      {/* DIALOG TAMBAH URL (IDM Download File Information Mode) */}
+      {/* DIALOG TAMBAH URL */}
       {isAddOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white/95 dark:bg-[#181a28]/95 backdrop-blur-2xl border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[12px] w-full max-w-lg p-5 shadow-2xl space-y-4">
@@ -1614,16 +1711,6 @@ export function App() {
                     <Magnet className="w-3 h-3" />
                     <span>{lang === "en" ? "Select .torrent file" : "Pilih file .torrent"}</span>
                   </button>
-                  <input
-                    type="file"
-                    ref={torrentFileInputRef}
-                    accept=".torrent"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleTorrentFileSelected(f);
-                    }}
-                  />
                 </div>
                 <div className="relative">
                   <input
@@ -1641,7 +1728,7 @@ export function App() {
                 </div>
               </div>
 
-              {/* IDM Metadata Preview Card (Estimated Size, Resume Support, Category) */}
+              {/* Metadata Preview Card (Estimated Size, Resume Support, Category) */}
               {isProbing ? (
                 <div className="bg-[#edeaf9]/40 dark:bg-[#6554c0]/15 border border-[#d8d2f5] dark:border-[#4d4287] rounded-[8px] p-3 flex items-center space-x-2.5 text-[11px] text-[#6554c0] dark:text-[#a79be8]">
                   <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
@@ -1695,7 +1782,7 @@ export function App() {
                 />
               </div>
 
-              {/* Save Folder Destination with Browse Button (IDM Feature) */}
+              {/* Save Folder Destination with Browse Button */}
               <div>
                 <label className="block text-[#6e7685] dark:text-[#9ea4b5] mb-1 font-medium">{t.saveFolder}</label>
                 <div className="flex items-center space-x-2">
@@ -1757,7 +1844,7 @@ export function App() {
                 </div>
               )}
 
-              {/* Parallel Connections (IDM Multi-threaded Segmentation) */}
+              {/* Parallel Connections (Multi-threaded Segmentation) */}
               <div>
                 <label className="block text-[#6e7685] dark:text-[#9ea4b5] mb-1 font-medium">{t.connections}</label>
                 <div className="flex items-center space-x-2">
@@ -1778,7 +1865,7 @@ export function App() {
               </div>
             </div>
 
-            {/* Action buttons (IDM style: Cancel, Download Later, Start Download) */}
+            {/* Action buttons (Cancel, Download Later, Start Download) */}
             <div className="flex items-center justify-between pt-3 border-t border-[#e7e9ef] dark:border-[#2a2c3d]">
               <button
                 onClick={() => {
@@ -1848,7 +1935,20 @@ export function App() {
           </div>
         </div>
       )}
-      {/* DETAIL UNDUHAN & INSPEKTOR SEGMEN MODAL (IDM Style) */}
+      {/* Global Hidden Input for Importing .torrent Files */}
+      <input
+        type="file"
+        ref={torrentFileInputRef}
+        accept=".torrent"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleTorrentFileSelected(f);
+          e.target.value = "";
+        }}
+      />
+
+      {/* DETAIL UNDUHAN & INSPEKTOR SEGMEN MODAL */}
       {inspectingTask && (
         <DownloadDetailModal
           task={inspectingTask}
