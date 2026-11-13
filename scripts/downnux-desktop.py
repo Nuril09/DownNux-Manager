@@ -164,6 +164,13 @@ class DownNuxNativeWindow(Gtk.Window):
                         subprocess.Popen(["xdg-open", os.path.expanduser("~/Downloads")])
                 except Exception as ex:
                     sys.stderr.write(f"Open folder error: {ex}\n")
+            elif msg.startswith("openFile:"):
+                try:
+                    target = msg.split(":", 1)[1]
+                    if target and os.path.exists(target):
+                        subprocess.Popen(["xdg-open", target])
+                except Exception as ex:
+                    sys.stderr.write(f"Open file error: {ex}\n")
             elif msg == "selectFolder":
                 try:
                     import json

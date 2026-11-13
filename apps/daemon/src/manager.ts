@@ -209,9 +209,11 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
     if (!isFinal(t.status)) {
       await this.releaseJob(t);
       this.deletePartial(t);
-    } else if (deleteFile && t.status === "completed") {
+    }
+    if (deleteFile) {
       const p = safeJoin(t.dir, t.filename);
       if (p) unlinkQuiet(p);
+      this.deletePartial(t);
     }
     this.tasks.delete(id);
     this.rt.delete(id);
@@ -273,6 +275,49 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
       }
     }
     return { ok: true };
+  }
+
+  openFile(id: string): { ok: true } {
+    const t = this.mustGet(id);
+    const targetDir = t.dir || path.join(process.env.HOME || "", "Downloads");
+    const targetFile = t.filename ? path.join(targetDir, t.filename) : "";
+    const env = {
+      ...process.env,
+      DISPLAY: process.env.DISPLAY || ":0",
+      WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0",
+    };
+    if (targetFile && fs.existsSync(targetFile)) {
+      spawn("xdg-open", [targetFile], {
+        detached: true,
+        stdio: "ignore",
+        env,
+      }).unref();
+    } else {
+      spawn("xdg-open", [targetDir], {
+        detached: true,
+        stdio: "ignore",
+        env,
+      }).unref();
+    }
+    return { ok: true };
+  }
+
+  async repair(id: string): Promise<Task> {
+    const t = this.mustGet(id);
+    await this.releaseJob(t);
+    this.deletePartial(t);
+    const p = safeJoin(t.dir, t.filename);
+    if (p) unlinkQuiet(p);
+    t.completedBytes = 0;
+    t.error = null;
+    t.connections = t.connections || 8;
+    this.rt.set(t.id, emptyRuntime());
+    this.setStatus(t, "queued");
+    this.store.upsert(t);
+    this.emit("task", this.toPublic(t));
+    this.schedule();
+    log.info(`Repair / Restart task ${t.id} (${t.filename})`);
+    return this.toPublic(t);
   }
 
   private notifyCompletion(t: StoredTask): void {

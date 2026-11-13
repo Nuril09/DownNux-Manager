@@ -77,6 +77,8 @@ async function main(): Promise<void> {
     "task.pauseAll": async () => ({ count: await manager.pauseAll() }),
     "task.resumeAll": () => ({ count: manager.resumeAll() }),
     "task.openFolder": (p) => manager.openFolder(p.id),
+    "task.openFile": (p) => manager.openFile(p.id),
+    "task.repair": (p) => manager.repair(p.id),
     "task.probe": (p) => probeUrl(p.url, settings.downloadDir(), p.headers, settings.get().categoryDirs),
     "dialog.selectFolder": async () => {
       try {

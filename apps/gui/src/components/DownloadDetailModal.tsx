@@ -143,6 +143,23 @@ export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadD
           </div>
 
           <div className="flex items-center space-x-1.5 flex-shrink-0 ml-4">
+            {task.status === "completed" && (
+              <button
+                onClick={() => {
+                  onAction("task.openFile", { id: task.id });
+                  const targetFile = task.dir ? `${task.dir}/${task.filename}` : task.filename;
+                  try {
+                    (window as any).webkit?.messageHandlers?.downnux?.postMessage(`openFile:${targetFile}`);
+                  } catch {}
+                }}
+                className="h-[30px] px-3 rounded-[6px] ios-button-primary text-white text-[11px] font-semibold flex items-center space-x-1.5 shadow-sm"
+                title={lang === "en" ? "Open Downloaded File" : "Buka File Unduhan"}
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>{lang === "en" ? "Open File" : "Buka File"}</span>
+              </button>
+            )}
+
             {task.status === "downloading" ? (
               <button
                 onClick={() => onAction("task.pause", { id: task.id })}
@@ -183,23 +200,33 @@ export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadD
 
         {/* Big Progres & Speed Metrics */}
         <div className="px-5 py-3.5 bg-[#f7f8fa]/60 dark:bg-[#12131b]/60 border-b border-[#e7e9ef] dark:border-[#2a2c3d] flex-shrink-0">
-          {/* Main Progress Bar */}
+          {/* Main Progress Bar (Iconic IDM Style) */}
           <div className="flex items-center justify-between text-[11px] mb-1.5 font-medium">
-            <span className="text-[#6e7685] dark:text-[#9ea4b5]">
-              {lang === "en" ? "Overall Download Progress" : "Progres Keseluruhan"}
+            <span className="text-[#6e7685] dark:text-[#9ea4b5] font-semibold flex items-center gap-1.5">
+              <Download className="w-3.5 h-3.5 text-[#6554c0] dark:text-[#a79be8]" />
+              {lang === "en" ? "Download Progress" : "Progres Unduhan"}
             </span>
-            <span className="font-bold text-[#202631] dark:text-white">{pct.toFixed(1)}%</span>
+            <span className="font-bold text-[13px] text-[#202631] dark:text-white">{pct.toFixed(1)}%</span>
           </div>
 
-          <div className="h-[8px] bg-[#e7e9ef] dark:bg-[#252838] rounded-[4px] overflow-hidden relative">
+          <div className="h-[24px] bg-[#e7e9ef] dark:bg-[#252838] rounded-[6px] overflow-hidden relative border border-[#d8dce6] dark:border-[#32364a] shadow-inner">
             <div
-              className={`h-full transition-all duration-300 rounded-[4px] ${
+              className={`h-full transition-all duration-300 relative ${
                 task.status === "completed"
                   ? "bg-[#218163] dark:bg-[#38d49a]"
                   : "bg-gradient-to-r from-[#6554c0] via-[#8b7ce0] to-[#38d49a]"
               }`}
               style={{ width: `${pct}%` }}
-            />
+            >
+              {task.status === "downloading" && (
+                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+              )}
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="text-[11px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                {pct.toFixed(1)}% {task.status === "completed" ? (lang === "en" ? "• Completed" : "• Selesai") : ""}
+              </span>
+            </div>
           </div>
 
           {/* Quick Metrics Bar */}
@@ -301,7 +328,7 @@ export function DownloadDetailModal({ task, lang, onClose, onAction }: DownloadD
 
                 {/* Iconic 32 Micro-Segment Blocks (Classic IDM Visualizer) */}
                 <div className="p-3.5 bg-[#f7f8fa] dark:bg-[#12131b] border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[10px]">
-                  <div className="grid grid-cols-16 gap-1.5">
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(16, minmax(0, 1fr))", gap: "5px" }}>
                     {Array.from({ length: totalSegments }).map((_, idx) => {
                       const isComplete = idx < completedSegments || task.status === "completed";
                       const isActive =

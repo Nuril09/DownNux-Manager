@@ -33,6 +33,8 @@ import {
   Maximize2,
   Radio,
   ArrowUp,
+  MoreVertical,
+  RotateCcw,
 } from "lucide-react";
 import { translations, type Lang } from "./i18n";
 import { SettingsView, type SettingsData } from "./components/SettingsView";
@@ -165,6 +167,18 @@ export function App() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [inspectingTaskId, setInspectingTaskId] = useState<string | null>(null);
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+
+  // Close action menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement)?.closest(".action-menu-container")) {
+        setOpenActionMenuId(null);
+      }
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
 
   // Form & IDM Pre-download states
   const [newUrl, setNewUrl] = useState("");
@@ -484,6 +498,28 @@ export function App() {
     }
   };
 
+  const handleOpenFile = (task: Task) => {
+    executeAction("task.openFile", { id: task.id });
+    const targetFile = task.dir ? `${task.dir}/${task.filename}` : task.filename;
+    postWindowMessage(`openFile:${targetFile}`);
+  };
+
+  const handleOpenFolder = (task: Task) => {
+    executeAction("task.openFolder", { id: task.id });
+    postWindowMessage(`openFolder:${task.dir || ""}`);
+  };
+
+  const handleRepair = async (task: Task) => {
+    await executeAction("task.repair", { id: task.id });
+    setInspectingTaskId(task.id);
+  };
+
+  const handleDeleteWithFile = async (task: Task) => {
+    if (window.confirm(t.deleteConfirmDesc)) {
+      await executeAction("task.remove", { id: task.id, deleteFile: true });
+    }
+  };
+
   const handleAddDownload = async (startImmediately: boolean = true) => {
     if (!newUrl) return;
     const finalFilename = newFilename ? newFilename.trim() : (probeResult?.filename || undefined);
@@ -511,6 +547,9 @@ export function App() {
       const json = await res.json();
       if (json.result?.id) {
         setSelectedId(json.result.id);
+        if (startImmediately) {
+          setInspectingTaskId(json.result.id); // Auto popup IDM progress window!
+        }
       }
     } catch (err) {
       console.error(err);
@@ -1061,8 +1100,18 @@ export function App() {
                             <tr
                               key={task.id}
                               onClick={() => setSelectedId(task.id)}
-                              onDoubleClick={() => setInspectingTaskId(task.id)}
-                              title={lang === "en" ? "Double click to inspect segments & speed (IDM Dialog)" : "Klik 2x untuk buka inspektor segmen & kecepatan (IDM)"}
+                              onDoubleClick={() => {
+                                if (task.status === "completed") {
+                                  handleOpenFile(task);
+                                } else {
+                                  setInspectingTaskId(task.id);
+                                }
+                              }}
+                              title={
+                                task.status === "completed"
+                                  ? (lang === "en" ? "Double click to open file" : "Klik 2x untuk buka file")
+                                  : (lang === "en" ? "Double click to inspect segments & speed (IDM Dialog)" : "Klik 2x untuk buka inspektor segmen & kecepatan (IDM)")
+                              }
                               className={`cursor-pointer transition-colors relative ${isSelected
                                   ? "bg-[#edeaf9] dark:bg-[#6554c0]/25 text-[#202631] dark:text-white"
                                   : "hover:bg-[#fbfbfd] dark:hover:bg-[#1c1e2d] bg-white/70 dark:bg-[#151724]/70 text-[#202631] dark:text-[#e2e4ea]"
@@ -1151,24 +1200,123 @@ export function App() {
                                 {lang === "en" ? "Today" : "Hari ini"}, {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </td>
 
-                              <td className="py-2.5 px-3 text-right">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (task.status === "downloading") executeAction("task.pause", { id: task.id });
-                                    else if (task.status === "paused") executeAction("task.resume", { id: task.id });
-                                    else if (task.status === "failed") executeAction("task.retry", { id: task.id });
-                                  }}
-                                  className="w-6 h-6 rounded hover:bg-[#edeaf9] dark:hover:bg-[#2a2840] inline-flex items-center justify-center text-[#6554c0] dark:text-[#a79be8] transition-colors"
-                                >
-                                  {task.status === "downloading" ? (
-                                    <Pause className="w-3.5 h-3.5" />
-                                  ) : task.status === "failed" ? (
-                                    <RefreshCw className="w-3.5 h-3.5" />
-                                  ) : (
-                                    <Play className="w-3.5 h-3.5" />
+                              <td className="py-2.5 px-3 text-right relative">
+                                <div className="inline-flex items-center space-x-1 action-menu-container">
+                                  {/* Quick action button: Play/Open for completed, Pause for downloading, Resume for paused, Repair for failed */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (task.status === "completed") handleOpenFile(task);
+                                      else if (task.status === "downloading") executeAction("task.pause", { id: task.id });
+                                      else if (task.status === "paused") executeAction("task.resume", { id: task.id });
+                                      else if (task.status === "failed") handleRepair(task);
+                                    }}
+                                    title={
+                                      task.status === "completed"
+                                        ? (lang === "en" ? "Open File" : "Buka File")
+                                        : task.status === "downloading"
+                                        ? (lang === "en" ? "Pause" : "Jeda")
+                                        : task.status === "paused"
+                                        ? (lang === "en" ? "Resume" : "Lanjutkan")
+                                        : (lang === "en" ? "Repair / Retry" : "Perbaiki / Unduh Ulang")
+                                    }
+                                    className="w-7 h-7 rounded-[6px] hover:bg-[#edeaf9] dark:hover:bg-[#2a2840] inline-flex items-center justify-center text-[#6554c0] dark:text-[#a79be8] transition-colors"
+                                  >
+                                    {task.status === "downloading" ? (
+                                      <Pause className="w-3.5 h-3.5" />
+                                    ) : task.status === "failed" ? (
+                                      <RefreshCw className="w-3.5 h-3.5" />
+                                    ) : (
+                                      <Play className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+
+                                  {/* More actions button (3-dots) */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenActionMenuId(openActionMenuId === task.id ? null : task.id);
+                                    }}
+                                    title={t.moreActions}
+                                    className="w-7 h-7 rounded-[6px] hover:bg-[#edeaf9] dark:hover:bg-[#2a2840] inline-flex items-center justify-center text-[#6e7685] hover:text-[#202631] dark:hover:text-white transition-colors"
+                                  >
+                                    <MoreVertical className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Dropdown Menu */}
+                                  {openActionMenuId === task.id && (
+                                    <div
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="absolute right-3 top-9 z-50 w-52 bg-white/95 dark:bg-[#181a28]/95 backdrop-blur-xl border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[8px] shadow-2xl py-1 text-[11px] font-medium text-[#202631] dark:text-white"
+                                    >
+                                      {/* 1. Open File */}
+                                      <button
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          handleOpenFile(task);
+                                        }}
+                                        disabled={task.status !== "completed"}
+                                        className="w-full px-3 py-2 flex items-center space-x-2 hover:bg-[#f7f8fa] dark:hover:bg-[#25283b] disabled:opacity-40 disabled:cursor-not-allowed text-left transition-colors"
+                                      >
+                                        <Play className="w-3.5 h-3.5 text-[#218163] dark:text-[#38d49a]" />
+                                        <span className="flex-1">{t.openFile}</span>
+                                        {task.status !== "completed" && (
+                                          <span className="text-[9px] text-[#6e7685]">({lang === "en" ? "Wait done" : "Belum selesai"})</span>
+                                        )}
+                                      </button>
+
+                                      {/* 2. Open Folder Directory */}
+                                      <button
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          handleOpenFolder(task);
+                                        }}
+                                        className="w-full px-3 py-2 flex items-center space-x-2 hover:bg-[#f7f8fa] dark:hover:bg-[#25283b] text-left transition-colors"
+                                      >
+                                        <FolderOpen className="w-3.5 h-3.5 text-[#6554c0] dark:text-[#a79be8]" />
+                                        <span>{t.openFolder}</span>
+                                      </button>
+
+                                      {/* 3. Inspect Segments (IDM Visualizer) */}
+                                      <button
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          setInspectingTaskId(task.id);
+                                        }}
+                                        className="w-full px-3 py-2 flex items-center space-x-2 hover:bg-[#f7f8fa] dark:hover:bg-[#25283b] text-left transition-colors text-[#3b82f6]"
+                                      >
+                                        <Maximize2 className="w-3.5 h-3.5" />
+                                        <span>{lang === "en" ? "Inspect Segments (IDM)" : "Inspeksi Segmen (IDM)"}</span>
+                                      </button>
+
+                                      {/* 4. Repair / Re-download */}
+                                      <button
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          handleRepair(task);
+                                        }}
+                                        className="w-full px-3 py-2 flex items-center space-x-2 hover:bg-[#f7f8fa] dark:hover:bg-[#25283b] text-left text-[#ac8433] dark:text-[#fbbf24] transition-colors"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        <span>{t.repair}</span>
+                                      </button>
+
+                                      <div className="border-t border-[#e7e9ef] dark:border-[#2a2c3d] my-1" />
+
+                                      {/* 5. Delete (from list & storage disk) */}
+                                      <button
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          handleDeleteWithFile(task);
+                                        }}
+                                        className="w-full px-3 py-2 flex items-center space-x-2 hover:bg-[#fee2e2] dark:hover:bg-[#451a1a] text-[#dc2626] dark:text-[#f87171] text-left transition-colors"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <span>{t.deleteFromDisk}</span>
+                                      </button>
+                                    </div>
                                   )}
-                                </button>
+                                </div>
                               </td>
                             </tr>
                           );

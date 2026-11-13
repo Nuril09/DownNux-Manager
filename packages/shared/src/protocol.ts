@@ -25,6 +25,8 @@ export const MethodParams = {
   "task.pauseAll": z.object({}).optional(),
   "task.resumeAll": z.object({}).optional(),
   "task.openFolder": IdParams,
+  "task.openFile": IdParams,
+  "task.repair": IdParams,
   "task.probe": z.object({ url: z.string(), headers: z.record(z.string()).optional() }),
   "dialog.selectFolder": z.object({ defaultPath: z.string().optional() }).optional(),
   subscribe: z.object({}).optional(),
@@ -71,6 +73,8 @@ export interface MethodResults {
   "task.pauseAll": { count: number };
   "task.resumeAll": { count: number };
   "task.openFolder": { ok: true };
+  "task.openFile": { ok: true };
+  "task.repair": Task;
   "task.probe": UrlProbeResult;
   "dialog.selectFolder": { ok: boolean; path?: string };
   subscribe: { ok: true };
