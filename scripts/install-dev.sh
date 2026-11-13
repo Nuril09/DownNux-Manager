@@ -157,11 +157,9 @@ mkdir -p "$HOME/.mozilla/native-messaging-hosts"
 echo "$FIREFOX_MANIFEST" > "$HOME/.mozilla/native-messaging-hosts/com.creativemichiz.downnux.native_host.json"
 echo "[✓] Registered Browser Integration Manifests for Chrome, Brave, Edge, Chromium, and Firefox"
 
-# 5. Build GUI assets if needed
-if [ ! -f "$ROOT_DIR/apps/gui/dist/index.html" ]; then
-  echo "[*] Building GUI web bundle..."
-  npm --prefix "$ROOT_DIR/apps/gui" run build
-fi
+# 5. Build GUI assets
+echo "[*] Building GUI web bundle..."
+npm --prefix "$ROOT_DIR/apps/gui" run build
 
 # 6. Create Systemd User Services (Daemon + GUI)
 mkdir -p "$HOME/.config/systemd/user"
