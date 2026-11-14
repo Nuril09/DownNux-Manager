@@ -41,24 +41,27 @@ export function HeroSection({ theme, lang }: HeroSectionProps) {
           {/* Left Column: Headline, Value Proposition, and Smart CTAs */}
           <div className="lg:col-span-6 space-y-6">
             
-            {/* Context Badge */}
-            <motion.div
+            {/* Interactive Release Announcement Banner */}
+            <motion.a
+              href="#changelog"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="inline-flex items-center space-x-2 px-3 py-1 rounded-[6px] text-xs font-semibold border bg-black/10 dark:bg-white/5"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[7px] text-xs font-semibold border bg-white/80 dark:bg-white/[0.05] hover:border-[#6554c0]/50 dark:hover:border-[#8b5cf6]/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b5cf6]"
               style={{
                 borderColor: theme === "light" ? "#dcdfe9" : "rgba(139, 92, 246, 0.3)",
-                color: theme === "light" ? "#4b5563" : "#d1d5db",
+                color: theme === "light" ? "#374151" : "#d1d5db",
               }}
             >
-              <span className="w-2 h-2 rounded-full bg-[#2dd4bf] animate-pulse" />
+              <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded-[4px] bg-[#10b981]/15 text-[#059669] dark:text-[#34d399]">
+                v{CURRENT_VERSION}
+              </span>
               <span>
                 {lang === "en"
-                  ? `Release v${CURRENT_VERSION} · Powered by Hybrid aria2 + yt-dlp`
-                  : `Rilis v${CURRENT_VERSION} · Didukung Hybrid aria2 + yt-dlp`}
+                  ? "Standalone Windows & macOS Engine · See what's new"
+                  : "Engine Mandiri Windows & macOS · Lihat pembaruan"}
               </span>
-            </motion.div>
+            </motion.a>
 
             {/* Main Headline */}
             <motion.h1
