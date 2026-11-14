@@ -120,10 +120,10 @@ Download the official NSIS installer. All dependencies (`node.exe`, `aria2c.exe`
 
 ```bash
 # 1. Download the latest .deb package
-wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/downnux-manager_0.0.6_amd64.deb
+wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_amd64.deb
 
 # 2. Install using apt (resolves system dependencies automatically)
-sudo apt install ./downnux-manager_0.0.6_amd64.deb
+sudo apt install ./DownNux.Manager_0.0.6_amd64.deb
 ```
 
 #### Option B: Standalone Linux AppImage

@@ -88,16 +88,16 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
   // Linux Packages
   {
     id: "linux-deb",
-    name: "downnux-manager_0.0.6_amd64.deb",
+    name: "DownNux.Manager_0.0.6_amd64.deb",
     label: "Debian / Ubuntu Package (.deb)",
     os: "linux",
     format: "deb",
-    size: "28 MB",
+    size: "53 MB",
     recommended: true,
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/downnux-manager_0.0.6_amd64.deb",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_amd64.deb",
     instructions: {
-      en: "sudo apt install ./downnux-manager_0.0.6_amd64.deb",
-      id: "sudo apt install ./downnux-manager_0.0.6_amd64.deb",
+      en: "sudo apt install ./DownNux.Manager_0.0.6_amd64.deb",
+      id: "sudo apt install ./DownNux.Manager_0.0.6_amd64.deb",
     },
   },
   {
@@ -106,7 +106,7 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
     label: "Universal Linux AppImage",
     os: "linux",
     format: "appimage",
-    size: "29 MB",
+    size: "180 MB",
     downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_amd64.AppImage",
     instructions: {
       en: "chmod +x DownNux.Manager_0.0.6_amd64.AppImage && ./DownNux.Manager_0.0.6_amd64.AppImage",
@@ -134,7 +134,7 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
     label: "Windows NSIS Installer (.exe)",
     os: "windows",
     format: "exe",
-    size: "65 MB",
+    size: "99 MB",
     recommended: true,
     downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_x64-setup.exe",
     instructions: {
@@ -163,7 +163,7 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
     label: "macOS Disk Image (.dmg)",
     os: "macos",
     format: "dmg",
-    size: "62 MB",
+    size: "80 MB",
     recommended: true,
     downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_aarch64.dmg",
     instructions: {

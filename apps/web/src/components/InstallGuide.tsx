@@ -104,12 +104,12 @@ export function InstallGuide({ theme, lang }: InstallGuideProps) {
                   
                   <div className="mt-3 relative rounded-[8px] bg-black/90 p-4 font-mono text-xs text-white overflow-x-auto">
                     <div className="text-[#9ca3af] mb-1"># 1. Download and install deb package</div>
-                    <div className="text-emerald-400">wget https://github.com/Nuril09/DownNux-Manager/releases/download/v{CURRENT_VERSION}/downnux-manager_{CURRENT_VERSION}_amd64.deb</div>
-                    <div className="text-emerald-400">sudo apt install ./downnux-manager_{CURRENT_VERSION}_amd64.deb</div>
+                    <div className="text-emerald-400">wget https://github.com/Nuril09/DownNux-Manager/releases/download/v{CURRENT_VERSION}/DownNux.Manager_{CURRENT_VERSION}_amd64.deb</div>
+                    <div className="text-emerald-400">sudo apt install ./DownNux.Manager_{CURRENT_VERSION}_amd64.deb</div>
                     
                     <button
                       type="button"
-                      onClick={() => handleCopy(`wget https://github.com/Nuril09/DownNux-Manager/releases/download/v${CURRENT_VERSION}/downnux-manager_${CURRENT_VERSION}_amd64.deb\nsudo apt install ./downnux-manager_${CURRENT_VERSION}_amd64.deb`, "deb-cmd")}
+                      onClick={() => handleCopy(`wget https://github.com/Nuril09/DownNux-Manager/releases/download/v${CURRENT_VERSION}/DownNux.Manager_${CURRENT_VERSION}_amd64.deb\nsudo apt install ./DownNux.Manager_${CURRENT_VERSION}_amd64.deb`, "deb-cmd")}
                       className="absolute top-3 right-3 p-1.5 rounded bg-white/10 hover:bg-white/20 text-white text-xs cursor-pointer"
                       aria-label="Copy snippet"
                     >
