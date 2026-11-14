@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { BookOpen, Search, Terminal, HelpCircle, ChevronDown, ChevronUp, Check, X } from "lucide-react";
+import { BookOpen, Search, Terminal, HelpCircle, ChevronDown, Check, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { COMPARISON_DATA, CLI_COMMANDS, FAQ_LIST } from "../data/docsData";
 
 interface DocumentationSectionProps {
@@ -27,7 +28,13 @@ export function DocumentationSection({ theme, lang }: DocumentationSectionProps)
         
         {/* Section 1: Comparison Table */}
         <div>
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <motion.div
+            className="text-center max-w-2xl mx-auto mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          >
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-[6px] text-xs font-semibold bg-[#6554c0]/15 text-[#6554c0] dark:text-[#a79be8] mb-3">
               <BookOpen className="w-3.5 h-3.5" />
               <span>Technical Benchmark</span>
@@ -40,9 +47,14 @@ export function DocumentationSection({ theme, lang }: DocumentationSectionProps)
                 ? "Objective architectural comparison between browser downloaders, conventional tools, and DownNux."
                 : "Perbandingan arsitektur nyata antara downloader browser bawaan, perkakas konvensional, dan DownNux."}
             </p>
-          </div>
+          </motion.div>
 
-          <div className="rounded-[12px] border overflow-x-auto shadow-md"
+          <motion.div
+            className="rounded-[12px] border overflow-x-auto shadow-md"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5, delay: 0.1 }}
             style={{
               backgroundColor: theme === "light" ? "#ffffff" : "rgba(18, 20, 36, 0.8)",
               borderColor: theme === "light" ? "#dfe3f0" : "rgba(139, 92, 246, 0.22)",
@@ -91,12 +103,18 @@ export function DocumentationSection({ theme, lang }: DocumentationSectionProps)
                 ))}
               </tbody>
             </table>
-          </div>
+          </motion.div>
         </div>
 
         {/* Section 2: Headless CLI Reference */}
         <div>
-          <div className="text-center max-w-2xl mx-auto mb-10">
+          <motion.div
+            className="text-center max-w-2xl mx-auto mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-[6px] text-xs font-semibold bg-[#6554c0]/15 text-[#6554c0] dark:text-[#a79be8] mb-3">
               <Terminal className="w-3.5 h-3.5" />
               <span>Headless Automation</span>
@@ -109,17 +127,19 @@ export function DocumentationSection({ theme, lang }: DocumentationSectionProps)
                 ? "Every daemon operation can be scripted headlessly using the included downnux binary."
                 : "Semua operasi daemon dapat dijalankan tanpa GUI melalui perintah CLI bawaan downnux."}
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Commands List Buttons */}
             <div className="lg:col-span-5 space-y-2">
               {CLI_COMMANDS.map((item, idx) => (
-                <button
+                <motion.button
                   key={idx}
                   type="button"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
                   onClick={() => setSelectedCliIndex(idx)}
-                  className={`w-full text-left p-3.5 rounded-[8px] border transition-all ${
+                  className={`w-full text-left p-3.5 rounded-[8px] border transition-all cursor-pointer ${
                     selectedCliIndex === idx
                       ? "bg-[#6554c0] text-white border-[#5343af] shadow-md"
                       : "bg-white dark:bg-[#121424] text-[#374151] dark:text-[#cbd5e1] border-[#e2e8f0] dark:border-[#282d47] hover:border-[#6554c0]/50"
@@ -129,11 +149,11 @@ export function DocumentationSection({ theme, lang }: DocumentationSectionProps)
                   <div className={`text-[11px] mt-1 line-clamp-1 ${selectedCliIndex === idx ? "text-white/80" : "text-[#6b7280] dark:text-[#94a0bd]"}`}>
                     {item.desc[lang]}
                   </div>
-                </button>
+                </motion.button>
               ))}
             </div>
 
-            {/* Interactive Terminal Output Simulator */}
+            {/* Interactive Terminal Output Simulator with AnimatePresence */}
             <div className="lg:col-span-7 rounded-[10px] bg-black/95 border border-[#2b304c] p-5 shadow-2xl font-mono text-xs text-white min-h-[220px]">
               <div className="flex items-center space-x-2 pb-3 mb-3 border-b border-white/10 text-slate-400 text-[11px]">
                 <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
@@ -142,25 +162,40 @@ export function DocumentationSection({ theme, lang }: DocumentationSectionProps)
                 <span className="ml-2 font-mono">bash - user@desktop:~</span>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <span className="text-[#8b5cf6] font-bold">$</span>
-                  <span className="text-white font-bold">{CLI_COMMANDS[selectedCliIndex].command}</span>
-                </div>
-                <div className="text-slate-400 text-[11px] leading-relaxed">
-                  # {CLI_COMMANDS[selectedCliIndex].desc[lang]}
-                </div>
-                <pre className="text-emerald-400 text-xs whitespace-pre-wrap leading-relaxed pt-1">
-                  {CLI_COMMANDS[selectedCliIndex].output}
-                </pre>
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={selectedCliIndex}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-3"
+                >
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[#8b5cf6] font-bold">$</span>
+                    <span className="text-white font-bold">{CLI_COMMANDS[selectedCliIndex].command}</span>
+                  </div>
+                  <div className="text-slate-400 text-[11px] leading-relaxed">
+                    # {CLI_COMMANDS[selectedCliIndex].desc[lang]}
+                  </div>
+                  <pre className="text-emerald-400 text-xs whitespace-pre-wrap leading-relaxed pt-1">
+                    {CLI_COMMANDS[selectedCliIndex].output}
+                  </pre>
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         </div>
 
         {/* Section 3: Technical FAQ & Search Filter */}
         <div id="faq">
-          <div className="text-center max-w-2xl mx-auto mb-10">
+          <motion.div
+            className="text-center max-w-2xl mx-auto mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-[6px] text-xs font-semibold bg-[#6554c0]/15 text-[#6554c0] dark:text-[#a79be8] mb-3">
               <HelpCircle className="w-3.5 h-3.5" />
               <span>Questions & Answers</span>
@@ -188,22 +223,23 @@ export function DocumentationSection({ theme, lang }: DocumentationSectionProps)
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-2.5 p-0.5 rounded text-[#9ca3af] hover:text-black dark:hover:text-white"
+                  className="absolute right-3 top-2.5 p-0.5 rounded text-[#9ca3af] hover:text-black dark:hover:text-white cursor-pointer"
                   aria-label="Clear search"
                 >
                   <X className="w-4 h-4" />
                 </button>
               )}
             </div>
-          </div>
+          </motion.div>
 
-          {/* FAQ Accordion List or Honest Empty State */}
+          {/* Animated FAQ Accordion List or Honest Empty State */}
           <div className="max-w-3xl mx-auto space-y-3">
             {filteredFaqs.length > 0 ? (
               filteredFaqs.map((faq, idx) => (
-                <div
+                <motion.div
                   key={idx}
-                  className="rounded-[8px] border overflow-hidden transition-all"
+                  layout
+                  className="rounded-[8px] border overflow-hidden transition-all shadow-sm"
                   style={{
                     backgroundColor: theme === "light" ? "#ffffff" : "rgba(18, 20, 36, 0.85)",
                     borderColor: theme === "light" ? "#e5e9f2" : "rgba(139, 92, 246, 0.2)",
@@ -212,25 +248,38 @@ export function DocumentationSection({ theme, lang }: DocumentationSectionProps)
                   <button
                     type="button"
                     onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
-                    className="w-full py-4 px-5 text-left font-semibold text-xs sm:text-sm text-[#111827] dark:text-white flex items-center justify-between gap-4"
+                    className="w-full py-4 px-5 text-left font-semibold text-xs sm:text-sm text-[#111827] dark:text-white flex items-center justify-between gap-4 cursor-pointer"
                     aria-expanded={expandedFaq === idx}
                   >
                     <span>{faq.q[lang]}</span>
-                    {expandedFaq === idx ? (
-                      <ChevronUp className="w-4 h-4 text-[#6554c0] dark:text-[#a79be8] flex-shrink-0" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-[#9ca3af] flex-shrink-0" />
-                    )}
+                    <motion.div
+                      animate={{ rotate: expandedFaq === idx ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex-shrink-0"
+                    >
+                      <ChevronDown className={`w-4 h-4 ${expandedFaq === idx ? "text-[#6554c0] dark:text-[#a79be8]" : "text-[#9ca3af]"}`} />
+                    </motion.div>
                   </button>
 
-                  {expandedFaq === idx && (
-                    <div className="px-5 pb-4 text-xs sm:text-sm text-[#4b5563] dark:text-[#a0a8c2] leading-relaxed border-t pt-3"
-                      style={{ borderColor: theme === "light" ? "#f1f5f9" : "rgba(139, 92, 246, 0.12)" }}
-                    >
-                      {faq.a[lang]}
-                    </div>
-                  )}
-                </div>
+                  <AnimatePresence initial={false}>
+                    {expandedFaq === idx && (
+                      <motion.div
+                        key="content"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-5 pb-4 text-xs sm:text-sm text-[#4b5563] dark:text-[#a0a8c2] leading-relaxed border-t pt-3"
+                          style={{ borderColor: theme === "light" ? "#f1f5f9" : "rgba(139, 92, 246, 0.12)" }}
+                        >
+                          {faq.a[lang]}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               ))
             ) : (
               /* Honest Empty State (Rule R-27) */
@@ -244,7 +293,7 @@ export function DocumentationSection({ theme, lang }: DocumentationSectionProps)
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="mt-3 px-3 py-1.5 rounded-[6px] text-xs font-semibold bg-[#6554c0] text-white"
+                  className="mt-3 px-3 py-1.5 rounded-[6px] text-xs font-semibold bg-[#6554c0] text-white cursor-pointer"
                 >
                   {lang === "en" ? "Reset Search" : "Atur Ulang Pencarian"}
                 </button>
@@ -257,4 +306,3 @@ export function DocumentationSection({ theme, lang }: DocumentationSectionProps)
     </section>
   );
 }
-

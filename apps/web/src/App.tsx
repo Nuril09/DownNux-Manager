@@ -8,6 +8,7 @@ import { InstallGuide } from "./components/InstallGuide";
 import { DocumentationSection } from "./components/DocumentationSection";
 import { Footer } from "./components/Footer";
 import { Cpu, RefreshCw, Layers } from "lucide-react";
+import { motion } from "framer-motion";
 
 export function App() {
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -89,7 +90,13 @@ export function App() {
           >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               
-              <div className="text-center max-w-2xl mx-auto mb-12">
+              <motion.div
+                className="text-center max-w-2xl mx-auto mb-12"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-[6px] text-xs font-semibold bg-[#6554c0]/15 text-[#6554c0] dark:text-[#a79be8] mb-3">
                   <Cpu className="w-3.5 h-3.5" />
                   <span>Anatomy Technical Rig</span>
@@ -102,16 +109,24 @@ export function App() {
                     ? "Interactive isometric rig illustrating the 32-channel Range Distributor and atomic SQLite Write-Ahead Logging vault."
                     : "Simulasi mesin isometrik interaktif yang menjelaskan pembagian 32 jalur Range dan penyimpanan aman SQLite Write-Ahead Logging."}
                 </p>
-              </div>
+              </motion.div>
 
               {/* Anatomy Rig Card Component */}
-              <div className="max-w-4xl mx-auto">
+              <motion.div
+                className="max-w-4xl mx-auto"
+                initial={{ opacity: 0, scale: 0.98 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
                 <AnatomyRig theme={theme} lang={lang} />
-              </div>
+              </motion.div>
 
               {/* Explanatory Technical Notes */}
               <div className="mt-8 max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div className="p-4 rounded-[8px] border"
+                <motion.div
+                  className="p-4 rounded-[8px] border shadow-sm hover:shadow-md transition-shadow"
+                  whileHover={{ y: -2 }}
                   style={{
                     backgroundColor: theme === "light" ? "#ffffff" : "rgba(18, 20, 36, 0.8)",
                     borderColor: theme === "light" ? "#e5e9f2" : "rgba(139, 92, 246, 0.2)",
@@ -126,9 +141,11 @@ export function App() {
                       ? "Unlike standard browser downloads that pull a single stream, DownNux issues HTTP Range headers to split files into up to 32 concurrent slices, saturating available bandwidth."
                       : "Berbeda dengan download biasa yang hanya mengandalkan 1 jalur, DownNux mengirim header HTTP Range untuk memecah file menjadi hingga 32 irisan paralel dan memaksimalkan kuota bandwidth."}
                   </p>
-                </div>
+                </motion.div>
 
-                <div className="p-4 rounded-[8px] border"
+                <motion.div
+                  className="p-4 rounded-[8px] border shadow-sm hover:shadow-md transition-shadow"
+                  whileHover={{ y: -2 }}
                   style={{
                     backgroundColor: theme === "light" ? "#ffffff" : "rgba(18, 20, 36, 0.8)",
                     borderColor: theme === "light" ? "#e5e9f2" : "rgba(139, 92, 246, 0.2)",
@@ -143,7 +160,7 @@ export function App() {
                       ? "Every downloaded byte chunk is recorded in SQLite Write-Ahead Logging storage. If your system crashes or power is lost, DownNux resumes from the exact recorded offset without re-downloading."
                       : "Setiap pecahan byte dicatat ke database SQLite Write-Ahead Logging. Jika komputer mendadak mati atau koneksi putus, unduhan dilanjutkan persis dari offset terakhir tanpa perlu mengulang dari 0%."}
                   </p>
-                </div>
+                </motion.div>
               </div>
 
             </div>

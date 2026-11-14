@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Download, Check, Copy, ExternalLink, ShieldCheck, Terminal } from "lucide-react";
+import { Download, ExternalLink, Terminal } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { RELEASE_ASSETS, GITHUB_REPO_URL, CURRENT_VERSION } from "../data/releasesData";
 
 interface DownloadSectionProps {
@@ -9,18 +10,11 @@ interface DownloadSectionProps {
 
 export function DownloadSection({ theme, lang }: DownloadSectionProps) {
   const [activeTab, setActiveTab] = useState<"all" | "linux" | "windows" | "macos" | "extension">("all");
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const filteredAssets =
     activeTab === "all"
       ? RELEASE_ASSETS
       : RELEASE_ASSETS.filter((a) => a.os === activeTab);
-
-  const handleCopyCommand = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
 
   return (
     <section id="downloads" className="py-20 border-t transition-colors"
@@ -29,7 +23,13 @@ export function DownloadSection({ theme, lang }: DownloadSectionProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12">
+        <motion.div
+          className="text-center max-w-2xl mx-auto mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.5 }}
+        >
           <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-[6px] text-xs font-semibold bg-[#6554c0]/15 text-[#6554c0] dark:text-[#a79be8] mb-3">
             <Download className="w-3.5 h-3.5" />
             <span>Official Binaries · v{CURRENT_VERSION}</span>
@@ -42,7 +42,7 @@ export function DownloadSection({ theme, lang }: DownloadSectionProps) {
               ? "All packages are compiled directly from source and distributed via GitHub Releases. Free, open source, and ad-free."
               : "Semua paket dibangun langsung dari source code dan dirilis via GitHub Releases. Gratis, open-source, dan bebas iklan."}
           </p>
-        </div>
+        </motion.div>
 
         {/* Platform Selector Filter */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
@@ -53,84 +53,87 @@ export function DownloadSection({ theme, lang }: DownloadSectionProps) {
             { id: "macos", label: "macOS (.dmg / .zip)" },
             { id: "extension", label: "Browser Extension" },
           ].map((tab) => (
-            <button
+            <motion.button
               key={tab.id}
               type="button"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-4 py-2 rounded-[8px] text-xs font-bold transition-all ${
+              className={`px-4 py-2 rounded-[8px] text-xs font-bold transition-all cursor-pointer ${
                 activeTab === tab.id
                   ? "bg-[#6554c0] text-white shadow-md shadow-[#6554c0]/20"
                   : "bg-black/5 dark:bg-white/5 text-[#4b5563] dark:text-[#c4cbde] hover:bg-black/10 dark:hover:bg-white/10"
               }`}
             >
               {tab.label}
-            </button>
+            </motion.button>
           ))}
         </div>
 
-        {/* Assets Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredAssets.map((asset) => (
-            <div
-              key={asset.id}
-              className="rounded-[10px] p-5 border transition-all flex flex-col justify-between"
-              style={{
-                backgroundColor: theme === "light" ? "rgba(255, 255, 255, 0.9)" : "rgba(18, 20, 36, 0.85)",
-                borderColor: theme === "light" ? "#dfe3f0" : "rgba(139, 92, 246, 0.22)",
-              }}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-mono text-[11px] font-bold uppercase px-2 py-0.5 rounded-[4px] bg-[#6554c0]/15 text-[#6554c0] dark:text-[#a79be8]">
-                    {asset.os} · {asset.format}
-                  </span>
-                  <span className="font-mono text-xs text-[#6b7280] dark:text-[#9ea4b5]">
-                    {asset.size}
-                  </span>
-                </div>
-
-                <h3 className="font-bold text-base text-[#111827] dark:text-white leading-snug">
-                  {asset.label}
-                </h3>
-                <p className="font-mono text-[11px] text-[#6b7280] dark:text-[#94a0bd] mt-1 break-all">
-                  {asset.name}
-                </p>
-
-                {/* Quick install command */}
-                <div className="mt-4 p-2.5 rounded-[6px] bg-black/5 dark:bg-black/40 border border-black/10 dark:border-white/5 text-[11px] font-mono text-[#4b5563] dark:text-[#cbd5e1] flex items-center justify-between">
-                  <span className="truncate pr-2">{asset.instructions[lang]}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyCommand(asset.id, asset.instructions[lang])}
-                    className="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-[#6554c0] dark:text-[#a79be8]"
-                    title="Copy command"
-                    aria-label="Copy command"
-                  >
-                    {copiedId === asset.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Action Download Button */}
-              <div className="mt-5 pt-4 border-t flex items-center justify-between"
-                style={{ borderColor: theme === "light" ? "#eaedf5" : "rgba(139, 92, 246, 0.14)" }}
+        {/* Animated Assets Cards Grid */}
+        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <AnimatePresence>
+            {filteredAssets.map((asset) => (
+              <motion.div
+                key={asset.id}
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.25 }}
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                className="rounded-[10px] p-5 border transition-shadow flex flex-col justify-between shadow-sm hover:shadow-xl"
+                style={{
+                  backgroundColor: theme === "light" ? "rgba(255, 255, 255, 0.9)" : "rgba(18, 20, 36, 0.85)",
+                  borderColor: theme === "light" ? "#dfe3f0" : "rgba(139, 92, 246, 0.22)",
+                }}
               >
-                <div className="flex items-center space-x-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>SHA256 Signed</span>
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-mono text-[11px] font-bold uppercase px-2 py-0.5 rounded-[4px] bg-[#6554c0]/15 text-[#6554c0] dark:text-[#a79be8]">
+                      {asset.os} · {asset.format}
+                    </span>
+                    <span className="font-mono text-xs text-[#6b7280] dark:text-[#9ea4b5]">
+                      {asset.size}
+                    </span>
+                  </div>
+
+                  <div className="font-bold text-sm text-[#111827] dark:text-white flex items-center space-x-1.5">
+                    <span>{asset.label}</span>
+                    {asset.recommended && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500">
+                        {lang === "en" ? "Recommended" : "Disarankan"}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-2 text-xs text-[#6b7280] dark:text-[#9ea4b5]">
+                    <span className="font-mono text-[11px] bg-black/5 dark:bg-white/5 px-2 py-1 rounded block truncate">
+                      {asset.instructions[lang]}
+                    </span>
+                  </div>
                 </div>
 
-                <a
-                  href={asset.downloadUrl}
-                  className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-[6px] bg-[#6554c0] hover:bg-[#5443af] text-white text-xs font-semibold shadow-sm transition-all"
+                <div className="mt-5 pt-3 border-t flex items-center justify-between"
+                  style={{ borderColor: theme === "light" ? "#f1f5f9" : "rgba(139, 92, 246, 0.12)" }}
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>{lang === "en" ? "Download" : "Unduh"}</span>
-                </a>
-              </div>
-            </div>
-          ))}
-        </div>
+                  <motion.a
+                    href={asset.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-[6px] bg-[#6554c0] hover:bg-[#5443af] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{lang === "en" ? "Download" : "Unduh"}</span>
+                  </motion.a>
+                </div>
+
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
 
         {/* Source Code & Verification Footer */}
         <div className="mt-10 p-4 rounded-[8px] border text-center text-xs text-[#4b5563] dark:text-[#9ea4b5] flex flex-col sm:flex-row items-center justify-between gap-3"
@@ -151,7 +154,7 @@ export function DownloadSection({ theme, lang }: DownloadSectionProps) {
             href={GITHUB_REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center space-x-1 font-semibold text-[#6554c0] dark:text-[#a79be8] hover:underline"
+            className="inline-flex items-center space-x-1 font-semibold text-[#6554c0] dark:text-[#a79be8] hover:underline cursor-pointer"
           >
             <span>View on GitHub</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -162,4 +165,3 @@ export function DownloadSection({ theme, lang }: DownloadSectionProps) {
     </section>
   );
 }
-

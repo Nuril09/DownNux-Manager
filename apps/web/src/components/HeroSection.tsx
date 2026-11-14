@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Download, Terminal, ShieldCheck, Cpu, HardDrive } from "lucide-react";
+import { motion } from "framer-motion";
 import { RELEASE_ASSETS, ReleaseAsset, CURRENT_VERSION } from "../data/releasesData";
 
 interface HeroSectionProps {
@@ -41,22 +42,31 @@ export function HeroSection({ theme, lang }: HeroSectionProps) {
           <div className="lg:col-span-6 space-y-6">
             
             {/* Context Badge */}
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-[6px] text-xs font-semibold border bg-black/10 dark:bg-white/5"
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="inline-flex items-center space-x-2 px-3 py-1 rounded-[6px] text-xs font-semibold border bg-black/10 dark:bg-white/5"
               style={{
                 borderColor: theme === "light" ? "#dcdfe9" : "rgba(139, 92, 246, 0.3)",
                 color: theme === "light" ? "#4b5563" : "#d1d5db",
               }}
             >
-              <span className="w-2 h-2 rounded-full bg-[#2dd4bf]" />
+              <span className="w-2 h-2 rounded-full bg-[#2dd4bf] animate-pulse" />
               <span>
                 {lang === "en"
                   ? `Release v${CURRENT_VERSION} · Powered by Hybrid aria2 + yt-dlp`
                   : `Rilis v${CURRENT_VERSION} · Didukung Hybrid aria2 + yt-dlp`}
               </span>
-            </div>
+            </motion.div>
 
             {/* Main Headline */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[#111827] dark:text-white leading-[1.15]">
+            <motion.h1
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.08 }}
+              className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[#111827] dark:text-white leading-[1.15]"
+            >
               {lang === "en" ? (
                 <>
                   High-speed, multi-channel download accelerator for{" "}
@@ -74,22 +84,34 @@ export function HeroSection({ theme, lang }: HeroSectionProps) {
                   .
                 </>
               )}
-            </h1>
+            </motion.h1>
 
             {/* Sub-headline */}
-            <p className="text-base sm:text-lg text-[#4b5563] dark:text-[#a0a8c2] leading-relaxed max-w-xl">
+            <motion.p
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.16 }}
+              className="text-base sm:text-lg text-[#4b5563] dark:text-[#a0a8c2] leading-relaxed max-w-xl"
+            >
               {lang === "en"
-                ? "Split large files into up to 32 parallel HTTP Range connections. Active downloads persist in an independent system daemon and resume atomically through SQLite Write-Ahead Logging."
-                : "Membagi file besar menjadi hingga 32 koneksi HTTP Range secara paralel. Unduhan tetap berjalan di background daemon mandiri dan pulih instan tanpa korupsi data berkat SQLite Write-Ahead Logging."}
-            </p>
+                ? "Break free from browser single-stream throttling. DownNux accelerates HTTP/HTTPS, media links, and BitTorrent transfers with resilient SQLite WAL state persistence and detached speed inspect window."
+                : "Bebaskan diri dari pembatasan unduhan browser biasa. DownNux mempercepat HTTP/HTTPS, video online, dan BitTorrent dengan penyimpanan aman SQLite WAL serta floating progress inspector."}
+            </motion.p>
 
             {/* Primary Action Button tailored to detected OS */}
-            <div className="pt-2 space-y-3">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.24 }}
+              className="pt-2 space-y-3"
+            >
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 {selectedAsset && (
-                  <a
+                  <motion.a
                     href={selectedAsset.downloadUrl}
-                    className="inline-flex items-center justify-center space-x-2.5 px-6 py-3.5 rounded-[8px] bg-[#6554c0] hover:bg-[#5443af] text-white font-bold text-sm shadow-lg shadow-[#6554c0]/30 transition-all hover:-translate-y-0.5"
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="inline-flex items-center justify-center space-x-2.5 px-6 py-3.5 rounded-[8px] bg-[#6554c0] hover:bg-[#5443af] text-white font-bold text-sm shadow-lg shadow-[#6554c0]/30 transition-all cursor-pointer"
                   >
                     <Download className="w-4 h-4 text-white" />
                     <span>
@@ -97,12 +119,14 @@ export function HeroSection({ theme, lang }: HeroSectionProps) {
                         ? `Download for ${detectedOs.toUpperCase()} (${selectedAsset.format.toUpperCase()}) · v${CURRENT_VERSION}`
                         : `Unduh untuk ${detectedOs.toUpperCase()} (${selectedAsset.format.toUpperCase()}) · v${CURRENT_VERSION}`}
                     </span>
-                  </a>
+                  </motion.a>
                 )}
 
-                <a
+                <motion.a
                   href="#install"
-                  className="inline-flex items-center justify-center space-x-2 px-5 py-3.5 rounded-[8px] border text-sm font-semibold transition-colors"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="inline-flex items-center justify-center space-x-2 px-5 py-3.5 rounded-[8px] border text-sm font-semibold transition-colors cursor-pointer"
                   style={{
                     borderColor: theme === "light" ? "#d1d5db" : "rgba(139, 92, 246, 0.3)",
                     backgroundColor: theme === "light" ? "#ffffff" : "rgba(255, 255, 255, 0.04)",
@@ -111,31 +135,36 @@ export function HeroSection({ theme, lang }: HeroSectionProps) {
                 >
                   <Terminal className="w-4 h-4 text-[#6554c0] dark:text-[#a79be8]" />
                   <span>{lang === "en" ? "Terminal Guide" : "Panduan Terminal"}</span>
-                </a>
+                </motion.a>
               </div>
 
               {/* OS Switcher Pills */}
               <div className="flex items-center space-x-2 text-xs text-[#6b7280] dark:text-[#8f9bb8]">
                 <span>{lang === "en" ? "Switch platform:" : "Pilih OS lain:"}</span>
                 {(["linux", "windows", "macos"] as const).map((platform) => (
-                  <button
+                  <motion.button
                     key={platform}
                     type="button"
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setDetectedOs(platform)}
-                    className={`px-2 py-0.5 rounded-[4px] font-semibold transition-colors uppercase ${
+                    className={`px-2 py-0.5 rounded-[4px] font-semibold transition-colors uppercase cursor-pointer ${
                       detectedOs === platform
                         ? "bg-[#6554c0]/20 text-[#6554c0] dark:text-[#a79be8] border border-[#6554c0]/40"
                         : "hover:text-[#111827] dark:hover:text-white"
                     }`}
                   >
                     {platform}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
             {/* Quick Feature Badges (Real Technical Attributes) */}
-            <div className="pt-4 grid grid-cols-3 gap-3 border-t max-w-lg"
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.32 }}
+              className="pt-4 grid grid-cols-3 gap-3 border-t max-w-lg"
               style={{ borderColor: theme === "light" ? "#e5e9f2" : "rgba(139, 92, 246, 0.16)" }}
             >
               <div className="flex items-center space-x-2 text-xs text-[#4b5563] dark:text-[#c4cbde]">
@@ -150,13 +179,20 @@ export function HeroSection({ theme, lang }: HeroSectionProps) {
                 <ShieldCheck className="w-4 h-4 text-[#8b5cf6] flex-shrink-0" />
                 <span className="font-medium">GPL-3.0 Free</span>
               </div>
-            </div>
+            </motion.div>
 
           </div>
 
           {/* Right Column: High-Fidelity Desktop Showcase */}
-          <div className="lg:col-span-6 relative">
-            <div className="relative rounded-[12px] p-2 border shadow-2xl transition-all"
+          <motion.div
+            className="lg:col-span-6 relative"
+            initial={{ opacity: 0, scale: 0.95, y: 24 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.15 }}
+          >
+            <motion.div
+              className="relative rounded-[12px] p-2 border shadow-2xl transition-all"
+              whileHover={{ y: -4, transition: { duration: 0.3 } }}
               style={{
                 backgroundColor: theme === "light" ? "rgba(255, 255, 255, 0.85)" : "rgba(18, 20, 36, 0.8)",
                 borderColor: theme === "light" ? "#dfe3f0" : "rgba(139, 92, 246, 0.28)",
@@ -172,22 +208,25 @@ export function HeroSection({ theme, lang }: HeroSectionProps) {
               />
 
               {/* Floating Highlight Annotation */}
-              <div className="absolute -bottom-4 -left-4 hidden sm:flex items-center space-x-2 px-3.5 py-2 rounded-[8px] border shadow-lg text-xs font-mono font-medium"
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.4 }}
+                className="absolute -bottom-4 -left-4 hidden sm:flex items-center space-x-2 px-3.5 py-2 rounded-[8px] border shadow-lg text-xs font-mono font-medium"
                 style={{
                   backgroundColor: theme === "light" ? "#ffffff" : "#121424",
                   borderColor: theme === "light" ? "#e2e8f0" : "#2a304e",
                   color: theme === "light" ? "#0f172a" : "#f1f5f9",
                 }}
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span>daemon: active (systemd --user)</span>
-              </div>
-            </div>
-          </div>
+              </motion.div>
+            </motion.div>
+          </motion.div>
 
         </div>
       </div>
     </section>
   );
 }
-

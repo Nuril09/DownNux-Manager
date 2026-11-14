@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Layers, Eye, Sliders, CheckCircle2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface FeatureGalleryProps {
   theme: "dark" | "light";
@@ -99,7 +100,13 @@ export function FeatureGallery({ theme, lang }: FeatureGalleryProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12">
+        <motion.div
+          className="text-center max-w-2xl mx-auto mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-[6px] text-xs font-semibold bg-[#6554c0]/15 text-[#6554c0] dark:text-[#a79be8] mb-3">
             <Layers className="w-3.5 h-3.5" />
             <span>Product Highlights</span>
@@ -112,78 +119,94 @@ export function FeatureGallery({ theme, lang }: FeatureGalleryProps) {
               ? "Every screen is designed for speed and clarity. No fake mockups: explore real application views below."
               : "Setiap tampilan dirancang untuk kecepatan dan kepraktisan. Bukan sekadar mockup: jelajahi tampilan asli aplikasi di bawah ini."}
           </p>
-        </div>
+        </motion.div>
 
         {/* Feature Tab Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
           {features.map((f) => (
-            <button
+            <motion.button
               key={f.id}
               type="button"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => setActiveFeature(f.id)}
-              className={`px-4 py-2.5 rounded-[8px] text-xs font-bold transition-all flex items-center space-x-2 ${
+              className={`px-4 py-2.5 rounded-[8px] text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
                 activeFeature === f.id
                   ? "bg-[#6554c0] text-white shadow-md shadow-[#6554c0]/25"
                   : "bg-black/5 dark:bg-white/5 text-[#4b5563] dark:text-[#c4cbde] hover:bg-black/10 dark:hover:bg-white/10"
               }`}
             >
               <span>{f.title[lang]}</span>
-            </button>
+            </motion.button>
           ))}
         </div>
 
-        {/* Feature Display Card (Split Screen + Details) */}
+        {/* Feature Display Card with Smooth AnimatePresence */}
         <div className="rounded-[12px] p-6 lg:p-8 border shadow-xl transition-all"
           style={{
             backgroundColor: theme === "light" ? "rgba(255, 255, 255, 0.92)" : "rgba(18, 20, 36, 0.88)",
             borderColor: theme === "light" ? "#dfe3f0" : "rgba(139, 92, 246, 0.25)",
           }}
         >
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            
-            {/* Feature Image */}
-            <div className="lg:col-span-7">
-              <div className="rounded-[8px] overflow-hidden border p-1.5 bg-black/10 dark:bg-black/50"
-                style={{ borderColor: theme === "light" ? "#e2e8f0" : "#2a2f4d" }}
-              >
-                <img
-                  src={current.image}
-                  alt={current.title[lang]}
-                  width={800}
-                  height={500}
-                  loading="lazy"
-                  className="w-full h-auto rounded-[6px] object-cover shadow-md"
-                />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={current.id}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -14 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center"
+            >
+              
+              {/* Feature Image */}
+              <div className="lg:col-span-7">
+                <div className="rounded-[8px] overflow-hidden border p-1.5 bg-black/10 dark:bg-black/50"
+                  style={{ borderColor: theme === "light" ? "#e2e8f0" : "#2a2f4d" }}
+                >
+                  <img
+                    src={current.image}
+                    alt={current.title[lang]}
+                    width={800}
+                    height={500}
+                    loading="lazy"
+                    className="w-full h-auto rounded-[6px] object-cover shadow-md hover:scale-[1.01] transition-transform duration-300"
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Feature Description & Bullet List */}
-            <div className="lg:col-span-5 space-y-4">
-              <span className="text-xs font-mono font-bold text-[#6554c0] dark:text-[#a79be8] uppercase tracking-wider">
-                Feature Focus
-              </span>
-              <h3 className="text-2xl font-bold text-[#111827] dark:text-white">
-                {current.title[lang]}
-              </h3>
-              <p className="text-sm text-[#4b5563] dark:text-[#a0a8c2] leading-relaxed">
-                {current.tagline[lang]}
-              </p>
+              {/* Feature Description & Bullet List */}
+              <div className="lg:col-span-5 space-y-4">
+                <span className="text-xs font-mono font-bold text-[#6554c0] dark:text-[#a79be8] uppercase tracking-wider">
+                  Feature Focus
+                </span>
+                <h3 className="text-2xl font-bold text-[#111827] dark:text-white">
+                  {current.title[lang]}
+                </h3>
+                <p className="text-sm text-[#4b5563] dark:text-[#a0a8c2] leading-relaxed">
+                  {current.tagline[lang]}
+                </p>
 
-              <div className="pt-2 space-y-2.5">
-                {current.bullets[lang].map((bullet, idx) => (
-                  <div key={idx} className="flex items-start space-x-2.5 text-xs text-[#374151] dark:text-[#d1d5db]">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                    <span>{bullet}</span>
-                  </div>
-                ))}
+                <div className="pt-2 space-y-2.5">
+                  {current.bullets[lang].map((bullet, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 + 0.1, duration: 0.3 }}
+                      className="flex items-start space-x-2.5 text-xs text-[#374151] dark:text-[#d1d5db]"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                      <span>{bullet}</span>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
-            </div>
 
-          </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
       </div>
     </section>
   );
 }
-
