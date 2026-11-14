@@ -10,11 +10,32 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Nuril09/DownNux-Manager/releases/latest"><img src="https://img.shields.io/badge/Release-v0.0.5-6554c0?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/Nuril09/DownNux-Manager/releases/latest"><img src="https://img.shields.io/badge/Release-v0.0.6-6554c0?style=flat-square" alt="Version"></a>
+  <a href="https://downnux-manager.vercel.app"><img src="https://img.shields.io/badge/Website-downnux--manager.vercel.app-10b981?style=flat-square" alt="Official Website"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License GPL-3.0"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-informational?style=flat-square" alt="Platforms"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-informational?style=flat-square" alt="Platforms"></a>
   <a href="https://hoodtech.my.id/"><img src="https://img.shields.io/badge/Maintained%20by-HoodTech-8a2be2?style=flat-square" alt="HoodTech"></a>
 </p>
+
+---
+
+## What's New in v0.0.6
+
+> **Major Milestone**: DownNux Manager is now a **100% self-contained standalone application** across Windows, macOS, and Linux with zero external dependency setup.
+
+* **Windows & macOS Zero-Setup Installer**:
+  * Bundled standalone background engine (`engine/daemon.mjs`), embedded Node.js 22 runtime, `aria2c`, `yt-dlp`, and `FFmpeg` directly inside the installer packages.
+  * No need to install Node, Python, or terminal tools manually. Double-click the installer and start downloading immediately.
+* **Silent Engine Auto-Launcher**:
+  * The Tauri desktop application now automatically detects whether the background daemon is alive on `127.0.0.1:44990`.
+  * If inactive, it spawns the bundled engine in the background with `CREATE_NO_WINDOW` on Windows (no console/cmd window popup).
+* **Native OS Shell Integrations**:
+  * **Windows**: Implemented native file selection via `explorer.exe /select,"<file>"` and native folder browsing via PowerShell `FolderBrowserDialog`.
+  * **macOS**: Implemented native Finder file reveal (`open -R`) and AppleScript folder chooser.
+  * **Linux**: Dual support for `nautilus --select` and standard `xdg-open`.
+* **Resilient IPC & Storage**:
+  * Localhost HTTP & WebSocket server with automatic port contention fallback and reconnection logic.
+  * Native storage directories: `%APPDATA%\downnux` on Windows, `~/Library/Application Support/downnux` on macOS, and XDG Base Directory on Linux.
 
 ---
 
@@ -22,6 +43,7 @@
 
 DownNux Manager brings the battle-tested multi-threaded acceleration workflow of Internet Download Manager (IDM) into a modern, cross-platform ecosystem. Instead of relying on a single HTTP stream, DownNux splits downloads into up to **32 parallel Range connections**, monitors chunk transfers in real time, and persists byte offsets in SQLite WAL storage so interrupted downloads resume instantly without losing data.
 
+Official Website: [**downnux-manager.vercel.app**](https://downnux-manager.vercel.app/)  
 Engineered and maintained by [**HoodTech**](https://hoodtech.my.id/).
 
 ---
@@ -48,7 +70,7 @@ Engineered and maintained by [**HoodTech**](https://hoodtech.my.id/).
 ### Core Capabilities
 
 * **Multi-Connection Acceleration Engine**: Dynamic file splitting across 1 to 32 parallel connections via a hybrid `aria2` + `yt-dlp` core.
-* **Independent Background Daemon**: Active downloads run inside a background system service (`systemd --user` on Linux). Closing the GUI or logging out will **not** cancel active downloads.
+* **Independent Background Daemon**: Active downloads run inside a background system service. Closing the GUI window will **not** cancel active downloads.
 * **Standalone Floating Inspector**: Each active download can be monitored in its own compact floating window with real-time transfer sparklines and segment blocks.
 * **BitTorrent & Magnet Support**: Built-in support for `.torrent` file imports and Magnet URLs with automatic DHT peer discovery and high-speed public tracker integration.
 * **Dedicated Paused Management**: Paused tasks stay accessible under the `Paused` library filter and `Active` subtab for quick one-click resume.
@@ -68,61 +90,48 @@ Engineered and maintained by [**HoodTech**](https://hoodtech.my.id/).
 | **Standalone Progress Window** | No | Window only | **Detached floating inspector** |
 | **Background Daemon** | Closes with browser | Background tray | **Independent system daemon** |
 | **BitTorrent Client** | No | External client | **Native .torrent & Magnet core** |
+| **Zero-Setup Multiplatform** | N/A | Manual dependencies | **Embedded binaries in installer** |
 
 ---
 
 ## Installation Guide
 
-### Option 1: Ubuntu / Debian (`.deb` Package) — Recommended
+### Windows (10 / 11 64-bit) — Standalone Installer
 
-DownNux provides a native `.deb` package that sets up binaries, desktop menu shortcuts, and auto-starts background user services.
+Download the official NSIS installer. All dependencies (`node.exe`, `aria2c.exe`, `yt-dlp.exe`, `ffmpeg.exe`, and `daemon.mjs`) are bundled automatically:
+
+1. Download [**DownNux.Manager_0.0.6_x64-setup.exe**](https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_x64-setup.exe).
+2. Double-click the installer and complete the setup.
+3. Launch DownNux Manager from the Start Menu or desktop shortcut.
+
+---
+
+### macOS (Apple Silicon & Intel) — Disk Image
+
+1. Download [**DownNux.Manager_0.0.6_aarch64.dmg**](https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_aarch64.dmg) (Apple Silicon) or Universal portable zip.
+2. Open the `.dmg` file and drag **DownNux Manager** into your `/Applications` folder.
+3. Open DownNux Manager from Launchpad or Spotlight.
+
+---
+
+### Linux (Ubuntu, Debian, Fedora, Arch, openSUSE)
+
+#### Option A: Debian / Ubuntu (`.deb` Package)
 
 ```bash
-# 1. Download the latest .deb from GitHub Releases
-wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.5/downnux-manager_0.0.5_amd64.deb
+# 1. Download the latest .deb package
+wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/downnux-manager_0.0.6_amd64.deb
 
 # 2. Install using apt (resolves system dependencies automatically)
-sudo apt install ./downnux-manager_0.0.5_amd64.deb
+sudo apt install ./downnux-manager_0.0.6_amd64.deb
 ```
 
-Once installed, open **DownNux Manager** from your desktop application launcher or run `downnux-gui` in terminal.
-
----
-
-### Option 2: Linux Portable (`.tar.gz`)
-
-For environments where you prefer not to install system packages:
+#### Option B: Standalone Linux AppImage
 
 ```bash
-# Extract the archive
-tar -xzf downnux-manager_0.0.5_linux_x64.tar.gz
-cd downnux-manager_0.0.5_linux_x64
-
-# Start the application
-bash start-downnux.sh
+chmod +x DownNux.Manager_0.0.6_amd64.AppImage
+./DownNux.Manager_0.0.6_amd64.AppImage
 ```
-
----
-
-### Option 3: Developer Setup (Build from Source)
-
-```bash
-# Clone the repository
-git clone https://github.com/Nuril09/DownNux-Manager.git
-cd DownNux-Manager
-
-# Install dependencies and build bundles
-pnpm install
-bash scripts/install-dev.sh
-```
-
----
-
-### Multiplatform Status (Windows & macOS)
-
-* **Windows (`.exe` NSIS Installer)**: Configuration is set up under `src-tauri` and automated via GitHub Actions CI/CD to build standalone `.exe` installers.
-* **macOS (`.dmg` Disk Image)**: Configured for Universal Apple Silicon / Intel builds via GitHub Actions.
-* Portable fallback scripts (`start-downnux.bat` and `start-downnux.command`) are available in the [Releases section](https://github.com/Nuril09/DownNux-Manager/releases).
 
 ---
 
@@ -204,35 +213,18 @@ downnux resume <task-id>
 │                 apps/native-host                       │
 │    Native Messaging Bridge (Validates & Forwards)      │
 └──────────────────────────┬─────────────────────────────┘
-                           │ Unix Domain Socket
+                           │ Localhost HTTP/WebSocket (Port 44990)
 ┌──────────────────────────▼─────────────────────────────┐
 │                   apps/daemon                          │
-│   Background Service (systemd --user, SQLite WAL)      │
+│   Background Service (Auto-Launched by Tauri / systemd)│
 │   Hybrid Engine: aria2c (Files/Torrents) + yt-dlp      │
-│   HTTP / WebSocket Local RPC Server (Port 44990)       │
+│   SQLite Write-Ahead Logging (WAL) State Database      │
 └──────────────┬──────────────────────────┬──────────────┘
                │                          │
 ┌──────────────▼────────────┐  ┌──────────▼──────────────┐
-               │                          │
-        apps/gui                   CLI (downnux)
- Native Desktop Window / UI     Terminal Control Client
-```
-
----
-
-## Service Management
-
-DownNux runs as a user-level systemd service:
-
-```bash
-# Check daemon status
-systemctl --user status downnux-daemon
-
-# View live daemon logs
-journalctl --user -u downnux-daemon -f
-
-# Restart daemon
-systemctl --user restart downnux-daemon
+│        apps/gui           │  │      CLI (downnux)      │
+│ Native Desktop Window / UI│  │ Terminal Control Client │
+└───────────────────────────┘  └─────────────────────────┘
 ```
 
 ---

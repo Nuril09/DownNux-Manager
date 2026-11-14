@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Moon, Sun, Globe, Download, Menu, X, ArrowUpRight } from "lucide-react";
-import { GITHUB_REPO_URL } from "../data/releasesData";
+import { GITHUB_REPO_URL, CURRENT_VERSION } from "../data/releasesData";
 
 interface NavbarProps {
   theme: "dark" | "light";
@@ -16,6 +16,7 @@ export function Navbar({ theme, onToggleTheme, lang, onToggleLang }: NavbarProps
     { href: "#downloads", label: lang === "en" ? "Downloads" : "Unduh" },
     { href: "#architecture", label: lang === "en" ? "Architecture" : "Arsitektur" },
     { href: "#features", label: lang === "en" ? "Features" : "Fitur" },
+    { href: "#changelog", label: lang === "en" ? "What's New" : "Changelog" },
     { href: "#install", label: lang === "en" ? "Install Guide" : "Cara Pasang" },
     { href: "#docs", label: lang === "en" ? "Documentation" : "Dokumentasi" },
     { href: "#faq", label: "FAQ" },
@@ -45,7 +46,7 @@ export function Navbar({ theme, onToggleTheme, lang, onToggleLang }: NavbarProps
                 DownNux
               </span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-[4px] bg-[#6554c0]/15 text-[#6554c0] dark:text-[#a79be8] font-bold">
-                v0.0.5
+                v{CURRENT_VERSION}
               </span>
             </div>
           </a>

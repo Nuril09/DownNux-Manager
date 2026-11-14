@@ -4,6 +4,7 @@ import { HeroSection } from "./components/HeroSection";
 import { AnatomyRig } from "./components/AnatomyRig";
 import { DownloadSection } from "./components/DownloadSection";
 import { FeatureGallery } from "./components/FeatureGallery";
+import { ChangelogSection } from "./components/ChangelogSection";
 import { InstallGuide } from "./components/InstallGuide";
 import { DocumentationSection } from "./components/DocumentationSection";
 import { Footer } from "./components/Footer";
@@ -172,7 +173,10 @@ export function App() {
           {/* Section 4: Feature Gallery with Real Screenshots */}
           <FeatureGallery theme={theme} lang={lang} />
 
-          {/* Section 5: Install & Extension Setup Guide */}
+          {/* Section 5: What's New & Release Changelog */}
+          <ChangelogSection theme={theme} lang={lang} />
+
+          {/* Section 6: Install & Extension Setup Guide */}
           <InstallGuide theme={theme} lang={lang} />
 
           {/* Section 6: Searchable Documentation, CLI & FAQ */}

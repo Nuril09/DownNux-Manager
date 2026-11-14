@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Terminal, Copy, Check, Chrome, AppWindow, Apple } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { CURRENT_VERSION } from "../data/releasesData";
 
 interface InstallGuideProps {
   theme: "dark" | "light";
@@ -103,12 +104,12 @@ export function InstallGuide({ theme, lang }: InstallGuideProps) {
                   
                   <div className="mt-3 relative rounded-[8px] bg-black/90 p-4 font-mono text-xs text-white overflow-x-auto">
                     <div className="text-[#9ca3af] mb-1"># 1. Download and install deb package</div>
-                    <div className="text-emerald-400">wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.5/downnux-manager_0.0.5_amd64.deb</div>
-                    <div className="text-emerald-400">sudo apt install ./downnux-manager_0.0.5_amd64.deb</div>
+                    <div className="text-emerald-400">wget https://github.com/Nuril09/DownNux-Manager/releases/download/v{CURRENT_VERSION}/downnux-manager_{CURRENT_VERSION}_amd64.deb</div>
+                    <div className="text-emerald-400">sudo apt install ./downnux-manager_{CURRENT_VERSION}_amd64.deb</div>
                     
                     <button
                       type="button"
-                      onClick={() => handleCopy("wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.5/downnux-manager_0.0.5_amd64.deb\nsudo apt install ./downnux-manager_0.0.5_amd64.deb", "deb-cmd")}
+                      onClick={() => handleCopy(`wget https://github.com/Nuril09/DownNux-Manager/releases/download/v${CURRENT_VERSION}/downnux-manager_${CURRENT_VERSION}_amd64.deb\nsudo apt install ./downnux-manager_${CURRENT_VERSION}_amd64.deb`, "deb-cmd")}
                       className="absolute top-3 right-3 p-1.5 rounded bg-white/10 hover:bg-white/20 text-white text-xs cursor-pointer"
                       aria-label="Copy snippet"
                     >
@@ -128,12 +129,12 @@ export function InstallGuide({ theme, lang }: InstallGuideProps) {
                   </p>
                   
                   <div className="mt-3 relative rounded-[8px] bg-black/90 p-4 font-mono text-xs text-white overflow-x-auto">
-                    <div className="text-emerald-400">chmod +x DownNux-Manager_0.0.5_x86_64.AppImage</div>
-                    <div className="text-emerald-400">./DownNux-Manager_0.0.5_x86_64.AppImage</div>
+                    <div className="text-emerald-400">chmod +x DownNux-Manager_{CURRENT_VERSION}_x86_64.AppImage</div>
+                    <div className="text-emerald-400">./DownNux-Manager_{CURRENT_VERSION}_x86_64.AppImage</div>
                     
                     <button
                       type="button"
-                      onClick={() => handleCopy("chmod +x DownNux-Manager_0.0.5_x86_64.AppImage\n./DownNux-Manager_0.0.5_x86_64.AppImage", "appimage-cmd")}
+                      onClick={() => handleCopy(`chmod +x DownNux-Manager_${CURRENT_VERSION}_x86_64.AppImage\n./DownNux-Manager_${CURRENT_VERSION}_x86_64.AppImage`, "appimage-cmd")}
                       className="absolute top-3 right-3 p-1.5 rounded bg-white/10 hover:bg-white/20 text-white text-xs cursor-pointer"
                       aria-label="Copy snippet"
                     >
@@ -159,12 +160,12 @@ export function InstallGuide({ theme, lang }: InstallGuideProps) {
                 <ol className="list-decimal list-inside space-y-2 text-xs sm:text-sm text-[#4b5563] dark:text-[#a0a8c2] leading-relaxed">
                   <li>
                     {lang === "en" ? "Download " : "Unduh "}
-                    <code className="text-[#6554c0] dark:text-[#a79be8] font-bold">DownNux-Manager_0.0.5_x64-setup.exe</code>
+                    <code className="text-[#6554c0] dark:text-[#a79be8] font-bold">DownNux.Manager_{CURRENT_VERSION}_x64-setup.exe</code>
                   </li>
                   <li>
                     {lang === "en"
-                      ? "Double-click the installer and follow the setup wizard."
-                      : "Klik dua kali installer dan ikuti petunjuk wizard instalasi."}
+                      ? "Double-click the installer and follow the setup wizard (all engines are fully bundled)."
+                      : "Klik dua kali installer dan ikuti wizard instalasi (semua engine sudah langsung terbundel)."}
                   </li>
                   <li>
                     {lang === "en"
@@ -190,7 +191,7 @@ export function InstallGuide({ theme, lang }: InstallGuideProps) {
                 <ol className="list-decimal list-inside space-y-2 text-xs sm:text-sm text-[#4b5563] dark:text-[#a0a8c2] leading-relaxed">
                   <li>
                     {lang === "en" ? "Download " : "Unduh "}
-                    <code className="text-[#6554c0] dark:text-[#a79be8] font-bold">DownNux-Manager_0.0.5_aarch64.dmg</code>
+                    <code className="text-[#6554c0] dark:text-[#a79be8] font-bold">DownNux.Manager_{CURRENT_VERSION}_aarch64.dmg</code>
                   </li>
                   <li>
                     {lang === "en"
@@ -220,8 +221,8 @@ export function InstallGuide({ theme, lang }: InstallGuideProps) {
                 </h3>
                 <p className="text-xs text-[#4b5563] dark:text-[#a0a8c2] leading-relaxed">
                   {lang === "en"
-                    ? "The DownNux browser extension automatically catches browser download links and sends them to the local DownNux daemon at port 3820."
-                    : "Ekstensi browser DownNux otomatis mencegat tautan unduhan dan mengirimkannya ke daemon lokal DownNux pada port 3820."}
+                    ? "The DownNux browser extension automatically catches browser download links and sends them to the local DownNux daemon at port 44990."
+                    : "Ekstensi browser DownNux otomatis mencegat tautan unduhan dan mengirimkannya ke daemon lokal DownNux pada port 44990."}
                 </p>
 
                 <div className="space-y-3">
@@ -229,7 +230,7 @@ export function InstallGuide({ theme, lang }: InstallGuideProps) {
                     {lang === "en" ? "How to load unpacked extension in Chromium browsers:" : "Cara pasang ekstensi di Chrome / Brave / Edge:"}
                   </div>
                   <ol className="list-decimal list-inside space-y-1.5 text-xs text-[#4b5563] dark:text-[#a0a8c2]">
-                    <li>{lang === "en" ? "Download and unzip downnux-extension_0.0.5.zip." : "Unduh dan ekstrak file downnux-extension_0.0.5.zip."}</li>
+                    <li>{lang === "en" ? `Download and unzip downnux-extension_${CURRENT_VERSION}.zip.` : `Unduh dan ekstrak file downnux-extension_${CURRENT_VERSION}.zip.`}</li>
                     <li>{lang === "en" ? "Navigate to chrome://extensions in your URL bar." : "Buka chrome://extensions pada browser kamu."}</li>
                     <li>{lang === "en" ? "Toggle Developer mode switch in the top-right corner." : "Aktifkan sakelar Developer mode di pojok kanan atas."}</li>
                     <li>{lang === "en" ? "Click Load unpacked and select the unzipped downnux-extension folder." : "Klik Load unpacked dan pilih folder ekstensi yang sudah diekstrak."}</li>
