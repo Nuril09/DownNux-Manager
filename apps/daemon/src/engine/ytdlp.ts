@@ -1,5 +1,6 @@
 import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { EventEmitter } from "node:events";
@@ -25,27 +26,44 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
   }
 
   private resolveBinaries(): void {
-    const home = process.env.HOME || "";
+    const isWin = process.platform === "win32";
+    const ytdlpExe = isWin ? "yt-dlp.exe" : "yt-dlp";
+    const ffmpegExe = isWin ? "ffmpeg.exe" : "ffmpeg";
+    const binDir = process.env.DOWNNUX_BIN_DIR;
+    const home = os.homedir();
+
     const ytdlpCandidates = [
-      path.join(home, ".local/bin/yt-dlp"),
+      binDir ? path.join(binDir, ytdlpExe) : undefined,
+      path.join(path.dirname(process.execPath), "bin", ytdlpExe),
+      path.join(path.dirname(process.execPath), ytdlpExe),
+      path.join(process.cwd(), "bin", ytdlpExe),
+      path.join(home, ".local/bin", ytdlpExe),
       "/usr/local/bin/yt-dlp",
       "/usr/bin/yt-dlp",
+      "/opt/homebrew/bin/yt-dlp",
+      ...(process.env.PATH ?? "").split(path.delimiter).map((d) => d && path.join(d, ytdlpExe)),
     ];
     for (const c of ytdlpCandidates) {
-      if (fs.existsSync(c)) {
+      if (c && fs.existsSync(c)) {
         this.binaryPath = c;
         break;
       }
     }
-    if (!this.binaryPath) this.binaryPath = "yt-dlp";
+    if (!this.binaryPath) this.binaryPath = ytdlpExe;
 
     const ffmpegCandidates = [
+      binDir ? path.join(binDir, ffmpegExe) : undefined,
+      path.join(path.dirname(process.execPath), "bin", ffmpegExe),
+      path.join(path.dirname(process.execPath), ffmpegExe),
+      path.join(process.cwd(), "bin", ffmpegExe),
+      path.join(home, ".local/bin", ffmpegExe),
       "/usr/bin/ffmpeg",
       "/usr/local/bin/ffmpeg",
-      path.join(home, ".local/bin/ffmpeg"),
+      "/opt/homebrew/bin/ffmpeg",
+      ...(process.env.PATH ?? "").split(path.delimiter).map((d) => d && path.join(d, ffmpegExe)),
     ];
     for (const c of ffmpegCandidates) {
-      if (fs.existsSync(c)) {
+      if (c && fs.existsSync(c)) {
         this.ffmpegPath = c;
         break;
       }
@@ -81,7 +99,7 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
     if (!resolvedFilename || resolvedFilename === "video.mp4" || resolvedFilename === "audio.mp3") {
       try {
         const titleRes = execFileSync(this.binaryPath, [
-          "--js-runtimes", "node:/usr/bin/node",
+          "--js-runtimes", `node:${process.execPath}`,
           "--print", "%(title)s",
           "--no-playlist",
           spec.url,
@@ -107,7 +125,7 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
     this.statuses.set(jobId, initialStatus);
 
     const args: string[] = [
-      "--js-runtimes", "node:/usr/bin/node",
+      "--js-runtimes", `node:${process.execPath}`,
       "--newline",
       "--progress-template", "P:%(progress.downloaded_bytes)s/%(progress.total_bytes)s:%(progress.speed)s",
       "-P", spec.dir,

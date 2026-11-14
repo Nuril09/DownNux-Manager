@@ -1,4 +1,6 @@
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { type UrlProbeResult } from "@downnux/shared";
 import { isMediaSite } from "./engine/ytdlp.ts";
@@ -91,13 +93,35 @@ export async function probeUrl(
 
   // 1. YouTube / Social Video Probe via yt-dlp
   if (isMedia) {
-    const ytDlpPath = path.join(process.env.HOME || "", ".local/bin/yt-dlp");
+    const isWin = process.platform === "win32";
+    const ytdlpExe = isWin ? "yt-dlp.exe" : "yt-dlp";
+    const binDir = process.env.DOWNNUX_BIN_DIR;
+    const home = os.homedir();
+    const candidatePaths = [
+      binDir ? path.join(binDir, ytdlpExe) : undefined,
+      path.join(path.dirname(process.execPath), "bin", ytdlpExe),
+      path.join(path.dirname(process.execPath), ytdlpExe),
+      path.join(process.cwd(), "bin", ytdlpExe),
+      path.join(home, ".local/bin", ytdlpExe),
+      "/usr/local/bin/yt-dlp",
+      "/usr/bin/yt-dlp",
+      "/opt/homebrew/bin/yt-dlp",
+      ...(process.env.PATH ?? "").split(path.delimiter).map((d) => d && path.join(d, ytdlpExe)),
+    ];
+    let ytDlpPath = ytdlpExe;
+    for (const c of candidatePaths) {
+      if (c && fs.existsSync(c)) {
+        ytDlpPath = c;
+        break;
+      }
+    }
+
     const customVideoDir = categoryDirs?.video;
     const targetDir = customVideoDir && customVideoDir.trim() ? customVideoDir : path.join(baseDownloadDir, "Video");
 
     try {
       const output = execFileSync(ytDlpPath, [
-        "--js-runtimes", "node:/usr/bin/node",
+        "--js-runtimes", `node:${process.execPath}`,
         "--print", "%(title)s;;;%(filesize,filesize_approx)s;;;%(ext)s",
         "--no-playlist",
         url,

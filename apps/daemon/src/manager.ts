@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { EventEmitter } from "node:events";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { AddTaskInput, type AddTaskInput as AddTaskInputT, type Task } from "@downnux/shared";
 import { toPublicTask, type StoredTask, type TaskStore } from "./db.ts";
@@ -11,6 +12,39 @@ import { logger } from "./log.ts";
 import type { SettingsStore } from "./settings.ts";
 
 const log = logger("manager");
+
+function openPathNative(targetPath: string, select = false): void {
+  try {
+    if (process.platform === "win32") {
+      if (select) {
+        spawn("explorer.exe", [`/select,${targetPath}`], { detached: true, stdio: "ignore" }).unref();
+      } else {
+        spawn("cmd.exe", ["/c", "start", '""', targetPath], { detached: true, stdio: "ignore" }).unref();
+      }
+    } else if (process.platform === "darwin") {
+      if (select) {
+        spawn("open", ["-R", targetPath], { detached: true, stdio: "ignore" }).unref();
+      } else {
+        spawn("open", [targetPath], { detached: true, stdio: "ignore" }).unref();
+      }
+    } else {
+      // Linux / BSD
+      const env = { ...process.env };
+      if (!env.DISPLAY) env.DISPLAY = ":0";
+      if (select && fs.existsSync(targetPath)) {
+        const child = spawn("nautilus", ["--select", targetPath], { detached: true, stdio: "ignore", env });
+        child.on("error", () => {
+          spawn("xdg-open", [path.dirname(targetPath)], { detached: true, stdio: "ignore", env }).unref();
+        });
+        child.unref();
+      } else {
+        spawn("xdg-open", [targetPath], { detached: true, stdio: "ignore", env }).unref();
+      }
+    }
+  } catch (err) {
+    log.warn(`Gagal membuka path (${targetPath}):`, err);
+  }
+}
 
 export class ManagerError extends Error {
   constructor(
@@ -246,58 +280,25 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
 
   openFolder(id: string): { ok: true } {
     const t = this.mustGet(id);
-    const targetDir = t.dir || path.join(process.env.HOME || "", "Downloads");
+    const targetDir = t.dir || path.join(os.homedir(), "Downloads");
     const targetFile = t.filename ? path.join(targetDir, t.filename) : "";
 
-    const env = { ...process.env };
-    if (!env.DISPLAY) env.DISPLAY = ":0";
-
-    try {
-      if (targetFile && fs.existsSync(targetFile)) {
-        // Try revealing file in file manager
-        const child = spawn("nautilus", ["--select", targetFile], {
-          detached: true,
-          stdio: "ignore",
-          env,
-        });
-        child.on("error", () => {
-          spawn("xdg-open", [targetDir], { detached: true, stdio: "ignore", env }).unref();
-        });
-        child.unref();
-      } else {
-        spawn("xdg-open", [targetDir], { detached: true, stdio: "ignore", env }).unref();
-      }
-    } catch {
-      try {
-        spawn("xdg-open", [targetDir], { detached: true, stdio: "ignore", env }).unref();
-      } catch (err) {
-        log.warn(`Gagal membuka folder untuk task ${id}:`, err);
-      }
+    if (targetFile && fs.existsSync(targetFile)) {
+      openPathNative(targetFile, true);
+    } else {
+      openPathNative(targetDir, false);
     }
     return { ok: true };
   }
 
   openFile(id: string): { ok: true } {
     const t = this.mustGet(id);
-    const targetDir = t.dir || path.join(process.env.HOME || "", "Downloads");
+    const targetDir = t.dir || path.join(os.homedir(), "Downloads");
     const targetFile = t.filename ? path.join(targetDir, t.filename) : "";
-    const env = {
-      ...process.env,
-      DISPLAY: process.env.DISPLAY || ":0",
-      WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0",
-    };
     if (targetFile && fs.existsSync(targetFile)) {
-      spawn("xdg-open", [targetFile], {
-        detached: true,
-        stdio: "ignore",
-        env,
-      }).unref();
+      openPathNative(targetFile, false);
     } else {
-      spawn("xdg-open", [targetDir], {
-        detached: true,
-        stdio: "ignore",
-        env,
-      }).unref();
+      openPathNative(targetDir, false);
     }
     return { ok: true };
   }
@@ -343,19 +344,7 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
     if (s.onCompleteAction === "openFolder") {
       this.openFolder(t.id);
     } else if (s.onCompleteAction === "openFile") {
-      const targetDir = t.dir || path.join(process.env.HOME || "", "Downloads");
-      const targetFile = t.filename ? path.join(targetDir, t.filename) : "";
-      if (targetFile && fs.existsSync(targetFile)) {
-        spawn("xdg-open", [targetFile], {
-          stdio: "ignore",
-          detached: true,
-          env: {
-            ...process.env,
-            DISPLAY: process.env.DISPLAY || ":0",
-            WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0",
-          },
-        }).unref();
-      }
+      this.openFile(t.id);
     }
   }
 

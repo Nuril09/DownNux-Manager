@@ -122,19 +122,35 @@ interface RpcStatus {
 }
 
 export function findAria2Binary(preferred?: string): string | null {
+  const isWin = process.platform === "win32";
+  const exeName = isWin ? "aria2c.exe" : "aria2c";
+  const binDir = process.env.DOWNNUX_BIN_DIR;
+  const home = os.homedir();
+
   const candidates = [
     preferred,
     process.env.UNDUH_ARIA2C,
-    ...(process.env.PATH ?? "").split(":").map((d) => d && path.join(d, "aria2c")),
-    path.join(os.homedir(), ".local", "bin", "aria2c"),
+    binDir ? path.join(binDir, exeName) : undefined,
+    // Bundled relative to Node binary or working directory
+    path.join(path.dirname(process.execPath), "bin", exeName),
+    path.join(path.dirname(process.execPath), exeName),
+    path.join(process.cwd(), "bin", exeName),
+    path.join(process.cwd(), exeName),
+    // Standard system & homebrew locations
+    path.join(home, ".local", "bin", exeName),
     "/usr/bin/aria2c",
     "/usr/local/bin/aria2c",
+    "/opt/homebrew/bin/aria2c",
+    // PATH directories (split using proper platform delimiter : vs ;)
+    ...(process.env.PATH ?? "").split(path.delimiter).map((d) => d && path.join(d, exeName)),
   ];
+
   for (const c of candidates) {
     if (!c) continue;
     try {
-      fs.accessSync(c, fs.constants.X_OK);
-      return c;
+      if (fs.existsSync(c)) {
+        return c;
+      }
     } catch {
       // lanjut
     }

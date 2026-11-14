@@ -29,6 +29,26 @@ export function getAppPaths(env: NodeJS.ProcessEnv = process.env): AppPaths {
     });
   }
   const home = os.homedir();
+  if (process.platform === "win32") {
+    const appData = env.APPDATA || path.join(home, "AppData", "Roaming");
+    const localAppData = env.LOCALAPPDATA || path.join(home, "AppData", "Local");
+    return build({
+      configDir: path.join(appData, APP_ID),
+      dataDir: path.join(localAppData, APP_ID),
+      stateDir: path.join(localAppData, APP_ID, "state"),
+      runtimeDir: path.join(os.tmpdir(), APP_ID),
+    });
+  }
+  if (process.platform === "darwin") {
+    const appSupport = path.join(home, "Library", "Application Support", APP_ID);
+    const caches = path.join(home, "Library", "Caches", APP_ID);
+    return build({
+      configDir: appSupport,
+      dataDir: appSupport,
+      stateDir: caches,
+      runtimeDir: path.join(os.tmpdir(), APP_ID),
+    });
+  }
   const uid = typeof process.getuid === "function" ? process.getuid() : 0;
   return build({
     configDir: path.join(env.XDG_CONFIG_HOME || path.join(home, ".config"), APP_ID),

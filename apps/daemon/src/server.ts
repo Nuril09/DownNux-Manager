@@ -18,11 +18,18 @@ import { ManagerError } from "./manager.ts";
 
 const log = logger("ipc");
 const MAX_LINE = 1024 * 1024;
-const DEFAULT_HTTP_PORT = 44990;
+const DEFAULT_HTTP_PORT = process.env.DOWNNUX_PORT
+  ? Number(process.env.DOWNNUX_PORT)
+  : process.env.UNDUH_HOME
+    ? 0
+    : 44990;
 
 export type Handler = (method: Method, params: unknown) => Promise<unknown> | unknown;
 
 export async function assertSocketFree(socketPath: string): Promise<void> {
+  if (process.platform === "win32") {
+    return;
+  }
   if (fs.existsSync(socketPath) && (await isAlive(socketPath))) {
     throw new Error(`Daemon lain sudah berjalan di ${socketPath}`);
   }
@@ -45,23 +52,31 @@ export class IpcServer {
   ) {}
 
   async listen(): Promise<void> {
-    fs.mkdirSync(path.dirname(this.socketPath), { recursive: true, mode: 0o700 });
-    if (fs.existsSync(this.socketPath)) {
-      if (await isAlive(this.socketPath)) {
-        throw new Error(`Daemon lain sudah berjalan di ${this.socketPath}`);
-      }
-      fs.unlinkSync(this.socketPath);
-    }
+    // 1. Unix domain socket (hanya di sistem non-Windows / POSIX)
+    if (process.platform !== "win32") {
+      try {
+        fs.mkdirSync(path.dirname(this.socketPath), { recursive: true, mode: 0o700 });
+        if (fs.existsSync(this.socketPath)) {
+          if (await isAlive(this.socketPath)) {
+            throw new Error(`Daemon lain sudah berjalan di ${this.socketPath}`);
+          }
+          fs.unlinkSync(this.socketPath);
+        }
 
-    // 1. Unix domain socket
-    const server = net.createServer((sock) => this.onConnection(sock));
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(this.socketPath, () => resolve());
-    });
-    fs.chmodSync(this.socketPath, 0o600);
-    this.server = server;
-    log.info(`Mendengarkan Unix socket di ${this.socketPath}`);
+        const server = net.createServer((sock) => this.onConnection(sock));
+        await new Promise<void>((resolve, reject) => {
+          server.once("error", reject);
+          server.listen(this.socketPath, () => resolve());
+        });
+        try {
+          fs.chmodSync(this.socketPath, 0o600);
+        } catch {}
+        this.server = server;
+        log.info(`Mendengarkan Unix socket di ${this.socketPath}`);
+      } catch (err) {
+        log.warn("Tidak dapat mengaktifkan Unix domain socket, beralih ke HTTP/WebSocket:", err);
+      }
+    }
 
     // 2. HTTP + WebSocket Server di 127.0.0.1 untuk web GUI & OS info
     const httpServer = http.createServer((req, res) => {
@@ -120,6 +135,9 @@ export class IpcServer {
     });
 
     const wss = new WebSocketServer({ server: httpServer });
+    wss.on("error", (e) => {
+      log.warn("WebSocketServer error:", (e as Error).message);
+    });
     wss.on("connection", (ws) => {
       this.wsClients.add(ws);
       ws.on("close", () => this.wsClients.delete(ws));

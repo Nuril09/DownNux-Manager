@@ -38,8 +38,8 @@ export const AddTaskInput = z.object({
     .min(1)
     .refine(
       (u) =>
-        /^(https?:\/\/|magnet:\?|file:\/\/|\/)/i.test(u) ||
-        u.endsWith(".torrent") ||
+        /^(https?:\/\/|magnet:\?)/i.test(u) ||
+        (/\.torrent$/i.test(u) && (/^file:\/\//i.test(u) || !u.includes("://"))) ||
         u.startsWith("data:application/x-bittorrent"),
       "URL harus berupa http/https, magnet link (magnet:?), atau file .torrent",
     ),

@@ -11,6 +11,7 @@
   },
   "scripts": {
     "daemon": "tsx apps/daemon/src/main.ts",
+    "daemon:bundle": "esbuild apps/daemon/src/main.ts --bundle --platform=node --format=esm --target=node22 --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=src-tauri/engine/daemon.mjs --alias:@downnux/shared=./packages/shared/src/index.ts --alias:@downnux/shared/node=./packages/shared/src/node/index.ts",
     "cli": "tsx apps/daemon/src/cli.ts",
     "gui": "npm --prefix apps/gui run dev",
     "gui:build": "npm --prefix apps/gui run build",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^22.10.0",
+    "esbuild": "^0.28.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   },

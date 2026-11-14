@@ -17,9 +17,15 @@ import { probeUrl } from "./probe.ts";
 const execFileAsync = promisify(execFile);
 
 const log = logger("daemon");
-const VERSION: string = JSON.parse(
-  fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"),
-).version;
+let VERSION = "0.0.5";
+try {
+  const pkgUrl = new URL("../package.json", import.meta.url);
+  if (fs.existsSync(pkgUrl)) {
+    VERSION = JSON.parse(fs.readFileSync(pkgUrl, "utf8")).version || "0.0.5";
+  }
+} catch {
+  // Bundled standalone fallback
+}
 
 async function main(): Promise<void> {
   const paths = getAppPaths();
@@ -82,6 +88,18 @@ async function main(): Promise<void> {
     "task.probe": (p) => probeUrl(p.url, settings.downloadDir(), p.headers, settings.get().categoryDirs),
     "dialog.selectFolder": async () => {
       try {
+        if (process.platform === "win32") {
+          const psCmd = `Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; if($f.ShowDialog() -eq 'OK'){ $f.SelectedPath }`;
+          const { stdout } = await execFileAsync("powershell", ["-NoProfile", "-Command", psCmd]);
+          const chosen = stdout.trim();
+          return { ok: Boolean(chosen), path: chosen };
+        }
+        if (process.platform === "darwin") {
+          const appleScript = 'POSIX path of (choose folder with prompt "Pilih Folder Unduhan DownNux")';
+          const { stdout } = await execFileAsync("osascript", ["-e", appleScript]);
+          const chosen = stdout.trim().replace(/\/$/, "");
+          return { ok: Boolean(chosen), path: chosen };
+        }
         const { stdout } = await execFileAsync("zenity", [
           "--file-selection",
           "--directory",

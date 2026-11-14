@@ -7,3 +7,7 @@ build/
 # Dokumen privat
 .secret/
 
+# Tauri bundled binaries (downloaded during CI)
+src-tauri/bin/*
+!src-tauri/bin/.gitkeep
+

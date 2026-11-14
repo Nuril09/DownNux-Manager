@@ -28,6 +28,10 @@
   },
   "bundle": {
     "active": true,
+    "resources": [
+      "bin/**/*",
+      "engine/**/*"
+    ],
     "targets": [
       "deb",
       "appimage",
