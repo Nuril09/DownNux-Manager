@@ -19,18 +19,19 @@ fn start_daemon_if_needed(app: &tauri::AppHandle) {
         return;
     }
 
-    let res_dir = app.path().resource_dir().ok();
-    let current_exe_dir = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|p| p.to_path_buf()));
+    let mut candidate_dirs: Vec<std::path::PathBuf> = Vec::new();
 
-    let candidate_dirs = [
-        res_dir.as_ref().map(|p| p.as_path()),
-        res_dir.as_ref().map(|p| p.join("resources")),
-        current_exe_dir.as_ref().map(|p| p.as_path()),
-        current_exe_dir.as_ref().map(|p| p.join("resources")),
-        Some(std::path::Path::new(".")),
-    ];
+    if let Ok(res_dir) = app.path().resource_dir() {
+        candidate_dirs.push(res_dir.join("resources"));
+        candidate_dirs.push(res_dir);
+    }
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            candidate_dirs.push(parent.join("resources"));
+            candidate_dirs.push(parent.to_path_buf());
+        }
+    }
+    candidate_dirs.push(std::path::PathBuf::from("."));
 
     let mut daemon_js: Option<std::path::PathBuf> = None;
     let mut node_bin: Option<std::path::PathBuf> = None;
@@ -38,20 +39,18 @@ fn start_daemon_if_needed(app: &tauri::AppHandle) {
 
     let node_name = if cfg!(windows) { "node.exe" } else { "node" };
 
-    for dir_opt in candidate_dirs.iter() {
-        if let Some(dir) = dir_opt {
-            let script = dir.join("engine").join("daemon.mjs");
-            if script.exists() && daemon_js.is_none() {
-                daemon_js = Some(script);
-            }
-            let node_path = dir.join("bin").join(node_name);
-            if node_path.exists() && node_bin.is_none() {
-                node_bin = Some(node_path);
-            }
-            let b_dir = dir.join("bin");
-            if b_dir.exists() && bin_dir.is_none() {
-                bin_dir = Some(b_dir);
-            }
+    for dir in &candidate_dirs {
+        let script = dir.join("engine").join("daemon.mjs");
+        if script.exists() && daemon_js.is_none() {
+            daemon_js = Some(script);
+        }
+        let node_path = dir.join("bin").join(node_name);
+        if node_path.exists() && node_bin.is_none() {
+            node_bin = Some(node_path);
+        }
+        let b_dir = dir.join("bin");
+        if b_dir.exists() && bin_dir.is_none() {
+            bin_dir = Some(b_dir);
         }
     }
 
