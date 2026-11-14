@@ -42,6 +42,10 @@ export const Settings = z.object({
   globalSpeedLimit: z.number().int().min(0).default(0),
   aria2Path: z.string().default(""),
 
+  // Media & Video Quality Presets
+  defaultVideoQuality: z.enum(["best", "1080", "720", "480"]).default("best"),
+  defaultAudioQuality: z.enum(["320", "192", "128"]).default("320"),
+
   // Notifikasi & Pop-up
   showPreDownloadDialog: z.boolean().default(true),
   notifyOnStart: z.boolean().default(true),

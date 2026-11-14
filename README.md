@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Nuril09/DownNux-Manager/releases/latest"><img src="https://img.shields.io/badge/Release-v0.0.4-6554c0?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/Nuril09/DownNux-Manager/releases/latest"><img src="https://img.shields.io/badge/Release-v0.0.5-6554c0?style=flat-square" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License GPL-3.0"></a>
   <a href="#"><img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-informational?style=flat-square" alt="Platforms"></a>
   <a href="https://hoodtech.my.id/"><img src="https://img.shields.io/badge/Maintained%20by-HoodTech-8a2be2?style=flat-square" alt="HoodTech"></a>
@@ -79,10 +79,10 @@ DownNux provides a native `.deb` package that sets up binaries, desktop menu sho
 
 ```bash
 # 1. Download the latest .deb from GitHub Releases
-wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.4/downnux-manager_0.0.4_amd64.deb
+wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.5/downnux-manager_0.0.5_amd64.deb
 
 # 2. Install using apt (resolves system dependencies automatically)
-sudo apt install ./downnux-manager_0.0.4_amd64.deb
+sudo apt install ./downnux-manager_0.0.5_amd64.deb
 ```
 
 Once installed, open **DownNux Manager** from your desktop application launcher or run `downnux-gui` in terminal.
@@ -95,8 +95,8 @@ For environments where you prefer not to install system packages:
 
 ```bash
 # Extract the archive
-tar -xzf downnux-manager_0.0.4_linux_x64.tar.gz
-cd downnux-manager_0.0.4_linux_x64
+tar -xzf downnux-manager_0.0.5_linux_x64.tar.gz
+cd downnux-manager_0.0.5_linux_x64
 
 # Start the application
 bash start-downnux.sh

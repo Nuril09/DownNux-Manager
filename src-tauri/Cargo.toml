@@ -1,6 +1,6 @@
 [package]
 name = "downnux"
-version = "0.0.4"
+version = "0.0.5"
 description = "DownNux Manager — Modern IDM Alternative by HoodTech"
 authors = ["HoodTech <https://github.com/Nuril09/DownNux-Manager>"]
 license = "GPL-3.0"

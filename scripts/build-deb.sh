@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$ROOT_DIR/build/deb-pkg"
 DIST_DIR="$ROOT_DIR/dist"
-PKG_VERSION="0.0.4"
+PKG_VERSION="0.0.5"
 PKG_NAME="downnux-manager_${PKG_VERSION}_amd64"
 
 echo "=== Building Native Linux (.deb) Package for DownNux Manager ==="

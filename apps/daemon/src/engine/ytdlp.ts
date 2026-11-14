@@ -73,6 +73,8 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
     const jobId = `ytdlp-${crypto.randomUUID()}`;
 
     const isAudioOnly = spec.headers?.format === "audio" || (spec.filename && spec.filename.endsWith(".mp3"));
+    const videoQuality = spec.headers?.videoQuality || "best";
+    const audioQuality = spec.headers?.audioQuality || "320";
 
     // 1. Pre-query actual title from yt-dlp
     let resolvedFilename = spec.filename || "";
@@ -118,12 +120,35 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
 
     if (isAudioOnly) {
       args.push("-x", "--audio-format", "mp3");
+      if (audioQuality === "320") {
+        args.push("--audio-quality", "0");
+      } else if (audioQuality === "192") {
+        args.push("--audio-quality", "2");
+      } else if (audioQuality === "128") {
+        args.push("--audio-quality", "5");
+      } else {
+        args.push("--audio-quality", "0");
+      }
       args.push("-o", resolvedFilename ? resolvedFilename : "%(title)s.%(ext)s");
     } else {
+      let formatSelector = "bv*[vcodec^=avc]+ba[acodec^=mp4a]/bv*[vcodec^=avc]+ba/b[vcodec^=avc]/bv*+ba[acodec^=mp4a]/bv*+ba/b";
+      let sortSpec = "vcodec:h264,acodec:m4a,res";
+
+      if (videoQuality === "1080") {
+        formatSelector = "bv*[height<=1080][vcodec^=avc]+ba[acodec^=mp4a]/bv*[height<=1080][vcodec^=avc]+ba/b[height<=1080][vcodec^=avc]/bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b";
+        sortSpec = "res:1080,vcodec:h264,acodec:m4a";
+      } else if (videoQuality === "720") {
+        formatSelector = "bv*[height<=720][vcodec^=avc]+ba[acodec^=mp4a]/bv*[height<=720][vcodec^=avc]+ba/b[height<=720][vcodec^=avc]/bv*[height<=720]+ba/b[height<=720]/bv*+ba/b";
+        sortSpec = "res:720,vcodec:h264,acodec:m4a";
+      } else if (videoQuality === "480") {
+        formatSelector = "bv*[height<=480][vcodec^=avc]+ba[acodec^=mp4a]/bv*[height<=480][vcodec^=avc]+ba/b[height<=480][vcodec^=avc]/bv*[height<=480]+ba/b[height<=480]/bv*+ba/b";
+        sortSpec = "res:480,vcodec:h264,acodec:m4a";
+      }
+
       // Prioritize H.264 (AVC) and AAC/m4a with fallback recoding for universal compatibility (WhatsApp, Gmail, iOS, Android, web)
       args.push(
-        "-f", "bv*[vcodec^=avc]+ba[acodec^=mp4a]/bv*[vcodec^=avc]+ba/b[vcodec^=avc]/bv*+ba[acodec^=mp4a]/bv*+ba/b",
-        "-S", "vcodec:h264,acodec:m4a,res",
+        "-f", formatSelector,
+        "-S", sortSpec,
         "--merge-output-format", "mp4",
         "--recode-video", "mp4",
         "--postprocessor-args", "Merger:-movflags +faststart",

@@ -27,6 +27,8 @@ export const RequestHeaders = z.object({
   referer: z.string().max(8 * 1024).optional(),
   userAgent: z.string().max(1024).optional(),
   format: z.string().optional(),
+  videoQuality: z.string().optional(),
+  audioQuality: z.string().optional(),
 });
 export type RequestHeaders = z.infer<typeof RequestHeaders>;
 

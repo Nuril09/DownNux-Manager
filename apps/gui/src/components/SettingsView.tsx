@@ -42,6 +42,8 @@ export interface SettingsData {
   notifyOnComplete: boolean;
   soundOnComplete: boolean;
   onCompleteAction: "none" | "openFile" | "openFolder";
+  defaultVideoQuality?: "best" | "1080" | "720" | "480";
+  defaultAudioQuality?: "320" | "192" | "128";
 }
 
 interface SettingsViewProps {
@@ -129,7 +131,7 @@ export function SettingsView({
             {t.settingsTitle}
           </h2>
           <span className="text-[10px] text-[#6554c0] bg-[#edeaf9] dark:bg-[#6554c0]/20 dark:text-[#a79be8] px-2 py-0.5 rounded font-semibold">
-            DownNux Engine · v0.0.4
+            DownNux Engine · v0.0.5
           </span>
         </div>
 
@@ -590,6 +592,71 @@ export function SettingsView({
                     }
                     className="w-4 h-4 rounded text-[#6554c0] accent-[#6554c0]"
                   />
+                </div>
+
+                {/* Default Online Video Resolution */}
+                <div className="pt-3 border-t border-[#e7e9ef] dark:border-[#2a2d40]">
+                  <h3 className="text-[12px] font-bold text-[#202631] dark:text-white mb-1">
+                    {lang === "en" ? "Default Video Resolution" : "Resolusi Default Video Online"}
+                  </h3>
+                  <p className="text-[10px] text-[#6e7685] dark:text-[#8f96a8] mb-2.5">
+                    {lang === "en"
+                      ? "Preferred video resolution when capturing YouTube and online media streams."
+                      : "Pilihan resolusi utama saat mengunduh video dari YouTube dan platform streaming."}
+                  </p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { id: "best", label: lang === "en" ? "Best (Auto)" : "Terbaik" },
+                      { id: "1080", label: "1080p FHD" },
+                      { id: "720", label: "720p HD" },
+                      { id: "480", label: "480p SD" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, defaultVideoQuality: opt.id as any })}
+                        className={`py-1.5 px-2 rounded-[6px] text-[11px] font-semibold border text-center transition-all ${
+                          (formData.defaultVideoQuality || "best") === opt.id
+                            ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
+                            : "bg-[#f7f8fa] dark:bg-[#25283b] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2d40]"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Default Online Audio Quality */}
+                <div className="pt-3 border-t border-[#e7e9ef] dark:border-[#2a2d40]">
+                  <h3 className="text-[12px] font-bold text-[#202631] dark:text-white mb-1">
+                    {lang === "en" ? "Default Audio Quality (Bitrate)" : "Kualitas Default Audio MP3"}
+                  </h3>
+                  <p className="text-[10px] text-[#6e7685] dark:text-[#8f96a8] mb-2.5">
+                    {lang === "en"
+                      ? "Target MP3 encoding bitrate when downloading audio-only media."
+                      : "Target bitrate kompresi MP3 saat mengunduh audio lagu atau podcast."}
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "320", label: "320 kbps (Studio)" },
+                      { id: "192", label: "192 kbps (HQ)" },
+                      { id: "128", label: "128 kbps (Fast)" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, defaultAudioQuality: opt.id as any })}
+                        className={`py-1.5 px-2 rounded-[6px] text-[11px] font-semibold border text-center transition-all ${
+                          (formData.defaultAudioQuality || "320") === opt.id
+                            ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
+                            : "bg-[#f7f8fa] dark:bg-[#25283b] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2d40]"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

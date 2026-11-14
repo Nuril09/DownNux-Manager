@@ -1,7 +1,7 @@
 {
   "name": "downnux-manager",
   "private": true,
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "DownNux Manager — Modern High-Speed Download Accelerator by HoodTech",
   "author": "HoodTech <https://github.com/Nuril09/DownNux-Manager>",
   "type": "module",

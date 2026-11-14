@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 TMP_STAGE="$ROOT_DIR/build/stage"
-VERSION="0.0.4"
+VERSION="0.0.5"
 
 echo "=== Packaging DownNux Manager Multiplatform Bundles v${VERSION} ==="
 mkdir -p "$DIST_DIR"
@@ -86,7 +86,7 @@ cat > "$WIN_STAGE/start-downnux.bat" << 'EOF'
 @echo off
 setlocal
 cd /d "%~dp0"
-title DownNux Manager v0.0.4
+title DownNux Manager v0.0.5
 
 echo ==========================================================
 echo        DownNux Manager - High Speed Download Accelerator
@@ -107,7 +107,7 @@ EOF
 
 cat > "$WIN_STAGE/README.txt" << 'EOF'
 ==========================================================
-DownNux Manager - Windows Portable Edition (v0.0.4)
+DownNux Manager - Windows Portable Edition (v0.0.5)
 Developed by HoodTech <https://github.com/Nuril09/DownNux-Manager>
 ==========================================================
 
@@ -167,7 +167,7 @@ chmod +x "$MAC_STAGE/start-downnux.command"
 
 cat > "$MAC_STAGE/README.txt" << 'EOF'
 ==========================================================
-DownNux Manager - macOS Portable Edition (v0.0.4)
+DownNux Manager - macOS Portable Edition (v0.0.5)
 Developed by HoodTech <https://github.com/Nuril09/DownNux-Manager>
 ==========================================================
 

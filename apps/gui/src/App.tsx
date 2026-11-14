@@ -152,6 +152,8 @@ export function App() {
     notifyOnComplete: true,
     soundOnComplete: false,
     onCompleteAction: "none",
+    defaultVideoQuality: "best",
+    defaultAudioQuality: "320",
   });
 
   const [schedulerConfig, setSchedulerConfig] = useState<ScheduleConfigData>({
@@ -214,6 +216,17 @@ export function App() {
   const [saveDir, setSaveDir] = useState<string>("");
   const [newConnections, setNewConnections] = useState(8);
   const [downloadFormat, setDownloadFormat] = useState<"mp4" | "mp3">("mp4");
+  const [videoQuality, setVideoQuality] = useState<"best" | "1080" | "720" | "480">("best");
+  const [audioQuality, setAudioQuality] = useState<"320" | "192" | "128">("320");
+
+  useEffect(() => {
+    if (settingsData.defaultVideoQuality) {
+      setVideoQuality(settingsData.defaultVideoQuality);
+    }
+    if (settingsData.defaultAudioQuality) {
+      setAudioQuality(settingsData.defaultAudioQuality);
+    }
+  }, [settingsData.defaultVideoQuality, settingsData.defaultAudioQuality]);
   const [torrentBase64, setTorrentBase64] = useState<string>("");
   const torrentFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -620,6 +633,8 @@ export function App() {
             connections: newConnections,
             headers: {
               format: downloadFormat === "mp3" ? "audio" : "video",
+              videoQuality: downloadFormat === "mp4" ? videoQuality : undefined,
+              audioQuality: downloadFormat === "mp3" ? audioQuality : undefined,
             },
             torrentBase64: torrentBase64 || undefined,
             start: startImmediately,
@@ -821,7 +836,7 @@ export function App() {
               className="text-[10px] font-bold text-[#6554c0] bg-[#edeaf9] dark:bg-[#6554c0]/20 dark:text-[#a79be8] px-2 py-0.5 rounded-full border border-[#d8d2f5] dark:border-[#4d4287] tracking-wide shadow-xs hover:border-[#6554c0] hover:scale-105 transition-all cursor-pointer flex items-center space-x-1"
               title={lang === "en" ? "Click to check for updates" : "Klik untuk periksa pembaruan"}
             >
-              <span>BETA 0.0.4</span>
+              <span>BETA 0.0.5</span>
               {updateInfo?.hasUpdate && (
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-ping" />
               )}
@@ -1864,40 +1879,103 @@ export function App() {
 
               {/* Format selection pills for online video / audio */}
               {isMediaUrl && (
-                <div>
-                  <label className="block text-[#6e7685] dark:text-[#9ea4b5] mb-1 font-medium">{lang === "en" ? "Format Preset:" : "Format Download:"}</label>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDownloadFormat("mp4");
-                        if (newFilename.endsWith(".mp3")) {
-                          setNewFilename(newFilename.replace(/\.mp3$/, ".mp4"));
-                        }
-                      }}
-                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp4"
-                          ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
-                          : "bg-white dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b]"
-                        }`}
-                    >
-                      🎬 Video (MP4)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDownloadFormat("mp3");
-                        if (newFilename.endsWith(".mp4")) {
-                          setNewFilename(newFilename.replace(/\.mp4$/, ".mp3"));
-                        }
-                      }}
-                      className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp3"
-                          ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
-                          : "bg-white dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b]"
-                        }`}
-                    >
-                      🎵 Audio Only (MP3)
-                    </button>
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[#6e7685] dark:text-[#9ea4b5] mb-1 font-medium">{lang === "en" ? "Format Preset:" : "Format Download:"}</label>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDownloadFormat("mp4");
+                          if (newFilename.endsWith(".mp3")) {
+                            setNewFilename(newFilename.replace(/\.mp3$/, ".mp4"));
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp4"
+                            ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
+                            : "bg-white dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b]"
+                          }`}
+                      >
+                        🎬 Video (MP4)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDownloadFormat("mp3");
+                          if (newFilename.endsWith(".mp4")) {
+                            setNewFilename(newFilename.replace(/\.mp4$/, ".mp3"));
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp3"
+                            ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
+                            : "bg-white dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b]"
+                          }`}
+                      >
+                        🎵 Audio Only (MP3)
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Resolution selector for Video */}
+                  {downloadFormat === "mp4" && (
+                    <div className="bg-[#f7f8fa] dark:bg-[#1f2233] p-2.5 rounded-[8px] border border-[#e7e9ef] dark:border-[#2a2d40]">
+                      <div className="text-[11px] font-medium text-[#6e7685] dark:text-[#9ea4b5] mb-1.5 flex items-center justify-between">
+                        <span>{lang === "en" ? "Video Resolution:" : "Resolusi Video:"}</span>
+                        <span className="text-[10px] text-[#6554c0] dark:text-[#a79be8] font-semibold">H.264 / AAC Safe</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[
+                          { id: "best", label: lang === "en" ? "Best (Auto)" : "Terbaik" },
+                          { id: "1080", label: "1080p FHD" },
+                          { id: "720", label: "720p HD" },
+                          { id: "480", label: "480p SD" },
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setVideoQuality(item.id as any)}
+                            className={`py-1 px-1.5 rounded-[5px] text-[10px] font-semibold border text-center transition-all ${
+                              videoQuality === item.id
+                                ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
+                                : "bg-white dark:bg-[#25283b] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2d40] hover:bg-[#eceaf4] dark:hover:bg-[#2f3248]"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bitrate selector for Audio */}
+                  {downloadFormat === "mp3" && (
+                    <div className="bg-[#f7f8fa] dark:bg-[#1f2233] p-2.5 rounded-[8px] border border-[#e7e9ef] dark:border-[#2a2d40]">
+                      <div className="text-[11px] font-medium text-[#6e7685] dark:text-[#9ea4b5] mb-1.5 flex items-center justify-between">
+                        <span>{lang === "en" ? "Audio Bitrate:" : "Kualitas Audio:"}</span>
+                        <span className="text-[10px] text-[#6554c0] dark:text-[#a79be8] font-semibold">Constant Bitrate (CBR)</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { id: "320", label: "320 kbps (Studio)" },
+                          { id: "192", label: "192 kbps (HQ)" },
+                          { id: "128", label: lang === "en" ? "128 kbps (Fast)" : "128 kbps (Cepat)" },
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setAudioQuality(item.id as any)}
+                            className={`py-1 px-1.5 rounded-[5px] text-[10px] font-semibold border text-center transition-all ${
+                              audioQuality === item.id
+                                ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
+                                : "bg-white dark:bg-[#25283b] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2d40] hover:bg-[#eceaf4] dark:hover:bg-[#2f3248]"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

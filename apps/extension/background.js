@@ -36,12 +36,14 @@ async function cookieHeaderFor(url) {
   }
 }
 
-async function sendToApp({ url, referrer, filename, format }) {
+async function sendToApp({ url, referrer, filename, format, videoQuality, audioQuality }) {
   const cookie = await cookieHeaderFor(url);
   const headers = { userAgent: navigator.userAgent };
   if (cookie) headers.cookie = cookie;
   if (referrer) headers.referer = referrer;
   if (format) headers.format = format;
+  if (videoQuality) headers.videoQuality = videoQuality;
+  if (audioQuality) headers.audioQuality = audioQuality;
   const params = { url, headers, source: "browser" };
   if (filename) params.filename = filename;
   return callDaemon("task.add", params);
@@ -196,13 +198,19 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
 async function downloadVideo({ src, pageUrl, title, quality }, tabId) {
   const isVideoPlatform = /youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(pageUrl);
   
+  const isAudio = quality === "audio";
+  const videoQuality = isAudio ? undefined : (quality || "best");
+  const audioQuality = isAudio ? "320" : undefined;
+
   if (isVideoPlatform) {
-    const filename = title ? `${title.replace(/[\/\\?%*:|"<>]/g, "_")}.${quality === "audio" ? "mp3" : "mp4"}` : undefined;
+    const filename = title ? `${title.replace(/[\/\\?%*:|"<>]/g, "_")}.${isAudio ? "mp3" : "mp4"}` : undefined;
     return sendToApp({
       url: pageUrl,
       referrer: pageUrl,
       filename,
-      format: quality === "audio" ? "audio" : "video",
+      format: isAudio ? "audio" : "video",
+      videoQuality,
+      audioQuality,
     });
   }
 

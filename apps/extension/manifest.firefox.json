@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DownNux Manager — Browser Integration",
   "short_name": "DownNux",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Capture downloads and video streams automatically for DownNux Manager by HoodTech.",
   "author": "HoodTech",
   "permissions": [
