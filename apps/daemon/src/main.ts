@@ -17,11 +17,11 @@ import { probeUrl } from "./probe.ts";
 const execFileAsync = promisify(execFile);
 
 const log = logger("daemon");
-let VERSION = "0.0.5";
+let VERSION = "0.0.6";
 try {
   const pkgUrl = new URL("../package.json", import.meta.url);
   if (fs.existsSync(pkgUrl)) {
-    VERSION = JSON.parse(fs.readFileSync(pkgUrl, "utf8")).version || "0.0.5";
+    VERSION = JSON.parse(fs.readFileSync(pkgUrl, "utf8")).version || "0.0.6";
   }
 } catch {
   // Bundled standalone fallback

@@ -10196,11 +10196,11 @@ async function probeUrl(url, baseDownloadDir, customHeaders, categoryDirs) {
 // apps/daemon/src/main.ts
 var execFileAsync = promisify(execFile);
 var log8 = logger("daemon");
-var VERSION = "0.0.5";
+var VERSION = "0.0.6";
 try {
   const pkgUrl = new URL("../package.json", import.meta.url);
   if (fs11.existsSync(pkgUrl)) {
-    VERSION = JSON.parse(fs11.readFileSync(pkgUrl, "utf8")).version || "0.0.5";
+    VERSION = JSON.parse(fs11.readFileSync(pkgUrl, "utf8")).version || "0.0.6";
   }
 } catch {
 }
