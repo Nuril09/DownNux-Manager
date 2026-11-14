@@ -1,0 +1,69 @@
+@import "./components/iso/iso.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Cursor affordance for accessible controls (Rule R-39) */
+  a[href], button, select, input[type="checkbox"], input[type="radio"], [role="button"], [role="tab"] {
+    cursor: pointer;
+  }
+  
+  /* Keyboard focus rings (Rule R-32, R-39) */
+  :focus-visible {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom background scrim layers */
+.bg-canvas-scrim-dark {
+  background: 
+    radial-gradient(circle at 80% 25%, rgba(45, 212, 191, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 20% 40%, rgba(101, 84, 192, 0.22) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(11, 9, 23, 0.82) 0%, rgba(11, 9, 23, 0.72) 40%, rgba(11, 9, 23, 0.92) 100%);
+}
+
+.bg-canvas-scrim-light {
+  background: 
+    radial-gradient(circle at 80% 25%, rgba(45, 212, 191, 0.04) 0%, transparent 40%),
+    linear-gradient(180deg, rgba(246, 247, 252, 0.88) 0%, rgba(246, 247, 252, 0.82) 40%, rgba(246, 247, 252, 0.95) 100%);
+}
+
+/* Custom card surfaces */
+.card-surface-dark {
+  background-color: rgba(18, 20, 36, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+}
+
+.card-surface-light {
+  background-color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #dfe3f0;
+  box-shadow: 0 4px 20px -2px rgba(20, 23, 38, 0.05);
+}
+
+/* Respect user's motion preferences (Rule R-19, R-39) */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-delay: -1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    background-attachment: initial !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+}
