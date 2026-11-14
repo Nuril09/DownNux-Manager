@@ -257,3 +257,4 @@ export function DocumentationSection({ theme, lang }: DocumentationSectionProps)
     </section>
   );
 }
+

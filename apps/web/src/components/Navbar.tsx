@@ -152,3 +152,4 @@ export function Navbar({ theme, onToggleTheme, lang, onToggleLang }: NavbarProps
     </header>
   );
 }
+

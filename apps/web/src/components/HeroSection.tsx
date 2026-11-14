@@ -190,3 +190,4 @@ export function HeroSection({ theme, lang }: HeroSectionProps) {
     </section>
   );
 }
+

@@ -186,3 +186,4 @@ export function FeatureGallery({ theme, lang }: FeatureGalleryProps) {
     </section>
   );
 }
+

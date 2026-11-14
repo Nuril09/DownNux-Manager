@@ -157,3 +157,4 @@ export const FAQ_LIST = [
     },
   },
 ];
+

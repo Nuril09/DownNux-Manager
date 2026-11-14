@@ -43,3 +43,4 @@ export function calculateSpeed(conns: ConnectionCount, state: RigState): number 
       return 48.2;
   }
 }
+

@@ -134,3 +134,4 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
     },
   },
 ];
+

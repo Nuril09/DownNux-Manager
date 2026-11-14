@@ -518,3 +518,4 @@ export function AnatomyRig({ theme, lang }: AnatomyRigProps) {
     </div>
   );
 }
+

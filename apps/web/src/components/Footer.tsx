@@ -75,3 +75,4 @@ export function Footer({ theme, lang }: FooterProps) {
     </footer>
   );
 }
+

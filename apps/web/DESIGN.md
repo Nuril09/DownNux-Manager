@@ -35,3 +35,4 @@ Dial: ENERGY 2 / RHYTHM 3 / MOTION 2
 - Every button has real function, modal action, clipboard copy, or external link (Rule R-26).
 - Dual theme verified in both modes (Rule R-34).
 - Touch targets >= 44x44px and fluid mobile reflow without overflow (Rule R-03).
+

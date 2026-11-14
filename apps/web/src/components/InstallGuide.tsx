@@ -234,3 +234,4 @@ export function InstallGuide({ theme, lang }: InstallGuideProps) {
     </section>
   );
 }
+
