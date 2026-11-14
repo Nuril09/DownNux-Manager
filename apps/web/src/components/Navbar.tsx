@@ -219,13 +219,10 @@ export function Navbar({ theme, onToggleTheme, lang, onToggleLang }: NavbarProps
           {/* Primary Download CTA */}
           <a
             href="#downloads"
-            className="h-9 px-3.5 sm:px-4 rounded-[8px] bg-[#6554c0] hover:bg-[#5443af] active:translate-y-[0.5px] text-white text-xs font-semibold shadow-sm flex items-center gap-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b5cf6] focus-visible:ring-offset-2"
+            className="h-9 px-3.5 rounded-[8px] bg-[#6554c0] hover:bg-[#5443af] active:translate-y-[0.5px] text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b5cf6] focus-visible:ring-offset-2"
           >
             <Download className="w-3.5 h-3.5 text-white flex-shrink-0" aria-hidden="true" />
-            <span>{lang === "en" ? "Download" : "Unduh"}</span>
-            <span className="hidden xl:inline-block font-mono text-[10px] px-1.5 py-0.5 rounded-[4px] bg-black/20 text-white/95 leading-none">
-              v{CURRENT_VERSION}
-            </span>
+            <span>Get</span>
           </a>
 
           {/* Mobile Menu Button (44px tap target via w-10 h-10 on mobile) */}
