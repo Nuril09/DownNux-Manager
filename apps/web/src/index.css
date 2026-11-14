@@ -35,8 +35,8 @@
 
 .bg-canvas-scrim-light {
   background: 
-    radial-gradient(circle at 80% 25%, rgba(45, 212, 191, 0.04) 0%, transparent 40%),
-    linear-gradient(180deg, rgba(246, 247, 252, 0.88) 0%, rgba(246, 247, 252, 0.82) 40%, rgba(246, 247, 252, 0.95) 100%);
+    radial-gradient(circle at 80% 25%, rgba(45, 212, 191, 0.05) 0%, transparent 40%),
+    linear-gradient(180deg, rgba(246, 247, 252, 0.25) 0%, rgba(246, 247, 252, 0.15) 40%, rgba(246, 247, 252, 0.40) 100%);
 }
 
 /* Custom card surfaces */

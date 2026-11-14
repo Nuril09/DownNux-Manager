@@ -30,22 +30,38 @@ export function Navbar({ theme, onToggleTheme, lang, onToggleLang }: NavbarProps
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo & Name */}
-        <a href="#" className="flex items-center space-x-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b5cf6] rounded-[6px]">
-          <div className="w-9 h-9 rounded-[8px] bg-gradient-to-br from-[#6554c0] to-[#493b96] flex items-center justify-center shadow-md shadow-[#6554c0]/25 group-hover:scale-105 transition-transform">
-            <Download className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <div className="font-extrabold text-[16px] tracking-tight text-[#111827] dark:text-white flex items-center space-x-1.5">
-              <span>DownNux</span>
+        <div className="flex items-center space-x-3">
+          <a
+            href="#"
+            className="flex items-center space-x-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b5cf6] rounded-[6px]"
+          >
+            <img
+              src="./icon.png"
+              alt="DownNux Manager App Icon"
+              className="w-9 h-9 rounded-[8px] object-contain shadow-md shadow-[#6554c0]/20 group-hover:scale-105 transition-transform"
+            />
+            <div className="flex items-center space-x-1.5">
+              <span className="font-extrabold text-[16px] tracking-tight text-[#111827] dark:text-white">
+                DownNux
+              </span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-[4px] bg-[#6554c0]/15 text-[#6554c0] dark:text-[#a79be8] font-bold">
                 v0.0.5
               </span>
             </div>
-            <div className="text-[10px] text-[#6b7280] dark:text-[#9ea4b5] leading-none">
-              by HoodTech
-            </div>
+          </a>
+          <div className="hidden sm:block text-[11px] text-[#6b7280] dark:text-[#9ea4b5] border-l pl-2.5 border-black/10 dark:border-white/10 leading-none">
+            <span className="text-[#9ca3af] mr-1">by</span>
+            <a
+              href="https://hoodtech.my.id/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-[#6554c0] dark:text-[#a79be8] hover:underline"
+              title="Visit HoodTech official website"
+            >
+              HoodTech
+            </a>
           </div>
-        </a>
+        </div>
 
         {/* Desktop Nav Links */}
         <nav className="hidden md:flex items-center space-x-1" aria-label="Main Navigation">

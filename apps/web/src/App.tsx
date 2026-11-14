@@ -52,12 +52,12 @@ export function App() {
   return (
     <div className={`min-h-screen relative font-sans ${theme === "dark" ? "dark bg-[#0b0917] text-[#f4f6fb]" : "bg-[#f6f7fc] text-[#141726]"}`}>
       
-      {/* 1. Fixed Background Canvas Artwork Layer (The user's custom fiber-stream & chunk-grid artwork) */}
+      {/* 1. Fixed Background Canvas Artwork Layer (Dynamically switches between dark and light artwork) */}
       <div
-        className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat transition-opacity duration-300"
+        className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat transition-all duration-300"
         style={{
-          backgroundImage: "url('./assets/downnux-bg.jpg')",
-          opacity: theme === "dark" ? 0.42 : 0.16,
+          backgroundImage: theme === "dark" ? "url('./assets/downnux-bg.jpg')" : "url('./assets/downnux-bg-light.jpg')",
+          opacity: theme === "dark" ? 0.45 : 0.88,
         }}
         aria-hidden="true"
       />

@@ -20,22 +20,31 @@ export function Footer({ theme, lang }: FooterProps) {
           
           {/* Brand Info */}
           <div className="flex items-center space-x-3 text-center md:text-left">
-            <div className="w-8 h-8 rounded-[6px] bg-[#6554c0] flex items-center justify-center text-white shadow-sm">
-              <Download className="w-4 h-4" />
-            </div>
+            <a href="#" className="block group" title="DownNux Manager">
+              <img
+                src="./icon.png"
+                alt="DownNux Manager Logo"
+                className="w-9 h-9 rounded-[8px] object-contain shadow-sm group-hover:scale-105 transition-transform"
+              />
+            </a>
             <div>
               <div className="font-extrabold text-sm text-[#111827] dark:text-white">
-                DownNux Manager <span className="font-mono text-xs font-normal text-[#6554c0] dark:text-[#a79be8]">v{CURRENT_VERSION}</span>
+                <a href="#" className="hover:text-[#6554c0] dark:hover:text-[#a79be8] transition-colors">
+                  DownNux Manager
+                </a>{" "}
+                <span className="font-mono text-xs font-normal text-[#6554c0] dark:text-[#a79be8]">v{CURRENT_VERSION}</span>
               </div>
-              <div className="text-xs text-[#6b7280] dark:text-[#9ea4b5]">
-                {lang === "en" ? "Engineered and maintained by " : "Dikembangkan dan dikelola oleh "}
+              <div className="text-xs text-[#6b7280] dark:text-[#9ea4b5] flex items-center justify-center md:justify-start space-x-1">
+                <span>{lang === "en" ? "Engineered and maintained by" : "Dikembangkan dan dikelola oleh"}</span>
                 <a
                   href="https://hoodtech.my.id/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-bold text-[#6554c0] dark:text-[#a79be8] hover:underline"
+                  className="font-bold text-[#6554c0] dark:text-[#a79be8] underline hover:text-[#5242a6] dark:hover:text-white inline-flex items-center space-x-0.5 cursor-pointer"
+                  title="Visit HoodTech official website"
                 >
-                  HoodTech
+                  <span>HoodTech</span>
+                  <ExternalLink className="w-3 h-3 inline-block ml-0.5 text-[#6554c0] dark:text-[#a79be8]" />
                 </a>
               </div>
             </div>
@@ -66,7 +75,18 @@ export function Footer({ theme, lang }: FooterProps) {
           <div className="text-xs text-[#6b7280] dark:text-[#9ea4b5] text-center md:text-right font-mono">
             <div>GNU General Public License v3.0</div>
             <div className="text-[11px] text-[#9ca3af] dark:text-[#6b7280] mt-0.5">
-              © {new Date().getFullYear()} HoodTech. Free and Open Source.
+              © {new Date().getFullYear()}{" "}
+              <a
+                href="https://hoodtech.my.id/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline text-[#6554c0] dark:text-[#a79be8] font-bold cursor-pointer inline-flex items-center space-x-0.5"
+                title="Visit HoodTech official website"
+              >
+                <span>HoodTech</span>
+                <ExternalLink className="w-2.5 h-2.5 inline-block opacity-75 ml-0.5" />
+              </a>
+              . Free and Open Source.
             </div>
           </div>
 
