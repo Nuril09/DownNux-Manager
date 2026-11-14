@@ -261,10 +261,20 @@ class DownNuxNativeWindow(Gtk.Window):
             elif msg.startswith("openDownloadWindow:"):
                 try:
                     task_id = msg.split(":", 1)[1]
-                    win = StandaloneInspectorWindow(task_id)
-                    self.standalone_windows.append(win)
-                    win.connect("destroy", lambda w: self.standalone_windows.remove(w) if w in self.standalone_windows else None)
-                    win.show_all()
+                    # Deduplicate: Check if a standalone window for this task_id is already open
+                    existing_win = None
+                    for w in list(self.standalone_windows):
+                        if getattr(w, "task_id", None) == task_id:
+                            existing_win = w
+                            break
+                    if existing_win:
+                        existing_win.present()
+                    else:
+                        win = StandaloneInspectorWindow(task_id)
+                        self.standalone_windows.append(win)
+                        win.connect("destroy", lambda w: self.standalone_windows.remove(w) if w in self.standalone_windows else None)
+                        win.show_all()
+                        win.present()
                 except Exception as ex:
                     sys.stderr.write(f"Open standalone download window error: {ex}\n")
             elif msg == "selectFolder":

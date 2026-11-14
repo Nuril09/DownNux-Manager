@@ -497,16 +497,26 @@ export function App() {
   const standaloneInspectId = urlParams.get("inspect");
   const isStandalone = urlParams.get("standalone") === "true" || !!standaloneInspectId;
 
+  const knownTaskIdsRef = useRef<Set<string>>(new Set());
+  const initialFetchDoneRef = useRef(false);
+  const openedInspectorTimestampsRef = useRef<Map<string, number>>(new Map());
+
   const openStandaloneInspector = (taskId: string) => {
+    const now = Date.now();
+    const lastOpened = openedInspectorTimestampsRef.current.get(taskId) || 0;
+    if (now - lastOpened < 4000) {
+      // Debounce duplicate invocations for the same task within 4 seconds
+      return;
+    }
+    openedInspectorTimestampsRef.current.set(taskId, now);
+    knownTaskIdsRef.current.add(taskId);
+
     if ((window as any).webkit?.messageHandlers?.windowControl) {
       postWindowMessage(`openDownloadWindow:${taskId}`);
     } else {
       window.open(`/?inspect=${taskId}&standalone=true`, `downnux_inspect_${taskId}`, "width=720,height=620,resizable=yes");
     }
   };
-
-  const knownTaskIdsRef = useRef<Set<string>>(new Set());
-  const initialFetchDoneRef = useRef(false);
 
   // Poll daemon RPC tasks & auto-focus active downloading task
   useEffect(() => {
@@ -619,6 +629,7 @@ export function App() {
       const json = await res.json();
       if (json.result?.id) {
         setSelectedId(json.result.id);
+        knownTaskIdsRef.current.add(json.result.id);
         if (startImmediately) {
           openStandaloneInspector(json.result.id);
         }

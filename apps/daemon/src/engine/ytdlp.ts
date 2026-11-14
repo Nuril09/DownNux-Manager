@@ -40,9 +40,9 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
     if (!this.binaryPath) this.binaryPath = "yt-dlp";
 
     const ffmpegCandidates = [
-      path.join(home, ".local/bin/ffmpeg"),
-      "/usr/local/bin/ffmpeg",
       "/usr/bin/ffmpeg",
+      "/usr/local/bin/ffmpeg",
+      path.join(home, ".local/bin/ffmpeg"),
     ];
     for (const c of ffmpegCandidates) {
       if (fs.existsSync(c)) {
@@ -120,9 +120,16 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
       args.push("-x", "--audio-format", "mp3");
       args.push("-o", resolvedFilename ? resolvedFilename : "%(title)s.%(ext)s");
     } else {
-      args.push("--merge-output-format", "mp4");
-      args.push("-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b");
-      args.push("-o", resolvedFilename ? resolvedFilename : "%(title)s.%(ext)s");
+      // Prioritize H.264 (AVC) and AAC/m4a with fallback recoding for universal compatibility (WhatsApp, Gmail, iOS, Android, web)
+      args.push(
+        "-f", "bv*[vcodec^=avc]+ba[acodec^=mp4a]/bv*[vcodec^=avc]+ba/b[vcodec^=avc]/bv*+ba[acodec^=mp4a]/bv*+ba/b",
+        "-S", "vcodec:h264,acodec:m4a,res",
+        "--merge-output-format", "mp4",
+        "--recode-video", "mp4",
+        "--postprocessor-args", "Merger:-movflags +faststart",
+        "--postprocessor-args", "VideoConvertor:-c:v libx264 -pix_fmt yuv420p -c:a aac -movflags +faststart",
+        "-o", resolvedFilename ? resolvedFilename : "%(title)s.%(ext)s"
+      );
     }
 
     args.push(spec.url);
