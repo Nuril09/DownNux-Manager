@@ -902,7 +902,7 @@ export function App() {
               className="text-[10px] font-bold text-[#6554c0] bg-[#edeaf9] dark:bg-[#6554c0]/20 dark:text-[#a79be8] px-2 py-0.5 rounded-full border border-[#d8d2f5] dark:border-[#4d4287] tracking-wide shadow-xs hover:border-[#6554c0] hover:scale-105 transition-all cursor-pointer flex items-center space-x-1"
               title={lang === "en" ? "Click to check for updates" : "Klik untuk periksa pembaruan"}
             >
-              <span>BETA 0.0.6</span>
+              <span>BETA 0.0.7</span>
               {updateInfo?.hasUpdate && (
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-ping" />
               )}

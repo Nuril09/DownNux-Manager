@@ -131,7 +131,7 @@ export function SettingsView({
             {t.settingsTitle}
           </h2>
           <span className="text-[10px] text-[#6554c0] bg-[#edeaf9] dark:bg-[#6554c0]/20 dark:text-[#a79be8] px-2 py-0.5 rounded font-semibold">
-            DownNux Engine · v0.0.6
+            DownNux Engine · v0.0.7
           </span>
         </div>
 

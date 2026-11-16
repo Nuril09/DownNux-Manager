@@ -10297,11 +10297,11 @@ async function probeUrl(url, baseDownloadDir, customHeaders, categoryDirs) {
 // apps/daemon/src/main.ts
 var execFileAsync = promisify(execFile);
 var log8 = logger("daemon");
-var VERSION = "0.0.6";
+var VERSION = "0.0.7";
 try {
   const pkgUrl = new URL("../package.json", import.meta.url);
   if (fs11.existsSync(pkgUrl)) {
-    VERSION = JSON.parse(fs11.readFileSync(pkgUrl, "utf8")).version || "0.0.6";
+    VERSION = JSON.parse(fs11.readFileSync(pkgUrl, "utf8")).version || "0.0.7";
   }
 } catch {
 }
@@ -10409,7 +10409,7 @@ async function main() {
       return { ok: true };
     },
     "app.checkUpdate": async () => {
-      const CURRENT_VERSION = VERSION || "0.0.6";
+      const CURRENT_VERSION = VERSION || "0.0.7";
       try {
         const res = await fetch("https://api.github.com/repos/Nuril09/DownNux-Manager/releases/latest", {
           headers: { "User-Agent": "DownNux-Manager-Updater" }
