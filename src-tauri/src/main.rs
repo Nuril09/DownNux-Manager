@@ -188,7 +188,7 @@ fn start_daemon_if_needed(app: &tauri::AppHandle) {
 }
 
 #[tauri::command]
-fn open_inspector_window(app: tauri::AppHandle, task_id: String) -> Result<(), String> {
+async fn open_inspector_window(app: tauri::AppHandle, task_id: String) -> Result<(), String> {
     let sanitized_id: String = task_id
         .chars()
         .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
@@ -204,22 +204,31 @@ fn open_inspector_window(app: tauri::AppHandle, task_id: String) -> Result<(), S
         return Ok(());
     }
     let url = format!("index.html?inspect={}&standalone=true", sanitized_id);
-    tauri::WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::App(PathBuf::from(url)))
-        .title("DownNux Download Progress")
-        .inner_size(720.0, 620.0)
-        .min_inner_size(540.0, 460.0)
-        .resizable(true)
-        .decorations(true)
-        .transparent(false)
-        .center()
-        .focused(true)
-        .build()
-        .map_err(|e| format!("Failed to create inspector window: {}", e))?;
-    Ok(())
+    let init_script = format!(
+        "window.__DOWNNUX_INSPECT_ID__ = {};",
+        serde_json::to_string(&sanitized_id).map_err(|e| e.to_string())?
+    );
+    tauri::async_runtime::spawn_blocking(move || {
+        tauri::WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::App(PathBuf::from(url)))
+            .title("DownNux Download Progress")
+            .inner_size(720.0, 620.0)
+            .min_inner_size(540.0, 460.0)
+            .resizable(true)
+            .decorations(true)
+            .transparent(false)
+            .center()
+            .focused(true)
+            .initialization_script(&init_script)
+            .build()
+            .map(|_| ())
+            .map_err(|e| format!("Failed to create inspector window: {}", e))
+    })
+    .await
+    .map_err(|e| format!("Inspector task join error: {}", e))?
 }
 
 #[tauri::command]
-fn close_current_window(window: tauri::WebviewWindow) -> Result<(), String> {
+async fn close_current_window(window: tauri::WebviewWindow) -> Result<(), String> {
     window.close().map_err(|e| e.to_string())
 }
 

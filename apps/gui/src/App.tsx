@@ -607,7 +607,10 @@ export function App() {
   };
 
   const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
-  const standaloneInspectId = urlParams.get("inspect");
+  const standaloneInspectId =
+    urlParams.get("inspect") ||
+    (window as unknown as { __DOWNNUX_INSPECT_ID__?: string }).__DOWNNUX_INSPECT_ID__ ||
+    null;
   const isStandalone = urlParams.get("standalone") === "true" || !!standaloneInspectId;
 
   const knownTaskIdsRef = useRef<Set<string>>(new Set());
