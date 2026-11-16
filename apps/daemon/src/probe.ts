@@ -1,12 +1,157 @@
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { type UrlProbeResult } from "@downnux/shared";
+import { promisify } from "node:util";
+import { type MediaSizeEstimates, type UrlProbeResult } from "@downnux/shared";
 import { isMediaSite } from "./engine/ytdlp.ts";
 import { logger } from "./log.ts";
 
+const execFileAsync = promisify(execFile);
 const log = logger("probe");
+
+interface YtDlpFormat {
+  format_id?: string | null;
+  ext?: string | null;
+  height?: number | null;
+  width?: number | null;
+  vcodec?: string | null;
+  acodec?: string | null;
+  filesize?: number | null;
+  filesize_approx?: number | null;
+  tbr?: number | null;
+  vbr?: number | null;
+  abr?: number | null;
+}
+
+interface YtDlpJsonInfo {
+  title?: string | null;
+  duration?: number | null;
+  filesize?: number | null;
+  filesize_approx?: number | null;
+  formats?: YtDlpFormat[] | null;
+  entries?: YtDlpJsonInfo[] | null;
+}
+
+function estimateFormatBytes(fmt: YtDlpFormat, duration: number): number {
+  if (fmt.filesize && fmt.filesize > 0) return fmt.filesize;
+  if (fmt.filesize_approx && fmt.filesize_approx > 0) return fmt.filesize_approx;
+  const bitrateKbps = fmt.tbr || ((fmt.vbr || 0) + (fmt.abr || 0));
+  if (bitrateKbps > 0 && duration > 0) {
+    return Math.round(((bitrateKbps * 1000) / 8) * duration);
+  }
+  return 0;
+}
+
+function hasExplicitSize(fmt: YtDlpFormat): number {
+  return (fmt.filesize && fmt.filesize > 0) || (fmt.filesize_approx && fmt.filesize_approx > 0) ? 1 : 0;
+}
+
+function pickBestAudioBytes(formats: YtDlpFormat[], duration: number): number {
+  const audioOnly = formats.filter(
+    (f) => (!f.vcodec || f.vcodec === "none") && f.acodec && f.acodec !== "none",
+  );
+  if (audioOnly.length === 0) return 0;
+
+  audioOnly.sort((a, b) => {
+    const aMp4a = a.acodec?.startsWith("mp4a") ? 1 : 0;
+    const bMp4a = b.acodec?.startsWith("mp4a") ? 1 : 0;
+    if (bMp4a !== aMp4a) return bMp4a - aMp4a;
+
+    const aNonDrc = a.format_id?.includes("-drc") ? 0 : 1;
+    const bNonDrc = b.format_id?.includes("-drc") ? 0 : 1;
+    if (bNonDrc !== aNonDrc) return bNonDrc - aNonDrc;
+
+    const sizeDiff = estimateFormatBytes(b, duration) - estimateFormatBytes(a, duration);
+    if (sizeDiff !== 0) return sizeDiff;
+
+    return (b.abr || b.tbr || 0) - (a.abr || a.tbr || 0);
+  });
+
+  return estimateFormatBytes(audioOnly[0]!, duration);
+}
+
+function pickVideoBytes(
+  formats: YtDlpFormat[],
+  duration: number,
+  bestAudioBytes: number,
+  maxHeight?: number,
+): number {
+  const videoFormats = formats.filter(
+    (f) =>
+      f.vcodec &&
+      f.vcodec !== "none" &&
+      f.vcodec !== "images" &&
+      f.ext !== "mhtml" &&
+      ((f.height ?? 0) > 0 || (f.width ?? 0) > 0),
+  );
+  if (videoFormats.length === 0) return 0;
+
+  let pool = videoFormats;
+  if (maxHeight) {
+    const withinCap = videoFormats.filter((f) => (f.height ?? 0) > 0 && (f.height ?? 0) <= maxHeight);
+    if (withinCap.length > 0) {
+      pool = withinCap;
+    }
+  }
+
+  const avcPool = pool.filter((f) => f.vcodec?.startsWith("avc"));
+  const candidates = avcPool.length > 0 ? avcPool : pool;
+
+  candidates.sort((a, b) => {
+    const heightDiff = (b.height ?? 0) - (a.height ?? 0);
+    if (heightDiff !== 0) return heightDiff;
+
+    const sizeFlagDiff = hasExplicitSize(b) - hasExplicitSize(a);
+    if (sizeFlagDiff !== 0) return sizeFlagDiff;
+
+    return estimateFormatBytes(b, duration) - estimateFormatBytes(a, duration);
+  });
+
+  const chosen = candidates[0]!;
+  const videoBytes = estimateFormatBytes(chosen, duration);
+  if (videoBytes <= 0) return 0;
+
+  const needsAudioMerge = !chosen.acodec || chosen.acodec === "none";
+  return needsAudioMerge ? videoBytes + bestAudioBytes : videoBytes;
+}
+
+function computeMediaSizes(info: YtDlpJsonInfo): { duration: number; mediaSizes: MediaSizeEstimates; defaultSize: number } {
+  const duration = Number(info.duration) > 0 ? Number(info.duration) : 0;
+  const formats = Array.isArray(info.formats) ? info.formats : [];
+  const bestAudioBytes = pickBestAudioBytes(formats, duration);
+  const fallbackBytes = Number(info.filesize || info.filesize_approx || 0);
+
+  const videoBest = pickVideoBytes(formats, duration, bestAudioBytes) || fallbackBytes;
+  const video1080 = pickVideoBytes(formats, duration, bestAudioBytes, 1080) || videoBest;
+  const video720 = pickVideoBytes(formats, duration, bestAudioBytes, 720) || videoBest;
+  const video480 = pickVideoBytes(formats, duration, bestAudioBytes, 480) || videoBest;
+
+  const estimateMp3 = (kbps: number): number => {
+    if (duration > 0) {
+      return Math.round(((kbps * 1000) / 8) * duration);
+    }
+    return bestAudioBytes || fallbackBytes;
+  };
+
+  return {
+    duration,
+    defaultSize: videoBest,
+    mediaSizes: {
+      video: {
+        best: videoBest,
+        "1080": video1080,
+        "720": video720,
+        "480": video480,
+      },
+      audio: {
+        "320": estimateMp3(320),
+        "192": estimateMp3(192),
+        "128": estimateMp3(128),
+      },
+    },
+  };
+}
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return "Unknown size";
@@ -118,31 +263,43 @@ export async function probeUrl(
 
     const customVideoDir = categoryDirs?.video;
     const targetDir = customVideoDir && customVideoDir.trim() ? customVideoDir : path.join(baseDownloadDir, "Video");
+    const customMusicDir = categoryDirs?.music;
+    const audioDefaultDir = customMusicDir && customMusicDir.trim() ? customMusicDir : path.join(baseDownloadDir, "Music");
 
     try {
-      const output = execFileSync(ytDlpPath, [
-        "--js-runtimes", `node:${process.execPath}`,
-        "--print", "%(title)s;;;%(filesize,filesize_approx)s;;;%(ext)s",
-        "--no-playlist",
-        url,
-      ], { encoding: "utf8", timeout: 9000, windowsHide: true }).trim();
+      const { stdout } = await execFileAsync(
+        ytDlpPath,
+        [
+          "--js-runtimes", `node:${process.execPath}`,
+          "-J",
+          "--no-playlist",
+          "--no-warnings",
+          url,
+        ],
+        { encoding: "utf8", timeout: 15000, maxBuffer: 16 * 1024 * 1024, windowsHide: true },
+      );
 
-      const parts = output.split(";;;");
-      const title = parts[0]?.trim() || "video";
-      const sizeBytes = Number(parts[1]) || 0;
-      const cleanTitle = title.replace(/[\/\\?%*:|"<>]/g, "_").trim();
+      const parsed = JSON.parse(stdout) as YtDlpJsonInfo;
+      const info = parsed.entries && parsed.entries.length > 0 && !parsed.formats ? parsed.entries[0]! : parsed;
+      const title = info.title?.trim() || "video";
+      const cleanTitle = title.replace(/[\/\\?%*:|"<>]/g, "_").trim() || "video";
       const filename = `${cleanTitle}.mp4`;
+
+      const { duration, mediaSizes, defaultSize } = computeMediaSizes(info);
 
       return {
         url,
         filename,
-        size: sizeBytes,
-        formattedSize: formatBytes(sizeBytes),
+        size: defaultSize,
+        formattedSize: defaultSize > 0 ? formatBytes(defaultSize) : "Unknown size (stream)",
         resumeSupported: true,
         category: "video",
         contentType: "video/mp4",
         isMedia: true,
         defaultDir: targetDir,
+        audioDefaultDir,
+        duration,
+        mediaSizes,
       };
     } catch (err) {
       log.warn("yt-dlp probe error:", err);
@@ -156,6 +313,7 @@ export async function probeUrl(
         contentType: "video/mp4",
         isMedia: true,
         defaultDir: targetDir,
+        audioDefaultDir,
       };
     }
   }

@@ -11,3 +11,8 @@ build/
 src-tauri/bin/*
 !src-tauri/bin/.gitkeep
 
+# Tauri / Rust generated build outputs
+src-tauri/target/
+src-tauri/gen/
+src-tauri/Cargo.lock
+

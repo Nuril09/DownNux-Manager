@@ -3751,8 +3751,8 @@ var require_websocket_server = __commonJS({
 // apps/daemon/src/main.ts
 import fs11 from "node:fs";
 import path11 from "node:path";
-import { promisify } from "node:util";
-import { execFile, spawn as spawn5 } from "node:child_process";
+import { promisify as promisify2 } from "node:util";
+import { execFile as execFile2, spawn as spawn5 } from "node:child_process";
 
 // packages/shared/src/constants.ts
 var APP_ID = "downnux";
@@ -10057,11 +10057,103 @@ var SchedulerEngine = class {
 };
 
 // apps/daemon/src/probe.ts
-import { execFileSync as execFileSync2 } from "node:child_process";
+import { execFile } from "node:child_process";
 import fs10 from "node:fs";
 import os6 from "node:os";
 import path10 from "node:path";
+import { promisify } from "node:util";
+var execFileAsync = promisify(execFile);
 var log7 = logger("probe");
+function estimateFormatBytes(fmt, duration) {
+  if (fmt.filesize && fmt.filesize > 0) return fmt.filesize;
+  if (fmt.filesize_approx && fmt.filesize_approx > 0) return fmt.filesize_approx;
+  const bitrateKbps = fmt.tbr || (fmt.vbr || 0) + (fmt.abr || 0);
+  if (bitrateKbps > 0 && duration > 0) {
+    return Math.round(bitrateKbps * 1e3 / 8 * duration);
+  }
+  return 0;
+}
+function hasExplicitSize(fmt) {
+  return fmt.filesize && fmt.filesize > 0 || fmt.filesize_approx && fmt.filesize_approx > 0 ? 1 : 0;
+}
+function pickBestAudioBytes(formats, duration) {
+  const audioOnly = formats.filter(
+    (f) => (!f.vcodec || f.vcodec === "none") && f.acodec && f.acodec !== "none"
+  );
+  if (audioOnly.length === 0) return 0;
+  audioOnly.sort((a, b) => {
+    const aMp4a = a.acodec?.startsWith("mp4a") ? 1 : 0;
+    const bMp4a = b.acodec?.startsWith("mp4a") ? 1 : 0;
+    if (bMp4a !== aMp4a) return bMp4a - aMp4a;
+    const aNonDrc = a.format_id?.includes("-drc") ? 0 : 1;
+    const bNonDrc = b.format_id?.includes("-drc") ? 0 : 1;
+    if (bNonDrc !== aNonDrc) return bNonDrc - aNonDrc;
+    const sizeDiff = estimateFormatBytes(b, duration) - estimateFormatBytes(a, duration);
+    if (sizeDiff !== 0) return sizeDiff;
+    return (b.abr || b.tbr || 0) - (a.abr || a.tbr || 0);
+  });
+  return estimateFormatBytes(audioOnly[0], duration);
+}
+function pickVideoBytes(formats, duration, bestAudioBytes, maxHeight) {
+  const videoFormats = formats.filter(
+    (f) => f.vcodec && f.vcodec !== "none" && f.vcodec !== "images" && f.ext !== "mhtml" && ((f.height ?? 0) > 0 || (f.width ?? 0) > 0)
+  );
+  if (videoFormats.length === 0) return 0;
+  let pool = videoFormats;
+  if (maxHeight) {
+    const withinCap = videoFormats.filter((f) => (f.height ?? 0) > 0 && (f.height ?? 0) <= maxHeight);
+    if (withinCap.length > 0) {
+      pool = withinCap;
+    }
+  }
+  const avcPool = pool.filter((f) => f.vcodec?.startsWith("avc"));
+  const candidates = avcPool.length > 0 ? avcPool : pool;
+  candidates.sort((a, b) => {
+    const heightDiff = (b.height ?? 0) - (a.height ?? 0);
+    if (heightDiff !== 0) return heightDiff;
+    const sizeFlagDiff = hasExplicitSize(b) - hasExplicitSize(a);
+    if (sizeFlagDiff !== 0) return sizeFlagDiff;
+    return estimateFormatBytes(b, duration) - estimateFormatBytes(a, duration);
+  });
+  const chosen = candidates[0];
+  const videoBytes = estimateFormatBytes(chosen, duration);
+  if (videoBytes <= 0) return 0;
+  const needsAudioMerge = !chosen.acodec || chosen.acodec === "none";
+  return needsAudioMerge ? videoBytes + bestAudioBytes : videoBytes;
+}
+function computeMediaSizes(info) {
+  const duration = Number(info.duration) > 0 ? Number(info.duration) : 0;
+  const formats = Array.isArray(info.formats) ? info.formats : [];
+  const bestAudioBytes = pickBestAudioBytes(formats, duration);
+  const fallbackBytes = Number(info.filesize || info.filesize_approx || 0);
+  const videoBest = pickVideoBytes(formats, duration, bestAudioBytes) || fallbackBytes;
+  const video1080 = pickVideoBytes(formats, duration, bestAudioBytes, 1080) || videoBest;
+  const video720 = pickVideoBytes(formats, duration, bestAudioBytes, 720) || videoBest;
+  const video480 = pickVideoBytes(formats, duration, bestAudioBytes, 480) || videoBest;
+  const estimateMp3 = (kbps) => {
+    if (duration > 0) {
+      return Math.round(kbps * 1e3 / 8 * duration);
+    }
+    return bestAudioBytes || fallbackBytes;
+  };
+  return {
+    duration,
+    defaultSize: videoBest,
+    mediaSizes: {
+      video: {
+        best: videoBest,
+        "1080": video1080,
+        "720": video720,
+        "480": video480
+      },
+      audio: {
+        "320": estimateMp3(320),
+        "192": estimateMp3(192),
+        "128": estimateMp3(128)
+      }
+    }
+  };
+}
 function formatBytes(bytes) {
   if (!bytes || bytes <= 0) return "Unknown size";
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -10153,30 +10245,40 @@ async function probeUrl(url, baseDownloadDir, customHeaders, categoryDirs) {
     }
     const customVideoDir = categoryDirs?.video;
     const targetDir = customVideoDir && customVideoDir.trim() ? customVideoDir : path10.join(baseDownloadDir, "Video");
+    const customMusicDir = categoryDirs?.music;
+    const audioDefaultDir = customMusicDir && customMusicDir.trim() ? customMusicDir : path10.join(baseDownloadDir, "Music");
     try {
-      const output = execFileSync2(ytDlpPath, [
-        "--js-runtimes",
-        `node:${process.execPath}`,
-        "--print",
-        "%(title)s;;;%(filesize,filesize_approx)s;;;%(ext)s",
-        "--no-playlist",
-        url
-      ], { encoding: "utf8", timeout: 9e3, windowsHide: true }).trim();
-      const parts = output.split(";;;");
-      const title = parts[0]?.trim() || "video";
-      const sizeBytes = Number(parts[1]) || 0;
-      const cleanTitle = title.replace(/[\/\\?%*:|"<>]/g, "_").trim();
+      const { stdout } = await execFileAsync(
+        ytDlpPath,
+        [
+          "--js-runtimes",
+          `node:${process.execPath}`,
+          "-J",
+          "--no-playlist",
+          "--no-warnings",
+          url
+        ],
+        { encoding: "utf8", timeout: 15e3, maxBuffer: 16 * 1024 * 1024, windowsHide: true }
+      );
+      const parsed = JSON.parse(stdout);
+      const info = parsed.entries && parsed.entries.length > 0 && !parsed.formats ? parsed.entries[0] : parsed;
+      const title = info.title?.trim() || "video";
+      const cleanTitle = title.replace(/[\/\\?%*:|"<>]/g, "_").trim() || "video";
       const filename2 = `${cleanTitle}.mp4`;
+      const { duration, mediaSizes, defaultSize } = computeMediaSizes(info);
       return {
         url,
         filename: filename2,
-        size: sizeBytes,
-        formattedSize: formatBytes(sizeBytes),
+        size: defaultSize,
+        formattedSize: defaultSize > 0 ? formatBytes(defaultSize) : "Unknown size (stream)",
         resumeSupported: true,
         category: "video",
         contentType: "video/mp4",
         isMedia: true,
-        defaultDir: targetDir
+        defaultDir: targetDir,
+        audioDefaultDir,
+        duration,
+        mediaSizes
       };
     } catch (err) {
       log7.warn("yt-dlp probe error:", err);
@@ -10189,7 +10291,8 @@ async function probeUrl(url, baseDownloadDir, customHeaders, categoryDirs) {
         category: "video",
         contentType: "video/mp4",
         isMedia: true,
-        defaultDir: targetDir
+        defaultDir: targetDir,
+        audioDefaultDir
       };
     }
   }
@@ -10295,7 +10398,7 @@ async function probeUrl(url, baseDownloadDir, customHeaders, categoryDirs) {
 }
 
 // apps/daemon/src/main.ts
-var execFileAsync = promisify(execFile);
+var execFileAsync2 = promisify2(execFile2);
 var log8 = logger("daemon");
 var VERSION = "0.0.7";
 try {
@@ -10365,7 +10468,7 @@ async function main() {
       try {
         if (process.platform === "win32") {
           const psCmd = `Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; if($f.ShowDialog() -eq 'OK'){ $f.SelectedPath }`;
-          const { stdout: stdout2 } = await execFileAsync("powershell", ["-NoProfile", "-Command", psCmd], {
+          const { stdout: stdout2 } = await execFileAsync2("powershell", ["-NoProfile", "-Command", psCmd], {
             windowsHide: true
           });
           const chosen2 = stdout2.trim();
@@ -10373,11 +10476,11 @@ async function main() {
         }
         if (process.platform === "darwin") {
           const appleScript = 'POSIX path of (choose folder with prompt "Pilih Folder Unduhan DownNux")';
-          const { stdout: stdout2 } = await execFileAsync("osascript", ["-e", appleScript]);
+          const { stdout: stdout2 } = await execFileAsync2("osascript", ["-e", appleScript]);
           const chosen2 = stdout2.trim().replace(/\/$/, "");
           return { ok: Boolean(chosen2), path: chosen2 };
         }
-        const { stdout } = await execFileAsync("zenity", [
+        const { stdout } = await execFileAsync2("zenity", [
           "--file-selection",
           "--directory",
           "--title=Pilih Folder Unduhan DownNux"

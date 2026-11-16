@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default permissions for DownNux Manager by HoodTech",
-  "windows": ["main"],
+  "windows": ["main", "inspect-*"],
   "permissions": [
     "core:default",
     "opener:default"

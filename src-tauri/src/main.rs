@@ -187,9 +187,49 @@ fn start_daemon_if_needed(app: &tauri::AppHandle) {
     }
 }
 
+#[tauri::command]
+fn open_inspector_window(app: tauri::AppHandle, task_id: String) -> Result<(), String> {
+    let sanitized_id: String = task_id
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
+    if sanitized_id.is_empty() {
+        return Err("Invalid task id".to_string());
+    }
+    let label = format!("inspect-{}", sanitized_id);
+    if let Some(existing) = app.get_webview_window(&label) {
+        let _ = existing.show();
+        let _ = existing.unminimize();
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+    let url = format!("index.html?inspect={}&standalone=true", sanitized_id);
+    tauri::WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::App(PathBuf::from(url)))
+        .title("DownNux Download Progress")
+        .inner_size(720.0, 620.0)
+        .min_inner_size(540.0, 460.0)
+        .resizable(true)
+        .decorations(true)
+        .transparent(false)
+        .center()
+        .focused(true)
+        .build()
+        .map_err(|e| format!("Failed to create inspector window: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn close_current_window(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.close().map_err(|e| e.to_string())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![
+            open_inspector_window,
+            close_current_window
+        ])
         .setup(|app| {
             let handle = app.handle().clone();
             std::thread::spawn(move || {

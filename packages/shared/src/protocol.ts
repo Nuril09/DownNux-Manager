@@ -51,6 +51,20 @@ export interface DaemonInfo {
   engine: { name: string; version: string };
 }
 
+export interface MediaSizeEstimates {
+  video?: {
+    best?: number;
+    "1080"?: number;
+    "720"?: number;
+    "480"?: number;
+  };
+  audio?: {
+    "320"?: number;
+    "192"?: number;
+    "128"?: number;
+  };
+}
+
 export interface UrlProbeResult {
   url: string;
   filename: string;
@@ -61,6 +75,9 @@ export interface UrlProbeResult {
   contentType?: string;
   isMedia: boolean;
   defaultDir: string;
+  audioDefaultDir?: string;
+  duration?: number;
+  mediaSizes?: MediaSizeEstimates;
 }
 
 export interface MethodResults {

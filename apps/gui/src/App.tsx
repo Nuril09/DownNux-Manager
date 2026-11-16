@@ -74,6 +74,29 @@ function fmtBytes(n: number): string {
   return `${(n / 1024 ** i).toFixed(1)} ${u[i]}`.replace(".", ",");
 }
 
+function formatProbeBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return "Unknown size";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let val = bytes;
+  let idx = 0;
+  while (val >= 1024 && idx < units.length - 1) {
+    val /= 1024;
+    idx++;
+  }
+  return `${val.toFixed(1)} ${units[idx]}`.replace(".0 ", " ");
+}
+
+type TauriInvokeFn = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+
+function getTauriInvoke(): TauriInvokeFn | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    __TAURI__?: { core?: { invoke?: TauriInvokeFn } };
+    __TAURI_INTERNALS__?: { invoke?: TauriInvokeFn };
+  };
+  return w.__TAURI__?.core?.invoke || w.__TAURI_INTERNALS__?.invoke || null;
+}
+
 function fmtTime(sec: number, lang: Lang = "en"): string {
   if (!isFinite(sec) || sec <= 0) return "—";
   if (sec < 60) return `${Math.round(sec)} ${lang === "en" ? "s" : "d"}`;
@@ -275,8 +298,47 @@ export function App() {
     contentType?: string;
     isMedia: boolean;
     defaultDir: string;
+    audioDefaultDir?: string;
+    duration?: number;
+    mediaSizes?: {
+      video?: {
+        best?: number;
+        "1080"?: number;
+        "720"?: number;
+        "480"?: number;
+      };
+      audio?: {
+        "320"?: number;
+        "192"?: number;
+        "128"?: number;
+      };
+    };
   } | null>(null);
   const [isProbing, setIsProbing] = useState(false);
+  const downloadFormatRef = useRef(downloadFormat);
+  downloadFormatRef.current = downloadFormat;
+  const lastProbedFilenameRef = useRef<string>("");
+  const lastProbedDirRef = useRef<string>("");
+
+  const estimatedProbeInfo = useMemo(() => {
+    if (!probeResult) return null;
+    if (!probeResult.isMedia) {
+      return {
+        size: probeResult.size,
+        formattedSize: probeResult.formattedSize,
+        category: probeResult.category,
+      };
+    }
+    const rawBytes =
+      downloadFormat === "mp3"
+        ? (probeResult.mediaSizes?.audio?.[audioQuality] ?? 0)
+        : (probeResult.mediaSizes?.video?.[videoQuality] ?? probeResult.size);
+    return {
+      size: rawBytes,
+      formattedSize: rawBytes > 0 ? `~${formatProbeBytes(rawBytes)}` : probeResult.formattedSize,
+      category: downloadFormat === "mp3" ? "music" : "video",
+    };
+  }, [probeResult, downloadFormat, videoQuality, audioQuality]);
 
   // Apply Theme Mode (System, Light, Dark) & Blur Mode
   useEffect(() => {
@@ -489,12 +551,33 @@ export function App() {
         const json = await res.json();
         if (json.result) {
           setProbeResult(json.result);
-          if (!newFilename || newFilename === "video.mp4" || newFilename === "audio.mp3" || !newFilename.includes(".")) {
-            setNewFilename(json.result.filename);
+          const formatIsMp3 = downloadFormatRef.current === "mp3";
+          const probedFilename =
+            json.result.isMedia && formatIsMp3
+              ? (json.result.filename as string).replace(/\.mp4$/i, ".mp3")
+              : (json.result.filename as string);
+
+          const prevProbedBase = lastProbedFilenameRef.current.replace(/\.(mp4|mp3)$/i, "");
+          const curNameBase = newFilename.replace(/\.(mp4|mp3)$/i, "");
+          if (
+            !newFilename ||
+            newFilename === "video.mp4" ||
+            newFilename === "audio.mp3" ||
+            !newFilename.includes(".") ||
+            (prevProbedBase && curNameBase === prevProbedBase)
+          ) {
+            setNewFilename(probedFilename);
           }
-          if (!saveDir) {
-            setSaveDir(json.result.defaultDir);
+          lastProbedFilenameRef.current = probedFilename;
+
+          const probedDir =
+            json.result.isMedia && formatIsMp3 && json.result.audioDefaultDir
+              ? (json.result.audioDefaultDir as string)
+              : (json.result.defaultDir as string);
+          if (!saveDir || (lastProbedDirRef.current && saveDir === lastProbedDirRef.current)) {
+            setSaveDir(probedDir);
           }
+          lastProbedDirRef.current = probedDir;
         }
       } catch (err) {
         console.warn("Probe error:", err);
@@ -531,6 +614,17 @@ export function App() {
   const initialFetchDoneRef = useRef(false);
   const openedInspectorTimestampsRef = useRef<Map<string, number>>(new Map());
 
+  const closeCurrentWindow = () => {
+    const tauriInvoke = getTauriInvoke();
+    if ((window as any).webkit?.messageHandlers?.windowControl) {
+      postWindowMessage("close");
+    } else if (tauriInvoke) {
+      void tauriInvoke("close_current_window").catch(() => window.close());
+    } else {
+      window.close();
+    }
+  };
+
   const openStandaloneInspector = (taskId: string) => {
     const now = Date.now();
     const lastOpened = openedInspectorTimestampsRef.current.get(taskId) || 0;
@@ -541,10 +635,23 @@ export function App() {
     openedInspectorTimestampsRef.current.set(taskId, now);
     knownTaskIdsRef.current.add(taskId);
 
+    const tauriInvoke = getTauriInvoke();
     if ((window as any).webkit?.messageHandlers?.windowControl) {
       postWindowMessage(`openDownloadWindow:${taskId}`);
+    } else if (tauriInvoke) {
+      void tauriInvoke("open_inspector_window", { taskId }).catch((err) => {
+        console.warn("Tauri open_inspector_window failed, falling back to inline modal:", err);
+        setInspectingTaskId(taskId);
+      });
     } else {
-      window.open(`/?inspect=${taskId}&standalone=true`, `downnux_inspect_${taskId}`, "width=720,height=620,resizable=yes");
+      const popup = window.open(
+        `/?inspect=${taskId}&standalone=true`,
+        `downnux_inspect_${taskId}`,
+        "width=720,height=620,resizable=yes",
+      );
+      if (!popup) {
+        setInspectingTaskId(taskId);
+      }
     }
   };
 
@@ -667,8 +774,16 @@ export function App() {
       return;
     }
     setAddError(null);
-    const finalFilename = newFilename ? newFilename.trim() : (probeResult?.filename || undefined);
-    const finalDir = saveDir ? saveDir.trim() : (probeResult?.defaultDir || undefined);
+    const defaultProbedName =
+      probeResult?.isMedia && downloadFormat === "mp3"
+        ? probeResult.filename.replace(/\.mp4$/i, ".mp3")
+        : probeResult?.filename;
+    const defaultProbedDir =
+      probeResult?.isMedia && downloadFormat === "mp3" && probeResult.audioDefaultDir
+        ? probeResult.audioDefaultDir
+        : probeResult?.defaultDir;
+    const finalFilename = newFilename ? newFilename.trim() : (defaultProbedName || undefined);
+    const finalDir = saveDir ? saveDir.trim() : (defaultProbedDir || undefined);
 
     try {
       const res = await fetch("http://127.0.0.1:44990/api/rpc", {
@@ -719,6 +834,8 @@ export function App() {
     setNewUrl("");
     setNewFilename("");
     setSaveDir("");
+    lastProbedFilenameRef.current = "";
+    lastProbedDirRef.current = "";
     setProbeResult(null);
     setTorrentBase64("");
     setDownloadFormat("mp4");
@@ -840,10 +957,7 @@ export function App() {
         <DownloadDetailModal
           task={standaloneTask}
           lang={lang}
-          onClose={() => {
-            postWindowMessage("close");
-            window.close();
-          }}
+          onClose={closeCurrentWindow}
           onAction={executeAction}
           isStandalone={true}
         />
@@ -855,10 +969,7 @@ export function App() {
         <p className="text-[13px] font-semibold">{lang === "en" ? "Connecting to download stream..." : "Menghubungkan ke aliran unduhan..."}</p>
         <span className="text-[11px] text-[#6e7685] dark:text-[#888e9e] mt-1 font-mono">Task ID: {standaloneInspectId}</span>
         <button
-          onClick={() => {
-            postWindowMessage("close");
-            window.close();
-          }}
+          onClick={closeCurrentWindow}
           className="mt-6 px-4 py-1.5 rounded-[6px] ios-glass-button text-[11px]"
         >
           {lang === "en" ? "Close" : "Tutup"}
@@ -1896,12 +2007,12 @@ export function App() {
                   <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
                   <span className="font-medium">{t.inspectingUrl}</span>
                 </div>
-              ) : probeResult ? (
+              ) : probeResult && estimatedProbeInfo ? (
                 <div className="bg-[#f7f8fa] dark:bg-[#12131b] border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[8px] p-3 space-y-2">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-[#6e7685] dark:text-[#9ea4b5] font-medium">{t.estimatedSize}:</span>
                     <span className="font-bold text-[#202631] dark:text-white bg-white dark:bg-[#1a1c29] px-2.5 py-0.5 rounded border border-[#e7e9ef] dark:border-[#2a2c3d] shadow-xs">
-                      {probeResult.formattedSize}
+                      {estimatedProbeInfo.formattedSize}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
@@ -1920,7 +2031,7 @@ export function App() {
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-[#6e7685] dark:text-[#9ea4b5] font-medium">{t.categoryLabel}:</span>
                     <span className="font-semibold text-[#6554c0] dark:text-[#a79be8] uppercase tracking-wider text-[10px] bg-[#edeaf9] dark:bg-[#6554c0]/20 px-2 py-0.5 rounded">
-                      {probeResult.category}
+                      {estimatedProbeInfo.category}
                     </span>
                   </div>
                 </div>
@@ -1977,8 +2088,16 @@ export function App() {
                         type="button"
                         onClick={() => {
                           setDownloadFormat("mp4");
-                          if (newFilename.endsWith(".mp3")) {
-                            setNewFilename(newFilename.replace(/\.mp3$/, ".mp4"));
+                          if (/\.mp3$/i.test(newFilename)) {
+                            setNewFilename(newFilename.replace(/\.mp3$/i, ".mp4"));
+                          }
+                          if (
+                            probeResult?.isMedia &&
+                            probeResult.defaultDir &&
+                            (!saveDir || saveDir === probeResult.audioDefaultDir || saveDir === lastProbedDirRef.current)
+                          ) {
+                            setSaveDir(probeResult.defaultDir);
+                            lastProbedDirRef.current = probeResult.defaultDir;
                           }
                         }}
                         className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp4"
@@ -1992,8 +2111,16 @@ export function App() {
                         type="button"
                         onClick={() => {
                           setDownloadFormat("mp3");
-                          if (newFilename.endsWith(".mp4")) {
-                            setNewFilename(newFilename.replace(/\.mp4$/, ".mp3"));
+                          if (/\.mp4$/i.test(newFilename)) {
+                            setNewFilename(newFilename.replace(/\.mp4$/i, ".mp3"));
+                          }
+                          if (
+                            probeResult?.isMedia &&
+                            probeResult.audioDefaultDir &&
+                            (!saveDir || saveDir === probeResult.defaultDir || saveDir === lastProbedDirRef.current)
+                          ) {
+                            setSaveDir(probeResult.audioDefaultDir);
+                            lastProbedDirRef.current = probeResult.audioDefaultDir;
                           }
                         }}
                         className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp3"
