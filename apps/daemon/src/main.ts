@@ -90,7 +90,9 @@ async function main(): Promise<void> {
       try {
         if (process.platform === "win32") {
           const psCmd = `Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; if($f.ShowDialog() -eq 'OK'){ $f.SelectedPath }`;
-          const { stdout } = await execFileAsync("powershell", ["-NoProfile", "-Command", psCmd]);
+          const { stdout } = await execFileAsync("powershell", ["-NoProfile", "-Command", psCmd], {
+            windowsHide: true,
+          });
           const chosen = stdout.trim();
           return { ok: Boolean(chosen), path: chosen };
         }
@@ -132,7 +134,7 @@ async function main(): Promise<void> {
       return { ok: true } as const;
     },
     "app.checkUpdate": async () => {
-      const CURRENT_VERSION = VERSION || "0.0.5";
+      const CURRENT_VERSION = VERSION || "0.0.6";
       try {
         const res = await fetch("https://api.github.com/repos/Nuril09/DownNux-Manager/releases/latest", {
           headers: { "User-Agent": "DownNux-Manager-Updater" },
@@ -200,22 +202,44 @@ async function main(): Promise<void> {
     },
   };
 
-  const server = new IpcServer(paths.socketPath, async (method, params) => {
-    const h = handlers[method];
-    if (!h) throw new Error(`Method belum diimplementasikan: ${method}`);
-    return h(params);
-  });
+  const engineState = {
+    daemonReady: true,
+    engineReady: false,
+    engineError: null as string | null,
+    version: VERSION,
+  };
+
+  const server = new IpcServer(
+    paths.socketPath,
+    async (method, params) => {
+      if ((method === "task.add" || method === "task.resume") && !engineState.engineReady) {
+        throw new Error(engineState.engineError || "Download engine is not ready.");
+      }
+      const h = handlers[method];
+      if (!h) throw new Error(`Method belum diimplementasikan: ${method}`);
+      return h(params);
+    },
+    () => engineState,
+  );
 
   // Pastikan tidak ada daemon lain yang sedang berjalan.
   await assertSocketFree(paths.socketPath);
-  await engine.start();
-  await engine.setGlobalSpeedLimit(settings.get().globalSpeedLimit);
 
   manager.on("task", (t) => server.broadcast({ event: "task.updated", data: t }));
   manager.on("removed", (id) => server.broadcast({ event: "task.removed", data: { id } }));
-  manager.init();
 
-  // Socket dibuka TERAKHIR setelah database dan engine sudah 100% siap melayani request.
+  try {
+    await engine.start();
+    engineState.engineReady = true;
+    engineState.engineError = null;
+    await engine.setGlobalSpeedLimit(settings.get().globalSpeedLimit);
+    manager.init();
+  } catch (err) {
+    engineState.engineError = (err as Error).message || String(err);
+    log.error("Engine gagal start (HTTP RPC tetap aktif untuk diagnostik):", err);
+  }
+
+  // Socket dibuka setelah DB & engine siap (atau jika engine error, tetap buka HTTP agar GUI mendapat diagnostik).
   await server.listen();
 
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
@@ -223,7 +247,7 @@ async function main(): Promise<void> {
   process.on("uncaughtException", (err) => log.error("uncaughtException", err));
   process.on("unhandledRejection", (err) => log.error("unhandledRejection", err));
 
-  log.info(`Daemon ${VERSION} siap (pid ${process.pid})`);
+  log.info(`Daemon ${VERSION} siap (pid ${process.pid}, engineReady=${engineState.engineReady})`);
 }
 
 main().catch((err) => {

@@ -125,7 +125,7 @@ export async function probeUrl(
         "--print", "%(title)s;;;%(filesize,filesize_approx)s;;;%(ext)s",
         "--no-playlist",
         url,
-      ], { encoding: "utf8", timeout: 9000 }).trim();
+      ], { encoding: "utf8", timeout: 9000, windowsHide: true }).trim();
 
       const parts = output.split(";;;");
       const title = parts[0]?.trim() || "video";

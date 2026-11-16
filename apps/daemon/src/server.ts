@@ -25,6 +25,33 @@ const DEFAULT_HTTP_PORT = process.env.DOWNNUX_PORT
     : 44990;
 
 export type Handler = (method: Method, params: unknown) => Promise<unknown> | unknown;
+export interface HealthSnapshot {
+  daemonReady: boolean;
+  engineReady: boolean;
+  engineError: string | null;
+  version?: string;
+}
+
+function detectFriendlyOsName(): string {
+  const plat = os.platform();
+  if (plat === "win32") {
+    const parts = os.release().split(".");
+    const build = Number(parts[2] || 0);
+    return build >= 22000 ? "Windows 11" : "Windows 10";
+  }
+  if (plat === "darwin") {
+    return "macOS";
+  }
+  let osName = os.type();
+  if (osName === "Linux") {
+    try {
+      const rel = fs.readFileSync("/etc/os-release", "utf8");
+      const m = rel.match(/^NAME="?([^"\n]+)"?/m);
+      if (m?.[1]) osName = m[1];
+    } catch {}
+  }
+  return osName;
+}
 
 export async function assertSocketFree(socketPath: string): Promise<void> {
   if (process.platform === "win32") {
@@ -49,6 +76,7 @@ export class IpcServer {
   constructor(
     private readonly socketPath: string,
     private readonly handler: Handler,
+    private readonly getHealth?: () => HealthSnapshot,
   ) {}
 
   async listen(): Promise<void> {
@@ -82,7 +110,8 @@ export class IpcServer {
     const httpServer = http.createServer((req, res) => {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.setHeader("Access-Control-Allow-Private-Network", "true");
 
       if (req.method === "OPTIONS") {
         res.writeHead(204);
@@ -90,17 +119,31 @@ export class IpcServer {
         return;
       }
 
-      if (req.url === "/api/sysinfo") {
-        let osName = os.type();
-        if (osName === "Linux") {
-          try {
-            const rel = fs.readFileSync("/etc/os-release", "utf8");
-            const m = rel.match(/^NAME="?([^"\n]+)"?/m);
-            if (m?.[1]) osName = m[1];
-          } catch {}
-        }
+      const health = this.getHealth?.() ?? { daemonReady: true, engineReady: true, engineError: null };
+
+      if (req.url === "/api/health") {
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ os: osName, platform: os.platform(), release: os.release() }));
+        res.end(
+          JSON.stringify({
+            ok: true,
+            ...health,
+            platform: os.platform(),
+          }),
+        );
+        return;
+      }
+
+      if (req.url === "/api/sysinfo") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            os: detectFriendlyOsName(),
+            platform: os.platform(),
+            release: os.release(),
+            engineReady: health.engineReady,
+            engineError: health.engineError,
+          }),
+        );
         return;
       }
 

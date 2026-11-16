@@ -69,7 +69,11 @@ export class TaskStore {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(dbPath);
     // Cookie disimpan di sini, jadi hanya pemilik yang boleh membaca.
-    fs.chmodSync(dbPath, 0o600);
+    if (process.platform !== "win32") {
+      try {
+        fs.chmodSync(dbPath, 0o600);
+      } catch {}
+    }
     this.db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 2000;");
     this.migrate();
   }

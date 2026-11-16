@@ -139,10 +139,37 @@ export class SchedulerEngine {
   private async handleOnFinish(action: "none" | "quit" | "sleep" | "shutdown"): Promise<void> {
     if (action === "none") return;
     log.info(`Semua antrean unduhan selesai. Menjalankan aksi pasca-selesai: ${action}`);
-    if (action === "sleep") {
-      spawn("systemctl", ["suspend"], { stdio: "ignore", detached: true }).unref();
-    } else if (action === "shutdown") {
-      spawn("systemctl", ["poweroff"], { stdio: "ignore", detached: true }).unref();
+    let bin = "";
+    let args: string[] = [];
+    if (process.platform === "win32") {
+      if (action === "sleep") {
+        bin = "rundll32.exe";
+        args = ["powrprof.dll,SetSuspendState", "0,1,0"];
+      } else if (action === "shutdown") {
+        bin = "shutdown.exe";
+        args = ["/s", "/t", "10"];
+      }
+    } else if (process.platform === "darwin") {
+      if (action === "sleep") {
+        bin = "pmset";
+        args = ["sleepnow"];
+      } else if (action === "shutdown") {
+        bin = "osascript";
+        args = ["-e", 'tell app "System Events" to shut down'];
+      }
+    } else {
+      if (action === "sleep") {
+        bin = "systemctl";
+        args = ["suspend"];
+      } else if (action === "shutdown") {
+        bin = "systemctl";
+        args = ["poweroff"];
+      }
+    }
+    if (bin) {
+      const child = spawn(bin, args, { stdio: "ignore", detached: true, windowsHide: true });
+      child.on("error", (err) => log.warn(`Gagal menjalankan ${action}:`, err.message));
+      child.unref();
     }
   }
 }

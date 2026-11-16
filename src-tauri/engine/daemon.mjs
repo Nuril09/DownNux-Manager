@@ -8069,7 +8069,12 @@ var TaskStore = class {
   constructor(dbPath) {
     fs2.mkdirSync(path2.dirname(dbPath), { recursive: true, mode: 448 });
     this.db = new DatabaseSync(dbPath);
-    fs2.chmodSync(dbPath, 384);
+    if (process.platform !== "win32") {
+      try {
+        fs2.chmodSync(dbPath, 384);
+      } catch {
+      }
+    }
     this.db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 2000;");
     this.migrate();
   }
@@ -8264,6 +8269,7 @@ function classifyAria2Error(code) {
   return code && ERROR_KINDS[code] || "limited";
 }
 async function killStaleAria2(pidFile) {
+  if (process.platform === "win32") return;
   let pid;
   try {
     pid = Number(fs3.readFileSync(pidFile, "utf8").trim());
@@ -8376,7 +8382,7 @@ var Aria2Engine = class extends EventEmitter {
       "--rpc-listen-all=false",
       `--rpc-listen-port=${this.port}`,
       `--rpc-secret=${this.secret}`,
-      `--stop-with-process=${process.pid}`,
+      ...process.platform !== "win32" ? [`--stop-with-process=${process.pid}`] : [],
       // Konkurensi diatur oleh manager, bukan aria2.
       "--max-concurrent-downloads=64",
       "--continue=true",
@@ -8413,9 +8419,22 @@ var Aria2Engine = class extends EventEmitter {
       "--bt-tracker=udp://tracker.opentrackr.org:1337/announce,udp://open.tracker.cl:1337/announce,udp://tracker.torrent.eu.org:451/announce,udp://open.stealth.si:80/announce,udp://tracker.moeking.me:6969/announce,http://tracker.openbittorrent.com:80/announce"
     ];
     if (this.globalLimit > 0) args.push(`--max-overall-download-limit=${this.globalLimit}`);
-    const proc = spawn(bin, args, { stdio: ["ignore", "ignore", "pipe"] });
+    const proc = spawn(bin, args, {
+      stdio: ["ignore", "ignore", "pipe"],
+      windowsHide: true
+    });
     this.proc = proc;
-    if (proc.pid) fs3.writeFileSync(this.opts.pidFile, String(proc.pid), { mode: 384 });
+    let spawnErrMessage = "";
+    proc.on("error", (err) => {
+      spawnErrMessage = err.message;
+      log.error(`Gagal menjalankan aria2c (${bin}): ${err.message}`);
+    });
+    if (proc.pid) {
+      try {
+        fs3.writeFileSync(this.opts.pidFile, String(proc.pid), { mode: 384 });
+      } catch {
+      }
+    }
     proc.stderr?.setEncoding("utf8");
     proc.stderr?.on("data", (d) => log.warn(d.trim()));
     proc.on("exit", (code, signal) => {
@@ -8426,13 +8445,19 @@ var Aria2Engine = class extends EventEmitter {
     });
     const deadline = Date.now() + 1e4;
     for (; ; ) {
+      if (spawnErrMessage) {
+        throw new Error(`aria2 gagal start: ${spawnErrMessage}`);
+      }
       try {
         const v = await this.rpc("aria2.getVersion");
         this.ver = v.version;
         break;
       } catch (err) {
         if (Date.now() > deadline || !this.proc) {
-          proc.kill("SIGKILL");
+          try {
+            proc.kill("SIGKILL");
+          } catch {
+          }
           throw new Error(`aria2 gagal start: ${err.message}`);
         }
         await sleep(100);
@@ -8482,8 +8507,11 @@ var Aria2Engine = class extends EventEmitter {
     if (spec.torrentBase64) {
       return this.rpc("aria2.addTorrent", [spec.torrentBase64, [], options]);
     }
-    if (spec.url.startsWith("file://") || spec.url.startsWith("/")) {
-      const filePath = spec.url.replace(/^file:\/\//, "");
+    if (spec.url.startsWith("file://") || path3.isAbsolute(spec.url)) {
+      let filePath = spec.url.replace(/^file:\/\//i, "");
+      if (process.platform === "win32" && /^\/[A-Za-z]:/.test(filePath)) {
+        filePath = filePath.slice(1);
+      }
       if (filePath.endsWith(".torrent") && fs3.existsSync(filePath)) {
         const b64 = fs3.readFileSync(filePath).toString("base64");
         return this.rpc("aria2.addTorrent", [b64, [], options]);
@@ -8692,7 +8720,7 @@ var YtDlpEngine = class extends EventEmitter2 {
           "%(title)s",
           "--no-playlist",
           spec.url
-        ], { encoding: "utf8", timeout: 8e3 }).trim();
+        ], { encoding: "utf8", timeout: 8e3, windowsHide: true }).trim();
         if (titleRes) {
           const cleanTitle = titleRes.replace(/[\/\\?%*:|"<>]/g, "_").trim();
           resolvedFilename = `${cleanTitle}.${isAudioOnly ? "mp3" : "mp4"}`;
@@ -8768,7 +8796,7 @@ var YtDlpEngine = class extends EventEmitter2 {
     }
     args.push(spec.url);
     log2.info(`Spawning yt-dlp: ${this.binaryPath} ${spec.url}`);
-    const cp = spawn2(this.binaryPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const cp = spawn2(this.binaryPath, args, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
     this.processes.set(jobId, cp);
     let stdoutBuffer = "";
     cp.stdout.on("data", (chunk) => {
@@ -8963,31 +8991,65 @@ function unlinkQuiet(p) {
 
 // apps/daemon/src/manager.ts
 var log3 = logger("manager");
+function spawnDetached(bin, args, env) {
+  try {
+    const child = spawn3(bin, args, {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+      ...env ? { env } : {}
+    });
+    child.on("error", (err) => {
+      log3.debug(`Detached process (${bin}) gagal:`, err.message);
+    });
+    child.unref();
+  } catch (err) {
+    log3.debug(`Gagal spawn (${bin}):`, err);
+  }
+}
+function sendDesktopNotification(title, body) {
+  if (process.platform === "linux") {
+    spawnDetached("notify-send", ["-i", "downnux", "-a", "DownNux Manager", title, body], {
+      ...process.env,
+      DISPLAY: process.env.DISPLAY || ":0",
+      WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0"
+    });
+  } else if (process.platform === "darwin") {
+    spawnDetached("osascript", [
+      "-e",
+      `display notification ${JSON.stringify(body)} with title ${JSON.stringify(title)}`
+    ]);
+  }
+}
 function openPathNative(targetPath, select = false) {
   try {
     if (process.platform === "win32") {
       if (select) {
-        spawn3("explorer.exe", [`/select,${targetPath}`], { detached: true, stdio: "ignore" }).unref();
+        spawnDetached("explorer.exe", [`/select,${targetPath}`]);
       } else {
-        spawn3("cmd.exe", ["/c", "start", '""', targetPath], { detached: true, stdio: "ignore" }).unref();
+        spawnDetached("cmd.exe", ["/c", "start", '""', targetPath]);
       }
     } else if (process.platform === "darwin") {
       if (select) {
-        spawn3("open", ["-R", targetPath], { detached: true, stdio: "ignore" }).unref();
+        spawnDetached("open", ["-R", targetPath]);
       } else {
-        spawn3("open", [targetPath], { detached: true, stdio: "ignore" }).unref();
+        spawnDetached("open", [targetPath]);
       }
     } else {
       const env = { ...process.env };
       if (!env.DISPLAY) env.DISPLAY = ":0";
       if (select && fs6.existsSync(targetPath)) {
-        const child = spawn3("nautilus", ["--select", targetPath], { detached: true, stdio: "ignore", env });
+        const child = spawn3("nautilus", ["--select", targetPath], {
+          detached: true,
+          stdio: "ignore",
+          env
+        });
         child.on("error", () => {
-          spawn3("xdg-open", [path6.dirname(targetPath)], { detached: true, stdio: "ignore", env }).unref();
+          spawnDetached("xdg-open", [path6.dirname(targetPath)], env);
         });
         child.unref();
       } else {
-        spawn3("xdg-open", [targetPath], { detached: true, stdio: "ignore", env }).unref();
+        spawnDetached("xdg-open", [targetPath], env);
       }
     }
   } catch (err) {
@@ -9093,20 +9155,9 @@ var DownloadManager = class extends EventEmitter4 {
     this.store.upsert(t);
     log3.info(`Tambah ${t.id} ${t.url}`);
     if (s.notifyOnStart) {
-      try {
-        const title = s.language === "en" ? "DownNux Manager \xB7 Download Started" : "DownNux Manager \xB7 Unduhan Dimulai";
-        const body = t.filename || "Starting download...";
-        spawn3("notify-send", ["-i", "downnux", "-a", "DownNux Manager", title, body], {
-          stdio: "ignore",
-          detached: true,
-          env: {
-            ...process.env,
-            DISPLAY: process.env.DISPLAY || ":0",
-            WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0"
-          }
-        }).unref();
-      } catch {
-      }
+      const title = s.language === "en" ? "DownNux Manager \xB7 Download Started" : "DownNux Manager \xB7 Unduhan Dimulai";
+      const body = t.filename || "Starting download...";
+      sendDesktopNotification(title, body);
     }
     this.emitTask(t);
     this.schedule();
@@ -9225,21 +9276,9 @@ var DownloadManager = class extends EventEmitter4 {
   notifyCompletion(t) {
     const s = this.settings.get();
     if (s.notifyOnComplete) {
-      try {
-        const title = s.language === "en" ? "DownNux Manager \xB7 Download Completed" : "DownNux Manager \xB7 Unduhan Selesai";
-        const body = t.filename || "File";
-        spawn3("notify-send", ["-i", "downnux", "-a", "DownNux Manager", title, body], {
-          stdio: "ignore",
-          detached: true,
-          env: {
-            ...process.env,
-            DISPLAY: process.env.DISPLAY || ":0",
-            WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0"
-          }
-        }).unref();
-      } catch (err) {
-        log3.warn("Gagal mengirim notifikasi desktop:", err);
-      }
+      const title = s.language === "en" ? "DownNux Manager \xB7 Download Completed" : "DownNux Manager \xB7 Unduhan Selesai";
+      const body = t.filename || "File";
+      sendDesktopNotification(title, body);
     }
     if (s.onCompleteAction === "openFolder") {
       this.openFolder(t.id);
@@ -9560,6 +9599,27 @@ var import_websocket_server = __toESM(require_websocket_server(), 1);
 var log4 = logger("ipc");
 var MAX_LINE = 1024 * 1024;
 var DEFAULT_HTTP_PORT = process.env.DOWNNUX_PORT ? Number(process.env.DOWNNUX_PORT) : process.env.UNDUH_HOME ? 0 : 44990;
+function detectFriendlyOsName() {
+  const plat = os5.platform();
+  if (plat === "win32") {
+    const parts = os5.release().split(".");
+    const build2 = Number(parts[2] || 0);
+    return build2 >= 22e3 ? "Windows 11" : "Windows 10";
+  }
+  if (plat === "darwin") {
+    return "macOS";
+  }
+  let osName = os5.type();
+  if (osName === "Linux") {
+    try {
+      const rel = fs7.readFileSync("/etc/os-release", "utf8");
+      const m = rel.match(/^NAME="?([^"\n]+)"?/m);
+      if (m?.[1]) osName = m[1];
+    } catch {
+    }
+  }
+  return osName;
+}
 async function assertSocketFree(socketPath) {
   if (process.platform === "win32") {
     return;
@@ -9569,12 +9629,14 @@ async function assertSocketFree(socketPath) {
   }
 }
 var IpcServer = class {
-  constructor(socketPath, handler) {
+  constructor(socketPath, handler, getHealth) {
     this.socketPath = socketPath;
     this.handler = handler;
+    this.getHealth = getHealth;
   }
   socketPath;
   handler;
+  getHealth;
   server = null;
   httpServer = null;
   wss = null;
@@ -9608,24 +9670,36 @@ var IpcServer = class {
     const httpServer = http.createServer((req, res) => {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.setHeader("Access-Control-Allow-Private-Network", "true");
       if (req.method === "OPTIONS") {
         res.writeHead(204);
         res.end();
         return;
       }
-      if (req.url === "/api/sysinfo") {
-        let osName = os5.type();
-        if (osName === "Linux") {
-          try {
-            const rel = fs7.readFileSync("/etc/os-release", "utf8");
-            const m = rel.match(/^NAME="?([^"\n]+)"?/m);
-            if (m?.[1]) osName = m[1];
-          } catch {
-          }
-        }
+      const health = this.getHealth?.() ?? { daemonReady: true, engineReady: true, engineError: null };
+      if (req.url === "/api/health") {
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ os: osName, platform: os5.platform(), release: os5.release() }));
+        res.end(
+          JSON.stringify({
+            ok: true,
+            ...health,
+            platform: os5.platform()
+          })
+        );
+        return;
+      }
+      if (req.url === "/api/sysinfo") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            os: detectFriendlyOsName(),
+            platform: os5.platform(),
+            release: os5.release(),
+            engineReady: health.engineReady,
+            engineError: health.engineError
+          })
+        );
         return;
       }
       if (req.method === "POST" && req.url === "/api/rpc") {
@@ -9947,10 +10021,37 @@ var SchedulerEngine = class {
   async handleOnFinish(action) {
     if (action === "none") return;
     log6.info(`Semua antrean unduhan selesai. Menjalankan aksi pasca-selesai: ${action}`);
-    if (action === "sleep") {
-      spawn4("systemctl", ["suspend"], { stdio: "ignore", detached: true }).unref();
-    } else if (action === "shutdown") {
-      spawn4("systemctl", ["poweroff"], { stdio: "ignore", detached: true }).unref();
+    let bin = "";
+    let args = [];
+    if (process.platform === "win32") {
+      if (action === "sleep") {
+        bin = "rundll32.exe";
+        args = ["powrprof.dll,SetSuspendState", "0,1,0"];
+      } else if (action === "shutdown") {
+        bin = "shutdown.exe";
+        args = ["/s", "/t", "10"];
+      }
+    } else if (process.platform === "darwin") {
+      if (action === "sleep") {
+        bin = "pmset";
+        args = ["sleepnow"];
+      } else if (action === "shutdown") {
+        bin = "osascript";
+        args = ["-e", 'tell app "System Events" to shut down'];
+      }
+    } else {
+      if (action === "sleep") {
+        bin = "systemctl";
+        args = ["suspend"];
+      } else if (action === "shutdown") {
+        bin = "systemctl";
+        args = ["poweroff"];
+      }
+    }
+    if (bin) {
+      const child = spawn4(bin, args, { stdio: "ignore", detached: true, windowsHide: true });
+      child.on("error", (err) => log6.warn(`Gagal menjalankan ${action}:`, err.message));
+      child.unref();
     }
   }
 };
@@ -10060,7 +10161,7 @@ async function probeUrl(url, baseDownloadDir, customHeaders, categoryDirs) {
         "%(title)s;;;%(filesize,filesize_approx)s;;;%(ext)s",
         "--no-playlist",
         url
-      ], { encoding: "utf8", timeout: 9e3 }).trim();
+      ], { encoding: "utf8", timeout: 9e3, windowsHide: true }).trim();
       const parts = output.split(";;;");
       const title = parts[0]?.trim() || "video";
       const sizeBytes = Number(parts[1]) || 0;
@@ -10264,7 +10365,9 @@ async function main() {
       try {
         if (process.platform === "win32") {
           const psCmd = `Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; if($f.ShowDialog() -eq 'OK'){ $f.SelectedPath }`;
-          const { stdout: stdout2 } = await execFileAsync("powershell", ["-NoProfile", "-Command", psCmd]);
+          const { stdout: stdout2 } = await execFileAsync("powershell", ["-NoProfile", "-Command", psCmd], {
+            windowsHide: true
+          });
           const chosen2 = stdout2.trim();
           return { ok: Boolean(chosen2), path: chosen2 };
         }
@@ -10306,7 +10409,7 @@ async function main() {
       return { ok: true };
     },
     "app.checkUpdate": async () => {
-      const CURRENT_VERSION = VERSION || "0.0.5";
+      const CURRENT_VERSION = VERSION || "0.0.6";
       try {
         const res = await fetch("https://api.github.com/repos/Nuril09/DownNux-Manager/releases/latest", {
           headers: { "User-Agent": "DownNux-Manager-Updater" }
@@ -10373,23 +10476,43 @@ async function main() {
       }
     }
   };
-  const server = new IpcServer(paths.socketPath, async (method, params) => {
-    const h = handlers[method];
-    if (!h) throw new Error(`Method belum diimplementasikan: ${method}`);
-    return h(params);
-  });
+  const engineState = {
+    daemonReady: true,
+    engineReady: false,
+    engineError: null,
+    version: VERSION
+  };
+  const server = new IpcServer(
+    paths.socketPath,
+    async (method, params) => {
+      if ((method === "task.add" || method === "task.resume") && !engineState.engineReady) {
+        throw new Error(engineState.engineError || "Download engine is not ready.");
+      }
+      const h = handlers[method];
+      if (!h) throw new Error(`Method belum diimplementasikan: ${method}`);
+      return h(params);
+    },
+    () => engineState
+  );
   await assertSocketFree(paths.socketPath);
-  await engine.start();
-  await engine.setGlobalSpeedLimit(settings.get().globalSpeedLimit);
   manager.on("task", (t) => server.broadcast({ event: "task.updated", data: t }));
   manager.on("removed", (id) => server.broadcast({ event: "task.removed", data: { id } }));
-  manager.init();
+  try {
+    await engine.start();
+    engineState.engineReady = true;
+    engineState.engineError = null;
+    await engine.setGlobalSpeedLimit(settings.get().globalSpeedLimit);
+    manager.init();
+  } catch (err) {
+    engineState.engineError = err.message || String(err);
+    log8.error("Engine gagal start (HTTP RPC tetap aktif untuk diagnostik):", err);
+  }
   await server.listen();
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("uncaughtException", (err) => log8.error("uncaughtException", err));
   process.on("unhandledRejection", (err) => log8.error("unhandledRejection", err));
-  log8.info(`Daemon ${VERSION} siap (pid ${process.pid})`);
+  log8.info(`Daemon ${VERSION} siap (pid ${process.pid}, engineReady=${engineState.engineReady})`);
 }
 main().catch((err) => {
   log8.error("Daemon gagal start", err);

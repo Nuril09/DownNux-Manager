@@ -119,12 +119,23 @@ function getFileIcon(filename: string, url?: string, isTorrent?: boolean) {
   }
 }
 
+function detectInitialOsName(): string {
+  if (typeof navigator === "undefined") return "Desktop";
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes("win")) return "Windows · Desktop";
+  if (ua.includes("mac")) return "macOS · Desktop";
+  return "Linux · Desktop";
+}
+
 export function App() {
   // User Requirement: English is DEFAULT language
   const [lang, setLang] = useState<Lang>("en");
   const t = translations[lang];
 
-  const [osName, setOsName] = useState<string>("Ubuntu · Desktop");
+  const [osName, setOsName] = useState<string>(detectInitialOsName);
+  const [daemonStatus, setDaemonStatus] = useState<"connecting" | "connected" | "error">("connecting");
+  const [daemonError, setDaemonError] = useState<string | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>("all");
@@ -195,9 +206,7 @@ export function App() {
     }
   };
 
-  useEffect(() => {
-    handleCheckUpdates(false);
-  }, []);
+  // Initial mount update check handled automatically by daemon bootstrap below
 
   // Close action menu on outside click
   useEffect(() => {
@@ -295,8 +304,9 @@ export function App() {
     return () => mql.removeEventListener("change", applyTheme);
   }, [settingsData.theme, settingsData.blurLevel]);
 
-  // Load Settings and Scheduler configs on mount
-  useEffect(() => {
+  const bootstrappedRef = useRef(false);
+
+  const loadBootstrapConfig = () => {
     fetch("http://127.0.0.1:44990/api/rpc", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -324,6 +334,20 @@ export function App() {
         }
       })
       .catch(() => { });
+
+    fetch("http://127.0.0.1:44990/api/sysinfo")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.os) setOsName(`${data.os} · Desktop`);
+      })
+      .catch(() => { });
+
+    void handleCheckUpdates(false);
+  };
+
+  // Load Settings and Scheduler configs on mount (and retry via task poll once daemon boots)
+  useEffect(() => {
+    loadBootstrapConfig();
   }, []);
 
   // WebKit Native Window Folder Chooser Callback
@@ -487,17 +511,10 @@ export function App() {
     await handleBrowseFolderForTarget("download", saveDir);
   };
 
-  // Fetch dynamic OS info from daemon
-  useEffect(() => {
-    fetch("http://127.0.0.1:44990/api/sysinfo")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.os) setOsName(`${data.os} · Desktop`);
-      })
-      .catch(() => { });
-  }, []);
+  // OS info is synced inside loadBootstrapConfig and health polling
 
-  // Native Window Control Handlers (CSD / Frameless window bridge)
+  // Native Window Control Handlers (CSD / Frameless window bridge for WebKitGTK wrapper)
+  const hasCustomWindowBridge = Boolean((window as any).webkit?.messageHandlers?.windowControl);
   const postWindowMessage = (action: string) => {
     try {
       (window as any).webkit?.messageHandlers?.windowControl?.postMessage(action);
@@ -531,16 +548,34 @@ export function App() {
     }
   };
 
-  // Poll daemon RPC tasks & auto-focus active downloading task
+  // Poll daemon RPC tasks & health status
   useEffect(() => {
+    const startedAt = Date.now();
     const fetchTasks = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:44990/api/rpc", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ method: "task.list", params: {} }),
-        });
-        const json = await res.json();
+        const [healthRes, rpcRes] = await Promise.all([
+          fetch("http://127.0.0.1:44990/api/health").then((r) => r.json()).catch(() => null),
+          fetch("http://127.0.0.1:44990/api/rpc", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ method: "task.list", params: {} }),
+          }),
+        ]);
+        const json = await rpcRes.json();
+
+        if (!bootstrappedRef.current) {
+          bootstrappedRef.current = true;
+          loadBootstrapConfig();
+        }
+
+        if (healthRes && healthRes.engineReady === false) {
+          setDaemonStatus("error");
+          setDaemonError(healthRes.engineError || "Download engine failed to initialize.");
+        } else {
+          setDaemonStatus("connected");
+          setDaemonError(null);
+        }
+
         if (json.result && Array.isArray(json.result)) {
           const list: Task[] = json.result;
           setTasks(list);
@@ -573,13 +608,24 @@ export function App() {
             setSelectedId(list[0].id);
           }
         }
-      } catch { }
+      } catch {
+        if (Date.now() - startedAt > 6000) {
+          setDaemonStatus("error");
+          setDaemonError(
+            lang === "en"
+              ? "Cannot connect to DownNux Engine (127.0.0.1:44990)"
+              : "Tidak dapat terhubung ke DownNux Engine (127.0.0.1:44990)",
+          );
+        } else {
+          setDaemonStatus("connecting");
+        }
+      }
     };
 
     fetchTasks();
-    const interval = setInterval(fetchTasks, 1200);
+    const interval = setInterval(fetchTasks, daemonStatus === "connected" ? 1200 : 600);
     return () => clearInterval(interval);
-  }, [selectedId, isStandalone]);
+  }, [selectedId, isStandalone, daemonStatus, lang]);
 
   const executeAction = async (method: string, params: Record<string, unknown> = {}) => {
     try {
@@ -616,7 +662,11 @@ export function App() {
   };
 
   const handleAddDownload = async (startImmediately: boolean = true) => {
-    if (!newUrl) return;
+    if (!newUrl.trim()) {
+      setAddError(lang === "en" ? "Please enter a valid download URL or Magnet link." : "Masukkan URL unduhan atau link Magnet yang valid.");
+      return;
+    }
+    setAddError(null);
     const finalFilename = newFilename ? newFilename.trim() : (probeResult?.filename || undefined);
     const finalDir = saveDir ? saveDir.trim() : (probeResult?.defaultDir || undefined);
 
@@ -642,6 +692,10 @@ export function App() {
         }),
       });
       const json = await res.json();
+      if (json.error) {
+        setAddError(json.error.message || "Failed to enqueue download.");
+        return;
+      }
       if (json.result?.id) {
         setSelectedId(json.result.id);
         knownTaskIdsRef.current.add(json.result.id);
@@ -651,8 +705,16 @@ export function App() {
       }
     } catch (err) {
       console.error(err);
+      setAddError(
+        daemonError ||
+          (lang === "en"
+            ? "Cannot reach DownNux background service on 127.0.0.1:44990."
+            : "Tidak dapat menghubungi layanan latar belakang DownNux (127.0.0.1:44990)."),
+      );
+      return;
     }
 
+    setAddError(null);
     setIsAddOpen(false);
     setNewUrl("");
     setNewFilename("");
@@ -807,13 +869,17 @@ export function App() {
 
   return (
     <div className="ios-glass-canvas h-screen w-screen flex flex-col box-border overflow-hidden select-none relative">
-      {/* Native window resize edge handles */}
-      <div onMouseDown={(e) => handleResize(e, "right")} className="fixed top-0 right-0 w-2 h-full cursor-e-resize z-50 select-none" />
-      <div onMouseDown={(e) => handleResize(e, "bottom")} className="fixed bottom-0 left-0 w-full h-2 cursor-s-resize z-50 select-none" />
-      <div onMouseDown={(e) => handleResize(e, "left")} className="fixed top-0 left-0 w-2 h-full cursor-w-resize z-50 select-none" />
-      <div onMouseDown={(e) => handleResize(e, "top")} className="fixed top-0 left-0 w-full h-2 cursor-n-resize z-50 select-none" />
-      <div onMouseDown={(e) => handleResize(e, "bottom-right")} className="fixed bottom-0 right-0 w-4 h-4 cursor-se-resize z-50 select-none" />
-      <div onMouseDown={(e) => handleResize(e, "bottom-left")} className="fixed bottom-0 left-0 w-4 h-4 cursor-sw-resize z-50 select-none" />
+      {/* Native window resize edge handles (only for custom chromeless wrapper) */}
+      {hasCustomWindowBridge && (
+        <>
+          <div onMouseDown={(e) => handleResize(e, "right")} className="fixed top-0 right-0 w-2 h-full cursor-e-resize z-50 select-none" />
+          <div onMouseDown={(e) => handleResize(e, "bottom")} className="fixed bottom-0 left-0 w-full h-2 cursor-s-resize z-50 select-none" />
+          <div onMouseDown={(e) => handleResize(e, "left")} className="fixed top-0 left-0 w-2 h-full cursor-w-resize z-50 select-none" />
+          <div onMouseDown={(e) => handleResize(e, "top")} className="fixed top-0 left-0 w-full h-2 cursor-n-resize z-50 select-none" />
+          <div onMouseDown={(e) => handleResize(e, "bottom-right")} className="fixed bottom-0 right-0 w-4 h-4 cursor-se-resize z-50 select-none" />
+          <div onMouseDown={(e) => handleResize(e, "bottom-left")} className="fixed bottom-0 left-0 w-4 h-4 cursor-sw-resize z-50 select-none" />
+        </>
+      )}
 
       {/* WINDOW CONTAINER: Frameless native window with Figma titlebar */}
       <div className="ios-glass-window flex flex-col flex-1 overflow-hidden relative">
@@ -859,32 +925,36 @@ export function App() {
               <span className="font-semibold">{lang.toUpperCase()}</span>
             </button>
 
-            <div className="h-4 w-[1px] bg-[#e7e9ef] dark:bg-[#2a2c3d]" />
+            {hasCustomWindowBridge && (
+              <>
+                <div className="h-4 w-[1px] bg-[#e7e9ef] dark:bg-[#2a2c3d]" />
 
-            {/* Window Controls matching exact Figma nodes 2:19, 2:21, 2:23 */}
-            <div className="flex items-center space-x-1 text-[#6e7685] dark:text-[#9ea4b5]">
-              <button
-                onClick={handleMinimize}
-                className="w-7 h-7 rounded-[5px] hover:bg-[#e7e9ef] dark:hover:bg-[#25283b] flex items-center justify-center transition-colors text-[#6e7685] hover:text-[#202631] dark:hover:text-white"
-                title={lang === "en" ? "Minimize" : "Kecilkan"}
-              >
-                <Minus className="w-4 h-4 stroke-[2]" />
-              </button>
-              <button
-                onClick={handleMaximize}
-                className="w-7 h-7 rounded-[5px] hover:bg-[#e7e9ef] dark:hover:bg-[#25283b] flex items-center justify-center transition-colors text-[#6e7685] hover:text-[#202631] dark:hover:text-white"
-                title={lang === "en" ? "Maximize" : "Besarkan"}
-              >
-                <Square className="w-3.5 h-3.5 stroke-[1.8]" />
-              </button>
-              <button
-                onClick={handleClose}
-                className="w-7 h-7 rounded-[5px] hover:bg-[#e81123] hover:text-white flex items-center justify-center transition-colors text-[#6e7685] dark:text-[#9ea4b5]"
-                title={lang === "en" ? "Close" : "Tutup"}
-              >
-                <X className="w-4 h-4 stroke-[2]" />
-              </button>
-            </div>
+                {/* Window Controls matching exact Figma nodes 2:19, 2:21, 2:23 */}
+                <div className="flex items-center space-x-1 text-[#6e7685] dark:text-[#9ea4b5]">
+                  <button
+                    onClick={handleMinimize}
+                    className="w-7 h-7 rounded-[5px] hover:bg-[#e7e9ef] dark:hover:bg-[#25283b] flex items-center justify-center transition-colors text-[#6e7685] hover:text-[#202631] dark:hover:text-white"
+                    title={lang === "en" ? "Minimize" : "Kecilkan"}
+                  >
+                    <Minus className="w-4 h-4 stroke-[2]" />
+                  </button>
+                  <button
+                    onClick={handleMaximize}
+                    className="w-7 h-7 rounded-[5px] hover:bg-[#e7e9ef] dark:hover:bg-[#25283b] flex items-center justify-center transition-colors text-[#6e7685] hover:text-[#202631] dark:hover:text-white"
+                    title={lang === "en" ? "Maximize" : "Besarkan"}
+                  >
+                    <Square className="w-3.5 h-3.5 stroke-[1.8]" />
+                  </button>
+                  <button
+                    onClick={handleClose}
+                    className="w-7 h-7 rounded-[5px] hover:bg-[#e81123] hover:text-white flex items-center justify-center transition-colors text-[#6e7685] dark:text-[#9ea4b5]"
+                    title={lang === "en" ? "Close" : "Tutup"}
+                  >
+                    <X className="w-4 h-4 stroke-[2]" />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </header>
 
@@ -1101,7 +1171,10 @@ export function App() {
                 {/* Toolbar Tombol (Exact Figma: Tambah URL bg #6554c0, yang lain ios-glass-button border #e7e9ef) */}
                 <div className="flex items-center space-x-2 pt-1 overflow-x-auto">
                   <button
-                    onClick={() => setIsAddOpen(true)}
+                    onClick={() => {
+                      setAddError(null);
+                      setIsAddOpen(true);
+                    }}
                     className="h-[36px] px-4 rounded-[6px] ios-button-primary text-[12px] font-medium flex items-center space-x-2 shadow-sm flex-shrink-0"
                   >
                     <Plus className="w-4 h-4 text-white" />
@@ -1720,16 +1793,32 @@ export function App() {
 
               {/* 4. STATUS LAYANAN (Exact Figma Node 2:6, h: 36px, bg: #f7f8fa) */}
               <footer className="h-[36px] ios-glass-bar border-t border-[#e7e9ef] dark:border-[#2a2c3d] px-4 flex items-center justify-between text-[11px] text-[#202631] dark:text-[#d1d5e0] flex-shrink-0">
-                <div className="flex items-center space-x-4">
-                  <span className="text-[#218163] dark:text-[#38d49a] font-medium flex items-center gap-1.5">
-                    <span className="text-[10px]">●</span>{" "}
-                    {lang === "en" ? "Background service active" : "Layanan background aktif"}
-                  </span>
-                  <span className="text-[#6e7685] dark:text-[#9ea4b5]">
-                    {lang === "en"
-                      ? "Downloads continue when window is closed"
-                      : "Unduhan tetap berjalan saat jendela ditutup"}
-                  </span>
+                <div className="flex items-center space-x-4 min-w-0">
+                  {daemonStatus === "connected" ? (
+                    <>
+                      <span className="text-[#218163] dark:text-[#38d49a] font-medium flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-[10px]">●</span>{" "}
+                        {lang === "en" ? "Background service active" : "Layanan background aktif"}
+                      </span>
+                      <span className="text-[#6e7685] dark:text-[#9ea4b5] truncate">
+                        {lang === "en"
+                          ? "Downloads continue when window is closed"
+                          : "Unduhan tetap berjalan saat jendela ditutup"}
+                      </span>
+                    </>
+                  ) : daemonStatus === "connecting" ? (
+                    <span className="text-[#ac8433] dark:text-[#fbbf24] font-medium flex items-center gap-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      {lang === "en" ? "Starting background engine..." : "Menyalakan engine latar belakang..."}
+                    </span>
+                  ) : (
+                    <span className="text-[#c34a4a] dark:text-[#f87171] font-medium flex items-center gap-1.5 truncate" title={daemonError || ""}>
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">
+                        {daemonError || (lang === "en" ? "Engine offline (retrying...)" : "Engine tidak terhubung (mencoba lagi...)")}
+                      </span>
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center space-x-4 text-[#6e7685] dark:text-[#9ea4b5]">
                   <span className="text-[#202631] dark:text-white font-medium flex items-center gap-1.5">
@@ -1761,6 +1850,7 @@ export function App() {
               </div>
               <button
                 onClick={() => {
+                  setAddError(null);
                   setIsAddOpen(false);
                   setProbeResult(null);
                 }}
@@ -2001,9 +2091,16 @@ export function App() {
             </div>
 
             {/* Action buttons (Cancel, Download Later, Start Download) */}
+            {addError && (
+              <div className="p-2.5 rounded-[6px] bg-[#fee2e2] dark:bg-[#451a1a] border border-[#fecaca] dark:border-[#7f1d1d] text-[#b91c1c] dark:text-[#fca5a5] text-[11px] flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span className="break-words">{addError}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between pt-3 border-t border-[#e7e9ef] dark:border-[#2a2c3d]">
               <button
                 onClick={() => {
+                  setAddError(null);
                   setIsAddOpen(false);
                   setProbeResult(null);
                 }}

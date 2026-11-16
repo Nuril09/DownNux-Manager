@@ -103,7 +103,7 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
           "--print", "%(title)s",
           "--no-playlist",
           spec.url,
-        ], { encoding: "utf8", timeout: 8000 }).trim();
+        ], { encoding: "utf8", timeout: 8000, windowsHide: true }).trim();
         if (titleRes) {
           const cleanTitle = titleRes.replace(/[\/\\?%*:|"<>]/g, "_").trim();
           resolvedFilename = `${cleanTitle}.${isAudioOnly ? "mp3" : "mp4"}`;
@@ -178,7 +178,7 @@ export class YtDlpEngine extends EventEmitter<EngineEvents> implements DownloadE
     args.push(spec.url);
 
     log.info(`Spawning yt-dlp: ${this.binaryPath} ${spec.url}`);
-    const cp = spawn(this.binaryPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const cp = spawn(this.binaryPath, args, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
     this.processes.set(jobId, cp);
 
     let stdoutBuffer = "";

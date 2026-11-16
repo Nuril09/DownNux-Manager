@@ -63,6 +63,7 @@ export interface Aria2Options {
  * akan merusak file, jadi pastikan yang lama sudah mati sebelum memulai yang baru.
  */
 async function killStaleAria2(pidFile: string): Promise<void> {
+  if (process.platform === "win32") return;
   let pid: number;
   try {
     pid = Number(fs.readFileSync(pidFile, "utf8").trim());
@@ -213,7 +214,7 @@ export class Aria2Engine extends EventEmitter<EngineEvents> implements DownloadE
       "--rpc-listen-all=false",
       `--rpc-listen-port=${this.port}`,
       `--rpc-secret=${this.secret}`,
-      `--stop-with-process=${process.pid}`,
+      ...(process.platform !== "win32" ? [`--stop-with-process=${process.pid}`] : []),
       // Konkurensi diatur oleh manager, bukan aria2.
       "--max-concurrent-downloads=64",
       "--continue=true",
@@ -251,9 +252,21 @@ export class Aria2Engine extends EventEmitter<EngineEvents> implements DownloadE
     ];
     if (this.globalLimit > 0) args.push(`--max-overall-download-limit=${this.globalLimit}`);
 
-    const proc = spawn(bin, args, { stdio: ["ignore", "ignore", "pipe"] });
+    const proc = spawn(bin, args, {
+      stdio: ["ignore", "ignore", "pipe"],
+      windowsHide: true,
+    });
     this.proc = proc;
-    if (proc.pid) fs.writeFileSync(this.opts.pidFile, String(proc.pid), { mode: 0o600 });
+    let spawnErrMessage = "";
+    proc.on("error", (err) => {
+      spawnErrMessage = err.message;
+      log.error(`Gagal menjalankan aria2c (${bin}): ${err.message}`);
+    });
+    if (proc.pid) {
+      try {
+        fs.writeFileSync(this.opts.pidFile, String(proc.pid), { mode: 0o600 });
+      } catch {}
+    }
     proc.stderr?.setEncoding("utf8");
     proc.stderr?.on("data", (d: string) => log.warn(d.trim()));
     proc.on("exit", (code, signal) => {
@@ -266,13 +279,18 @@ export class Aria2Engine extends EventEmitter<EngineEvents> implements DownloadE
     // Tunggu sampai RPC siap.
     const deadline = Date.now() + 10_000;
     for (;;) {
+      if (spawnErrMessage) {
+        throw new Error(`aria2 gagal start: ${spawnErrMessage}`);
+      }
       try {
         const v = await this.rpc<{ version: string }>("aria2.getVersion");
         this.ver = v.version;
         break;
       } catch (err) {
         if (Date.now() > deadline || !this.proc) {
-          proc.kill("SIGKILL");
+          try {
+            proc.kill("SIGKILL");
+          } catch {}
           throw new Error(`aria2 gagal start: ${(err as Error).message}`);
         }
         await sleep(100);
@@ -330,8 +348,11 @@ export class Aria2Engine extends EventEmitter<EngineEvents> implements DownloadE
     }
 
     // 2. BitTorrent from local .torrent file
-    if (spec.url.startsWith("file://") || spec.url.startsWith("/")) {
-      const filePath = spec.url.replace(/^file:\/\//, "");
+    if (spec.url.startsWith("file://") || path.isAbsolute(spec.url)) {
+      let filePath = spec.url.replace(/^file:\/\//i, "");
+      if (process.platform === "win32" && /^\/[A-Za-z]:/.test(filePath)) {
+        filePath = filePath.slice(1);
+      }
       if (filePath.endsWith(".torrent") && fs.existsSync(filePath)) {
         const b64 = fs.readFileSync(filePath).toString("base64");
         return this.rpc<string>("aria2.addTorrent", [b64, [], options]);

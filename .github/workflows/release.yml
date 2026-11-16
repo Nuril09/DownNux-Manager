@@ -54,8 +54,58 @@ jobs:
           Expand-Archive -Path "ffmpeg.zip" -DestinationPath "ffmpeg-temp" -Force
           Get-ChildItem -Path "ffmpeg-temp" -Filter "ffmpeg.exe" -Recurse | Select-Object -First 1 | Copy-Item -Destination "src-tauri\bin\ffmpeg.exe" -Force
 
+          # Bundle Visual C++ runtime DLLs alongside node.exe for clean Windows machines
+          foreach ($dll in @("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll")) {
+            $sysDll = Join-Path $env:SystemRoot "System32\$dll"
+            if (Test-Path $sysDll) {
+              Copy-Item $sysDll -Destination "src-tauri\bin\$dll" -Force
+              Write-Host "Bundled $dll"
+            }
+          }
+
           Get-ChildItem -Path "src-tauri\bin"
           Get-ChildItem -Path "src-tauri\engine"
+      - name: Smoke Test Windows Daemon & Aria2 Engine
+        shell: pwsh
+        run: |
+          $env:DOWNNUX_BIN_DIR = (Resolve-Path "src-tauri\bin").Path
+          $env:DOWNNUX_PORT = "44990"
+          $env:UNDUH_HOME = "$env:RUNNER_TEMP\downnux-smoke-win"
+          $proc = Start-Process -FilePath "src-tauri\bin\node.exe" -ArgumentList "--no-warnings","src-tauri\engine\daemon.mjs" -PassThru -NoNewWindow
+          try {
+            $ready = $false
+            for ($i = 0; $i -lt 40; $i++) {
+              Start-Sleep -Milliseconds 300
+              if ($proc.HasExited) {
+                throw "Daemon exited early with code $($proc.ExitCode)"
+              }
+              try {
+                $health = Invoke-RestMethod -Uri "http://127.0.0.1:44990/api/health" -TimeoutSec 2
+                if ($health.ok -and $health.engineReady) {
+                  Write-Host "Windows Smoke Test HEALTH OK: $($health | ConvertTo-Json -Compress)"
+                  $ready = $true
+                  break
+                }
+                if ($health.engineError) {
+                  throw "Engine error reported by daemon: $($health.engineError)"
+                }
+              } catch {
+                if ($_.Exception.Message -like "Engine error*") { throw }
+              }
+            }
+            if (-not $ready) {
+              throw "Windows daemon failed /api/health within timeout!"
+            }
+            $ping = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:44990/api/rpc" -ContentType "application/json" -Body '{"method":"ping","params":{}}'
+            Write-Host "Windows Smoke Test PING OK: $($ping | ConvertTo-Json -Compress)"
+            $sys = Invoke-RestMethod -Uri "http://127.0.0.1:44990/api/sysinfo"
+            Write-Host "Windows Smoke Test SYSINFO OK: $($sys | ConvertTo-Json -Compress)"
+          } finally {
+            try { Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:44990/api/rpc" -ContentType "application/json" -Body '{"method":"daemon.shutdown","params":{}}' | Out-Null } catch {}
+            Start-Sleep -Milliseconds 600
+            if ($proc -and -not $proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+            Get-Process aria2c -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          }
       - name: Build Windows NSIS Installer (.exe)
         run: |
           pnpm tauri build --bundles nsis
@@ -111,6 +161,24 @@ jobs:
           chmod +x src-tauri/bin/*
           ls -la src-tauri/bin/
           ls -la src-tauri/engine/
+      - name: Smoke Test macOS Daemon & Aria2 Engine
+        run: |
+          DOWNNUX_BIN_DIR="$(pwd)/src-tauri/bin" DOWNNUX_PORT=44990 UNDUH_HOME="${RUNNER_TEMP}/downnux-smoke-mac" ./src-tauri/bin/node --no-warnings ./src-tauri/engine/daemon.mjs &
+          DPID=$!
+          READY=0
+          for i in $(seq 1 40); do
+            sleep 0.3
+            HEALTH=$(curl -s http://127.0.0.1:44990/api/health || true)
+            if echo "$HEALTH" | grep -q '"engineReady":true'; then
+              echo "macOS Smoke Test HEALTH OK: $HEALTH"
+              READY=1
+              break
+            fi
+          done
+          curl -s -X POST http://127.0.0.1:44990/api/rpc -H "Content-Type: application/json" -d '{"method":"daemon.shutdown","params":{}}' >/dev/null || true
+          sleep 0.5
+          kill $DPID 2>/dev/null || true
+          test "$READY" = "1"
       - name: Build macOS Disk Image (.dmg)
         run: |
           pnpm tauri build --bundles dmg
@@ -161,6 +229,24 @@ jobs:
           chmod +x src-tauri/bin/*
           ls -la src-tauri/bin/
           ls -la src-tauri/engine/
+      - name: Smoke Test Linux Daemon & Aria2 Engine
+        run: |
+          DOWNNUX_BIN_DIR="$(pwd)/src-tauri/bin" DOWNNUX_PORT=44990 UNDUH_HOME="${RUNNER_TEMP}/downnux-smoke-linux" ./src-tauri/bin/node --no-warnings ./src-tauri/engine/daemon.mjs &
+          DPID=$!
+          READY=0
+          for i in $(seq 1 40); do
+            sleep 0.3
+            HEALTH=$(curl -s http://127.0.0.1:44990/api/health || true)
+            if echo "$HEALTH" | grep -q '"engineReady":true'; then
+              echo "Linux Smoke Test HEALTH OK: $HEALTH"
+              READY=1
+              break
+            fi
+          done
+          curl -s -X POST http://127.0.0.1:44990/api/rpc -H "Content-Type: application/json" -d '{"method":"daemon.shutdown","params":{}}' >/dev/null || true
+          sleep 0.5
+          kill $DPID 2>/dev/null || true
+          test "$READY" = "1"
       - name: Build Linux Packages
         run: |
           pnpm tauri build --bundles deb,appimage

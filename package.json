@@ -11,7 +11,7 @@
   },
   "scripts": {
     "daemon": "tsx apps/daemon/src/main.ts",
-    "daemon:bundle": "esbuild apps/daemon/src/main.ts --bundle --platform=node --format=esm --target=node22 --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=src-tauri/engine/daemon.mjs --alias:@downnux/shared=./packages/shared/src/index.ts --alias:@downnux/shared/node=./packages/shared/src/node/index.ts",
+    "daemon:bundle": "esbuild apps/daemon/src/main.ts --bundle --platform=node --format=esm --target=node22 --external:node:sqlite --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=src-tauri/engine/daemon.mjs --alias:@downnux/shared=./packages/shared/src/index.ts --alias:@downnux/shared/node=./packages/shared/src/node/index.ts",
     "cli": "tsx apps/daemon/src/cli.ts",
     "gui": "npm --prefix apps/gui run dev",
     "gui:build": "npm --prefix apps/gui run build",

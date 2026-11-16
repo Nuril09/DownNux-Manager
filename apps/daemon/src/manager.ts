@@ -13,32 +13,68 @@ import type { SettingsStore } from "./settings.ts";
 
 const log = logger("manager");
 
+function spawnDetached(bin: string, args: string[], env?: NodeJS.ProcessEnv): void {
+  try {
+    const child = spawn(bin, args, {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+      ...(env ? { env } : {}),
+    });
+    child.on("error", (err) => {
+      log.debug(`Detached process (${bin}) gagal:`, err.message);
+    });
+    child.unref();
+  } catch (err) {
+    log.debug(`Gagal spawn (${bin}):`, err);
+  }
+}
+
+function sendDesktopNotification(title: string, body: string): void {
+  if (process.platform === "linux") {
+    spawnDetached("notify-send", ["-i", "downnux", "-a", "DownNux Manager", title, body], {
+      ...process.env,
+      DISPLAY: process.env.DISPLAY || ":0",
+      WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0",
+    });
+  } else if (process.platform === "darwin") {
+    spawnDetached("osascript", [
+      "-e",
+      `display notification ${JSON.stringify(body)} with title ${JSON.stringify(title)}`,
+    ]);
+  }
+}
+
 function openPathNative(targetPath: string, select = false): void {
   try {
     if (process.platform === "win32") {
       if (select) {
-        spawn("explorer.exe", [`/select,${targetPath}`], { detached: true, stdio: "ignore" }).unref();
+        spawnDetached("explorer.exe", [`/select,${targetPath}`]);
       } else {
-        spawn("cmd.exe", ["/c", "start", '""', targetPath], { detached: true, stdio: "ignore" }).unref();
+        spawnDetached("cmd.exe", ["/c", "start", '""', targetPath]);
       }
     } else if (process.platform === "darwin") {
       if (select) {
-        spawn("open", ["-R", targetPath], { detached: true, stdio: "ignore" }).unref();
+        spawnDetached("open", ["-R", targetPath]);
       } else {
-        spawn("open", [targetPath], { detached: true, stdio: "ignore" }).unref();
+        spawnDetached("open", [targetPath]);
       }
     } else {
       // Linux / BSD
       const env = { ...process.env };
       if (!env.DISPLAY) env.DISPLAY = ":0";
       if (select && fs.existsSync(targetPath)) {
-        const child = spawn("nautilus", ["--select", targetPath], { detached: true, stdio: "ignore", env });
+        const child = spawn("nautilus", ["--select", targetPath], {
+          detached: true,
+          stdio: "ignore",
+          env,
+        });
         child.on("error", () => {
-          spawn("xdg-open", [path.dirname(targetPath)], { detached: true, stdio: "ignore", env }).unref();
+          spawnDetached("xdg-open", [path.dirname(targetPath)], env);
         });
         child.unref();
       } else {
-        spawn("xdg-open", [targetPath], { detached: true, stdio: "ignore", env }).unref();
+        spawnDetached("xdg-open", [targetPath], env);
       }
     }
   } catch (err) {
@@ -182,19 +218,9 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
     this.store.upsert(t);
     log.info(`Tambah ${t.id} ${t.url}`);
     if (s.notifyOnStart) {
-      try {
-        const title = s.language === "en" ? "DownNux Manager · Download Started" : "DownNux Manager · Unduhan Dimulai";
-        const body = t.filename || "Starting download...";
-        spawn("notify-send", ["-i", "downnux", "-a", "DownNux Manager", title, body], {
-          stdio: "ignore",
-          detached: true,
-          env: {
-            ...process.env,
-            DISPLAY: process.env.DISPLAY || ":0",
-            WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0",
-          },
-        }).unref();
-      } catch { }
+      const title = s.language === "en" ? "DownNux Manager · Download Started" : "DownNux Manager · Unduhan Dimulai";
+      const body = t.filename || "Starting download...";
+      sendDesktopNotification(title, body);
     }
     this.emitTask(t);
     this.schedule();
@@ -324,21 +350,9 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
   private notifyCompletion(t: StoredTask): void {
     const s = this.settings.get();
     if (s.notifyOnComplete) {
-      try {
-        const title = s.language === "en" ? "DownNux Manager · Download Completed" : "DownNux Manager · Unduhan Selesai";
-        const body = t.filename || "File";
-        spawn("notify-send", ["-i", "downnux", "-a", "DownNux Manager", title, body], {
-          stdio: "ignore",
-          detached: true,
-          env: {
-            ...process.env,
-            DISPLAY: process.env.DISPLAY || ":0",
-            WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY || "wayland-0",
-          },
-        }).unref();
-      } catch (err) {
-        log.warn("Gagal mengirim notifikasi desktop:", err);
-      }
+      const title = s.language === "en" ? "DownNux Manager · Download Completed" : "DownNux Manager · Unduhan Selesai";
+      const body = t.filename || "File";
+      sendDesktopNotification(title, body);
     }
 
     if (s.onCompleteAction === "openFolder") {

@@ -44,6 +44,7 @@ function fmtTime(sec: number, lang: Lang): string {
 
 export function DownloadDetailModal({ task, lang, onClose, onAction, isStandalone }: DownloadDetailModalProps) {
   const [activeTab, setActiveTab] = useState<"speed" | "segments" | "torrent">("segments");
+  const hasCustomWindowBridge = Boolean((window as any).webkit?.messageHandlers?.windowControl);
 
   const pct = useMemo(() => {
     if (!task.totalBytes || task.totalBytes <= 0) {
@@ -220,7 +221,7 @@ export function DownloadDetailModal({ task, lang, onClose, onAction, isStandalon
               <span>{lang === "en" ? "Folder" : "Folder"}</span>
             </button>
 
-            {isStandalone && (
+            {isStandalone && hasCustomWindowBridge && (
               <button
                 onClick={() => {
                   try {
