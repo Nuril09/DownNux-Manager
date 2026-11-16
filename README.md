@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Nuril09/DownNux-Manager/releases/latest"><img src="https://img.shields.io/badge/Release-v0.0.6-6554c0?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/Nuril09/DownNux-Manager/releases/latest"><img src="https://img.shields.io/badge/Release-v0.0.7-6554c0?style=flat-square" alt="Version"></a>
   <a href="https://downnux-manager.vercel.app"><img src="https://img.shields.io/badge/Website-downnux--manager.vercel.app-10b981?style=flat-square" alt="Official Website"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License GPL-3.0"></a>
   <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-informational?style=flat-square" alt="Platforms"></a>
@@ -19,7 +19,16 @@
 
 ---
 
-## What's New in v0.0.6
+## What's New in v0.0.7
+
+> **Windows Stability Release**: Resolves Windows NSIS `.exe` runtime failures with Edge WebView2 PNA CORS support, UNC path stripping, bundled VC++ runtime DLLs, and boot diagnostics.
+
+* **Windows UNC Path & ESM Launch Fix**: Stripped `\\?\` extended-length path prefixes when launching bundled `node.exe` and `aria2c.exe` so the standalone engine starts reliably across Windows installations.
+* **Bundled Visual C++ Runtime DLLs**: Includes `vcruntime140.dll`, `vcruntime140_1.dll`, and `msvcp140.dll` inside the Windows installer for clean Windows 10/11 systems.
+* **WebView2 Private Network & Rendering Fixes**: Added `Access-Control-Allow-Private-Network: true` for `http://tauri.localhost` IPC and disabled forced transparent window rendering glitches on Windows.
+* **Cross-Platform Process Hygiene & Diagnostics**: Guarded Linux-only `notify-send` / `chmod` calls, added `windowsHide` flags to all child processes, exposed `/api/health` readiness telemetry, and added `daemon-boot.log` startup logging.
+
+### Previous: v0.0.6
 
 > **Major Milestone**: DownNux Manager is now a **100% self-contained standalone application** across Windows, macOS, and Linux with zero external dependency setup.
 
@@ -100,7 +109,7 @@ Engineered and maintained by [**HoodTech**](https://hoodtech.my.id/).
 
 Download the official NSIS installer. All dependencies (`node.exe`, `aria2c.exe`, `yt-dlp.exe`, `ffmpeg.exe`, and `daemon.mjs`) are bundled automatically:
 
-1. Download [**DownNux.Manager_0.0.6_x64-setup.exe**](https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_x64-setup.exe).
+1. Download [**DownNux.Manager_0.0.7_x64-setup.exe**](https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_x64-setup.exe).
 2. Double-click the installer and complete the setup.
 3. Launch DownNux Manager from the Start Menu or desktop shortcut.
 
@@ -108,7 +117,7 @@ Download the official NSIS installer. All dependencies (`node.exe`, `aria2c.exe`
 
 ### macOS (Apple Silicon & Intel) — Disk Image
 
-1. Download [**DownNux.Manager_0.0.6_aarch64.dmg**](https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_aarch64.dmg) (Apple Silicon) or Universal portable zip.
+1. Download [**DownNux.Manager_0.0.7_aarch64.dmg**](https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_aarch64.dmg) (Apple Silicon) or Universal portable zip.
 2. Open the `.dmg` file and drag **DownNux Manager** into your `/Applications` folder.
 3. Open DownNux Manager from Launchpad or Spotlight.
 
@@ -120,17 +129,17 @@ Download the official NSIS installer. All dependencies (`node.exe`, `aria2c.exe`
 
 ```bash
 # 1. Download the latest .deb package
-wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_amd64.deb
+wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_amd64.deb
 
 # 2. Install using apt (resolves system dependencies automatically)
-sudo apt install ./DownNux.Manager_0.0.6_amd64.deb
+sudo apt install ./DownNux.Manager_0.0.7_amd64.deb
 ```
 
 #### Option B: Standalone Linux AppImage
 
 ```bash
-chmod +x DownNux.Manager_0.0.6_amd64.AppImage
-./DownNux.Manager_0.0.6_amd64.AppImage
+chmod +x DownNux.Manager_0.0.7_amd64.AppImage
+./DownNux.Manager_0.0.7_amd64.AppImage
 ```
 
 ---

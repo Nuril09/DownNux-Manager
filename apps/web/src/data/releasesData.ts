@@ -13,9 +13,9 @@ export interface ReleaseAsset {
   };
 }
 
-export const CURRENT_VERSION = "0.0.6";
+export const CURRENT_VERSION = "0.0.7";
 export const GITHUB_REPO_URL = "https://github.com/Nuril09/DownNux-Manager";
-export const RELEASES_PAGE_URL = "https://github.com/Nuril09/DownNux-Manager/releases/tag/v0.0.6";
+export const RELEASES_PAGE_URL = "https://github.com/Nuril09/DownNux-Manager/releases/tag/v0.0.7";
 
 export interface ChangelogEntry {
   version: string;
@@ -34,9 +34,34 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
-    version: "0.0.6",
+    version: "0.0.7",
     date: "November 2026",
     badge: "Latest Stable",
+    title: {
+      en: "Windows Runtime & WebView2 Stability Fixes",
+      id: "Perbaikan Runtime Windows & Stabilitas WebView2",
+    },
+    highlights: {
+      en: [
+        "Fixed Windows UNC Path Launch Crash: Stripped extended-length \\\\?\\ resource prefixes when launching bundled node.exe and aria2c.exe so ESM daemon loading works cleanly across all Windows drives.",
+        "Bundled Visual C++ Runtime DLLs: Included vcruntime140.dll, vcruntime140_1.dll, and msvcp140.dll directly inside the Windows installer for clean Windows 10/11 PCs.",
+        "Edge WebView2 PNA CORS & Window Transparency Fix: Added Access-Control-Allow-Private-Network headers for http://tauri.localhost IPC and disabled forced transparent WebView composition glitches.",
+        "Cross-Platform Notifications & Process Hygiene: Replaced raw Linux notify-send calls with safe OS dispatch and added windowsHide flags across yt-dlp, aria2c, FFmpeg, and sleep/shutdown actions.",
+        "Boot Diagnostics & Health Recovery: Added /api/health engine readiness telemetry, persistent daemon-boot.log diagnostics, and automatic GUI startup sync retries."
+      ],
+      id: [
+        "Perbaikan Crash UNC Path di Windows: Menghapus prefix extended-length \\\\?\\ saat menjalankan node.exe dan aria2c.exe agar module ESM daemon berjalan normal di semua drive Windows.",
+        "Bundel DLL Visual C++ Runtime: Menyertakan vcruntime140.dll, vcruntime140_1.dll, dan msvcp140.dll langsung di installer Windows untuk PC Windows 10/11 bersih.",
+        "Perbaikan CORS Private Network WebView2 & Transparansi Window: Menambahkan header Access-Control-Allow-Private-Network untuk http://tauri.localhost serta menonaktifkan transparansi window yang memicu blank render.",
+        "Higienitas Proses & Notifikasi Lintas OS: Menghindari crash notify-send di Windows/macOS serta menyembunyikan jendela konsol dengan windowsHide pada semua child process.",
+        "Diagnostik Boot & Pemulihan Status Engine: Menambahkan endpoint /api/health, log startup daemon-boot.log, dan sinkronisasi ulang otomatis saat daemon selesai booting."
+      ]
+    },
+    tagUrl: "https://github.com/Nuril09/DownNux-Manager/releases/tag/v0.0.7"
+  },
+  {
+    version: "0.0.6",
+    date: "November 2026",
     title: {
       en: "Self-Contained Standalone Multiplatform Installers",
       id: "Installer Mandiri Multiplatform (Zero Setup)",
@@ -88,29 +113,29 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
   // Linux Packages
   {
     id: "linux-deb",
-    name: "DownNux.Manager_0.0.6_amd64.deb",
+    name: "DownNux.Manager_0.0.7_amd64.deb",
     label: "Debian / Ubuntu Package (.deb)",
     os: "linux",
     format: "deb",
-    size: "53 MB",
+    size: "52.7 MB",
     recommended: true,
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_amd64.deb",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_amd64.deb",
     instructions: {
-      en: "sudo apt install ./DownNux.Manager_0.0.6_amd64.deb",
-      id: "sudo apt install ./DownNux.Manager_0.0.6_amd64.deb",
+      en: "sudo apt install ./DownNux.Manager_0.0.7_amd64.deb",
+      id: "sudo apt install ./DownNux.Manager_0.0.7_amd64.deb",
     },
   },
   {
     id: "linux-appimage",
-    name: "DownNux.Manager_0.0.6_amd64.AppImage",
+    name: "DownNux.Manager_0.0.7_amd64.AppImage",
     label: "Universal Linux AppImage",
     os: "linux",
     format: "appimage",
     size: "180 MB",
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_amd64.AppImage",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_amd64.AppImage",
     instructions: {
-      en: "chmod +x DownNux.Manager_0.0.6_amd64.AppImage && ./DownNux.Manager_0.0.6_amd64.AppImage",
-      id: "chmod +x DownNux.Manager_0.0.6_amd64.AppImage && ./DownNux.Manager_0.0.6_amd64.AppImage",
+      en: "chmod +x DownNux.Manager_0.0.7_amd64.AppImage && ./DownNux.Manager_0.0.7_amd64.AppImage",
+      id: "chmod +x DownNux.Manager_0.0.7_amd64.AppImage && ./DownNux.Manager_0.0.7_amd64.AppImage",
     },
   },
   {
@@ -130,16 +155,16 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
   // Windows Packages
   {
     id: "windows-exe",
-    name: "DownNux.Manager_0.0.6_x64-setup.exe",
+    name: "DownNux.Manager_0.0.7_x64-setup.exe",
     label: "Windows NSIS Installer (.exe)",
     os: "windows",
     format: "exe",
-    size: "99 MB",
+    size: "99.1 MB",
     recommended: true,
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_x64-setup.exe",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_x64-setup.exe",
     instructions: {
-      en: "Double-click DownNux.Manager_0.0.6_x64-setup.exe to install. Includes full embedded engine with zero setup.",
-      id: "Klik dua kali file DownNux.Manager_0.0.6_x64-setup.exe. Seluruh engine sudah terbundel otomatis tanpa setup.",
+      en: "Double-click DownNux.Manager_0.0.7_x64-setup.exe to install. Includes embedded engine and VC++ runtime DLLs with zero setup.",
+      id: "Klik dua kali file DownNux.Manager_0.0.7_x64-setup.exe. Engine dan DLL runtime Visual C++ sudah terbundel otomatis tanpa setup.",
     },
   },
   {
@@ -159,13 +184,13 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
   // macOS Packages
   {
     id: "macos-dmg",
-    name: "DownNux.Manager_0.0.6_aarch64.dmg",
+    name: "DownNux.Manager_0.0.7_aarch64.dmg",
     label: "macOS Disk Image (.dmg)",
     os: "macos",
     format: "dmg",
-    size: "80 MB",
+    size: "79.8 MB",
     recommended: true,
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/DownNux.Manager_0.0.6_aarch64.dmg",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_aarch64.dmg",
     instructions: {
       en: "Open .dmg and drag DownNux Manager into your Applications folder. Ready to use out of the box.",
       id: "Buka file .dmg dan seret DownNux Manager ke folder Applications. Langsung siap dipakai tanpa setup.",
