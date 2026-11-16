@@ -2,6 +2,8 @@
 // Spike M0: ditulis sebagai JS biasa tanpa build. Dipindah ke WXT + TypeScript di M3.
 
 const HOST = "com.creativemichiz.downnux.native_host";
+const RPC_HTTP_URL = "http://127.0.0.1:44990/api/rpc";
+const ALLOWED_RPC_METHODS = new Set(["ping", "task.add", "task.list", "task.get", "task.pause", "task.resume"]);
 
 const DEFAULTS = {
   captureEnabled: true,
@@ -17,14 +19,41 @@ async function getSettings() {
 }
 
 // ---------------------------------------------------------------------------
-// Komunikasi ke aplikasi lewat native messaging
+// Komunikasi ke aplikasi lewat native messaging (Linux) + HTTP RPC fallback (Windows/macOS)
+
+async function callDaemonHttp(method, params = {}) {
+  if (!ALLOWED_RPC_METHODS.has(method)) {
+    throw new Error(`Method tidak diizinkan: ${method}`);
+  }
+  const res = await fetch(RPC_HTTP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ method, params }),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(json?.error?.message || `DownNux daemon HTTP ${res.status}`);
+  }
+  if (!json) throw new Error("Tidak ada balasan dari daemon DownNux");
+  if (json.error) throw new Error(json.error.message || json.error.code);
+  return json.result;
+}
+
+class NativeRpcError extends Error {}
 
 let seq = 0;
 async function callDaemon(method, params = {}) {
-  const resp = await chrome.runtime.sendNativeMessage(HOST, { id: ++seq, method, params });
-  if (!resp) throw new Error("Tidak ada balasan dari native host");
-  if (resp.error) throw new Error(resp.error.message || resp.error.code);
-  return resp.result;
+  try {
+    const resp = await chrome.runtime.sendNativeMessage(HOST, { id: ++seq, method, params });
+    if (resp && !resp.error) return resp.result;
+    if (resp?.error && resp.error.code !== "UNAVAILABLE") {
+      throw new NativeRpcError(resp.error.message || resp.error.code);
+    }
+  } catch (err) {
+    if (err instanceof NativeRpcError) throw err;
+    // Native messaging host tidak terdaftar / belum siap (Windows, macOS, dll.) -> fallback ke HTTP RPC lokal
+  }
+  return callDaemonHttp(method, params);
 }
 
 async function cookieHeaderFor(url) {
@@ -82,13 +111,13 @@ chrome.downloads.onCreated.addListener(async (item) => {
     // Mungkin sudah selesai (file kecil). Tetap coba alihkan.
   }
   try {
-    const name = item.filename ? item.filename.split("/").pop() : undefined;
+    const name = item.filename ? item.filename.split(/[/\\]/).pop() : undefined;
     const task = await sendToApp({ url, referrer: item.referrer, filename: name });
     await chrome.downloads.cancel(item.id).catch(() => {});
     await chrome.downloads.erase({ id: item.id }).catch(() => {});
-    console.debug("Dialihkan ke Unduh", task.id);
+    console.debug("Dialihkan ke DownNux", task.id);
   } catch (err) {
-    console.warn("Gagal mengalihkan ke Unduh, dilanjutkan oleh browser:", err);
+    console.warn("Gagal mengalihkan ke DownNux, dilanjutkan oleh browser:", err);
     await chrome.downloads.resume(item.id).catch(() => {});
     await chrome.action.setBadgeText({ text: "!" });
     await chrome.action.setBadgeBackgroundColor({ color: "#d93025" });
@@ -99,23 +128,25 @@ chrome.downloads.onCreated.addListener(async (item) => {
 // Menu klik kanan
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: "unduh-link",
-    title: "Download dengan Unduh",
-    contexts: ["link", "video", "audio", "image"],
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: "downnux-link",
+      title: "Download with DownNux Manager",
+      contexts: ["link", "video", "audio", "image"],
+    });
   });
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const url = info.linkUrl || info.srcUrl;
   if (!url || !/^https?:/i.test(url)) {
-    notify("Unduh", "Tautan ini tidak bisa diunduh langsung (bukan http/https).");
+    notify("DownNux Manager", "This link cannot be downloaded directly (not http/https).");
     return;
   }
   try {
     await sendToApp({ url, referrer: info.pageUrl || tab?.url });
   } catch (err) {
-    notify("Unduh tidak terhubung", String(err.message || err));
+    notify("DownNux Manager Not Connected", String(err.message || err));
   }
 });
 
