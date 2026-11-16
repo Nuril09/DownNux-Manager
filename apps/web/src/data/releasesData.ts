@@ -213,13 +213,13 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
   // Browser Extension
   {
     id: "extension-zip",
-    name: "downnux-extension_0.0.6.zip",
+    name: "downnux-extension_0.0.7.zip",
     label: "Browser Extension (Chrome, Brave, Edge, Firefox)",
     os: "extension",
     format: "zip",
-    size: "140 KB",
+    size: "136 KB",
     recommended: true,
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/downnux-extension_0.0.6.zip",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/downnux-extension_0.0.7.zip",
     instructions: {
       en: "Unpack zip, open chrome://extensions, enable Developer Mode, and click Load unpacked.",
       id: "Ekstrak zip, buka chrome://extensions, aktifkan Mode Pengembang, dan klik Muat yang belum dibongkar.",
