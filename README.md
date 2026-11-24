@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Nuril09/DownNux-Manager/releases/latest"><img src="https://img.shields.io/badge/Release-v0.0.7-6554c0?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/Nuril09/DownNux-Manager/releases/latest"><img src="https://img.shields.io/badge/Release-v0.0.8-6554c0?style=flat-square" alt="Version"></a>
   <a href="https://downnux-manager.vercel.app"><img src="https://img.shields.io/badge/Website-downnux--manager.vercel.app-10b981?style=flat-square" alt="Official Website"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License GPL-3.0"></a>
   <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-informational?style=flat-square" alt="Platforms"></a>
@@ -19,7 +19,17 @@
 
 ---
 
-## What's New in v0.0.7
+## What's New in v0.0.8
+
+> **Audio & Browser Extension Update**: Adds Spotify Track/Episode, SoundCloud, and Bandcamp MP3 downloading with embedded ID3 metadata + album artwork, live format size estimation, and Browser Extension v0.0.8.
+
+* **Spotify Track & Episode Audio Support**: Paste any Spotify track or episode URL (`open.spotify.com`, `intl-*`, `spotify.link`) to automatically resolve title, artist, duration, and cover art, match the closest non-DRM YouTube audio via `yt-dlp`, and export CBR MP3 (`320` / `192` / `128` kbps) with embedded ID3 tags and cover artwork.
+* **SoundCloud & Bandcamp Support**: Automatically routes audio platforms to MP3 extraction into your `Music` category folder.
+* **Browser Extension v0.0.8**: Adds a floating **DownNux · MP3** pill on Spotify Web Player (track pages and Now Playing bar), popup quick-download cards, and automatic `127.0.0.1:44990` HTTP RPC fallback across Windows, macOS, and Linux.
+* **Live Format Size Estimation & Native Inspector**: Dynamically updates estimated file size when switching video resolutions or MP3 bitrates, with an async native Tauri standalone progress window.
+* **Modernized Linux Packaging**: Updated `.deb` and Linux portable `.tar.gz` builders to bundle a standalone Node 22 daemon without external `node_modules` dependencies.
+
+### Previous: v0.0.7
 
 > **Windows Stability Release**: Resolves Windows NSIS `.exe` runtime failures with Edge WebView2 PNA CORS support, UNC path stripping, bundled VC++ runtime DLLs, and boot diagnostics.
 
@@ -109,7 +119,7 @@ Engineered and maintained by [**HoodTech**](https://hoodtech.my.id/).
 
 Download the official NSIS installer. All dependencies (`node.exe`, `aria2c.exe`, `yt-dlp.exe`, `ffmpeg.exe`, and `daemon.mjs`) are bundled automatically:
 
-1. Download [**DownNux.Manager_0.0.7_x64-setup.exe**](https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_x64-setup.exe).
+1. Download [**DownNux.Manager_0.0.8_x64-setup.exe**](https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.8/DownNux.Manager_0.0.8_x64-setup.exe).
 2. Double-click the installer and complete the setup.
 3. Launch DownNux Manager from the Start Menu or desktop shortcut.
 
@@ -117,7 +127,7 @@ Download the official NSIS installer. All dependencies (`node.exe`, `aria2c.exe`
 
 ### macOS (Apple Silicon & Intel) — Disk Image
 
-1. Download [**DownNux.Manager_0.0.7_aarch64.dmg**](https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_aarch64.dmg) (Apple Silicon) or Universal portable zip.
+1. Download [**DownNux.Manager_0.0.8_aarch64.dmg**](https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.8/DownNux.Manager_0.0.8_aarch64.dmg) (Apple Silicon) or Universal portable zip.
 2. Open the `.dmg` file and drag **DownNux Manager** into your `/Applications` folder.
 3. Open DownNux Manager from Launchpad or Spotlight.
 
@@ -129,17 +139,17 @@ Download the official NSIS installer. All dependencies (`node.exe`, `aria2c.exe`
 
 ```bash
 # 1. Download the latest .deb package
-wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_amd64.deb
+wget https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.8/DownNux.Manager_0.0.8_amd64.deb
 
 # 2. Install using apt (resolves system dependencies automatically)
-sudo apt install ./DownNux.Manager_0.0.7_amd64.deb
+sudo apt install ./DownNux.Manager_0.0.8_amd64.deb
 ```
 
 #### Option B: Standalone Linux AppImage
 
 ```bash
-chmod +x DownNux.Manager_0.0.7_amd64.AppImage
-./DownNux.Manager_0.0.7_amd64.AppImage
+chmod +x DownNux.Manager_0.0.8_amd64.AppImage
+./DownNux.Manager_0.0.8_amd64.AppImage
 ```
 
 ---

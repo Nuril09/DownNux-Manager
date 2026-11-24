@@ -13,9 +13,9 @@ export interface ReleaseAsset {
   };
 }
 
-export const CURRENT_VERSION = "0.0.7";
+export const CURRENT_VERSION = "0.0.8";
 export const GITHUB_REPO_URL = "https://github.com/Nuril09/DownNux-Manager";
-export const RELEASES_PAGE_URL = "https://github.com/Nuril09/DownNux-Manager/releases/tag/v0.0.7";
+export const RELEASES_PAGE_URL = "https://github.com/Nuril09/DownNux-Manager/releases/tag/v0.0.8";
 
 export interface ChangelogEntry {
   version: string;
@@ -34,9 +34,34 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
-    version: "0.0.7",
+    version: "0.0.8",
     date: "November 2026",
     badge: "Latest Stable",
+    title: {
+      en: "Spotify Audio Extraction, Extension v0.0.8 & Live Size Estimates",
+      id: "Unduh Audio Spotify, Ekstensi v0.0.8 & Estimasi Ukuran Live",
+    },
+    highlights: {
+      en: [
+        "Spotify Track & Episode Audio Downloads: Paste any Spotify track or episode link to automatically resolve title, artist, duration, and cover art, match the best non-DRM audio source via yt-dlp, and save CBR MP3 (320/192/128 kbps) with embedded ID3 tags and album art.",
+        "SoundCloud & Bandcamp Audio Support: Automatically routes audio platforms to MP3 extraction and saves directly into your Music category folder.",
+        "Browser Extension v0.0.8: Added a floating Spotify Web Player MP3 button (supports track pages & Now Playing bar), popup quick-download cards, and automatic localhost HTTP RPC fallback for Windows, macOS, and Linux.",
+        "Live Format Size Estimation & Native Inspector: Dynamically recalculates estimated file size as you switch resolutions or MP3 bitrates, paired with an async native Tauri floating inspector window.",
+        "Self-Contained Linux Packaging: Updated .deb and portable Linux packagers to bundle a standalone Node 22 daemon without external node_modules requirements."
+      ],
+      id: [
+        "Unduh Audio Lagu & Episode Spotify: Tempel link lagu atau episode Spotify untuk otomatis mengambil judul, artis, durasi, dan cover album, mencocokkan sumber audio terbaik via yt-dlp, lalu menyimpannya sebagai MP3 CBR (320/192/128 kbps) lengkap dengan tag ID3 dan cover art.",
+        "Dukungan Audio SoundCloud & Bandcamp: Otomatis merutekan situs musik ke ekstraksi MP3 dan menyimpan langsung ke folder kategori Music.",
+        "Ekstensi Browser v0.0.8: Menambahkan tombol melayang MP3 di Spotify Web Player (mendukung halaman track & bar Now Playing), kartu quick-download di popup, serta fallback HTTP RPC otomatis untuk Windows, macOS, dan Linux.",
+        "Estimasi Ukuran Live & Inspector Native: Estimasi ukuran file langsung berubah saat memilih resolusi video atau bitrate MP3, didukung jendela inspector Tauri async yang responsif.",
+        "Packaging Linux Mandiri: Skrip build .deb dan Linux portable kini membundel daemon Node 22 secara mandiri tanpa ketergantungan node_modules eksternal."
+      ]
+    },
+    tagUrl: "https://github.com/Nuril09/DownNux-Manager/releases/tag/v0.0.8"
+  },
+  {
+    version: "0.0.7",
+    date: "November 2026",
     title: {
       en: "Windows Runtime & WebView2 Stability Fixes",
       id: "Perbaikan Runtime Windows & Stabilitas WebView2",
@@ -113,68 +138,68 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
   // Linux Packages
   {
     id: "linux-deb",
-    name: "DownNux.Manager_0.0.7_amd64.deb",
+    name: "DownNux.Manager_0.0.8_amd64.deb",
     label: "Debian / Ubuntu Package (.deb)",
     os: "linux",
     format: "deb",
     size: "52.7 MB",
     recommended: true,
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_amd64.deb",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.8/DownNux.Manager_0.0.8_amd64.deb",
     instructions: {
-      en: "sudo apt install ./DownNux.Manager_0.0.7_amd64.deb",
-      id: "sudo apt install ./DownNux.Manager_0.0.7_amd64.deb",
+      en: "sudo apt install ./DownNux.Manager_0.0.8_amd64.deb",
+      id: "sudo apt install ./DownNux.Manager_0.0.8_amd64.deb",
     },
   },
   {
     id: "linux-appimage",
-    name: "DownNux.Manager_0.0.7_amd64.AppImage",
+    name: "DownNux.Manager_0.0.8_amd64.AppImage",
     label: "Universal Linux AppImage",
     os: "linux",
     format: "appimage",
     size: "180 MB",
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_amd64.AppImage",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.8/DownNux.Manager_0.0.8_amd64.AppImage",
     instructions: {
-      en: "chmod +x DownNux.Manager_0.0.7_amd64.AppImage && ./DownNux.Manager_0.0.7_amd64.AppImage",
-      id: "chmod +x DownNux.Manager_0.0.7_amd64.AppImage && ./DownNux.Manager_0.0.7_amd64.AppImage",
+      en: "chmod +x DownNux.Manager_0.0.8_amd64.AppImage && ./DownNux.Manager_0.0.8_amd64.AppImage",
+      id: "chmod +x DownNux.Manager_0.0.8_amd64.AppImage && ./DownNux.Manager_0.0.8_amd64.AppImage",
     },
   },
   {
     id: "linux-tar",
-    name: "downnux-manager_0.0.6_linux_x64.tar.gz",
+    name: "downnux-manager_0.0.8_linux_x64.tar.gz",
     label: "Linux Portable (.tar.gz)",
     os: "linux",
     format: "tar.gz",
-    size: "2.1 MB",
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/downnux-manager_0.0.6_linux_x64.tar.gz",
+    size: "563 KB",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.8/downnux-manager_0.0.8_linux_x64.tar.gz",
     instructions: {
-      en: "tar -xzf downnux-manager_0.0.6_linux_x64.tar.gz && cd downnux-manager_0.0.6_linux_x64 && bash start-downnux.sh",
-      id: "tar -xzf downnux-manager_0.0.6_linux_x64.tar.gz && cd downnux-manager_0.0.6_linux_x64 && bash start-downnux.sh",
+      en: "tar -xzf downnux-manager_0.0.8_linux_x64.tar.gz && cd downnux-manager_0.0.8_linux_x64 && bash start-downnux.sh",
+      id: "tar -xzf downnux-manager_0.0.8_linux_x64.tar.gz && cd downnux-manager_0.0.8_linux_x64 && bash start-downnux.sh",
     },
   },
 
   // Windows Packages
   {
     id: "windows-exe",
-    name: "DownNux.Manager_0.0.7_x64-setup.exe",
+    name: "DownNux.Manager_0.0.8_x64-setup.exe",
     label: "Windows NSIS Installer (.exe)",
     os: "windows",
     format: "exe",
-    size: "99.1 MB",
+    size: "99.7 MB",
     recommended: true,
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_x64-setup.exe",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.8/DownNux.Manager_0.0.8_x64-setup.exe",
     instructions: {
-      en: "Double-click DownNux.Manager_0.0.7_x64-setup.exe to install. Includes embedded engine and VC++ runtime DLLs with zero setup.",
-      id: "Klik dua kali file DownNux.Manager_0.0.7_x64-setup.exe. Engine dan DLL runtime Visual C++ sudah terbundel otomatis tanpa setup.",
+      en: "Double-click DownNux.Manager_0.0.8_x64-setup.exe to install. Includes embedded engine and VC++ runtime DLLs with zero setup.",
+      id: "Klik dua kali file DownNux.Manager_0.0.8_x64-setup.exe. Engine dan DLL runtime Visual C++ sudah terbundel otomatis tanpa setup.",
     },
   },
   {
     id: "windows-zip",
-    name: "downnux-manager_0.0.6_windows_x64.zip",
+    name: "downnux-manager_0.0.8_windows_x64.zip",
     label: "Windows Portable Archive (.zip)",
     os: "windows",
     format: "zip",
-    size: "450 KB",
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/downnux-manager_0.0.6_windows_x64.zip",
+    size: "433 KB",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.8/downnux-manager_0.0.8_windows_x64.zip",
     instructions: {
       en: "Extract the zip archive and launch start-downnux.bat",
       id: "Ekstrak arsip zip lalu jalankan start-downnux.bat",
@@ -184,13 +209,13 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
   // macOS Packages
   {
     id: "macos-dmg",
-    name: "DownNux.Manager_0.0.7_aarch64.dmg",
+    name: "DownNux.Manager_0.0.8_aarch64.dmg",
     label: "macOS Disk Image (.dmg)",
     os: "macos",
     format: "dmg",
-    size: "79.8 MB",
+    size: "79.9 MB",
     recommended: true,
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/DownNux.Manager_0.0.7_aarch64.dmg",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.8/DownNux.Manager_0.0.8_aarch64.dmg",
     instructions: {
       en: "Open .dmg and drag DownNux Manager into your Applications folder. Ready to use out of the box.",
       id: "Buka file .dmg dan seret DownNux Manager ke folder Applications. Langsung siap dipakai tanpa setup.",
@@ -198,12 +223,12 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
   },
   {
     id: "macos-zip",
-    name: "downnux-manager_0.0.6_macos_universal.zip",
+    name: "downnux-manager_0.0.8_macos_universal.zip",
     label: "macOS Portable Bundle (.zip)",
     os: "macos",
     format: "zip",
-    size: "450 KB",
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.6/downnux-manager_0.0.6_macos_universal.zip",
+    size: "434 KB",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.8/downnux-manager_0.0.8_macos_universal.zip",
     instructions: {
       en: "Extract the zip archive and run start-downnux.command",
       id: "Ekstrak file zip lalu jalankan start-downnux.command",
@@ -213,13 +238,13 @@ export const RELEASE_ASSETS: ReleaseAsset[] = [
   // Browser Extension
   {
     id: "extension-zip",
-    name: "downnux-extension_0.0.7.zip",
+    name: "downnux-extension_0.0.8.zip",
     label: "Browser Extension (Chrome, Brave, Edge, Firefox)",
     os: "extension",
     format: "zip",
-    size: "136 KB",
+    size: "139 KB",
     recommended: true,
-    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.7/downnux-extension_0.0.7.zip",
+    downloadUrl: "https://github.com/Nuril09/DownNux-Manager/releases/download/v0.0.8/downnux-extension_0.0.8.zip",
     instructions: {
       en: "Unpack zip, open chrome://extensions, enable Developer Mode, and click Load unpacked.",
       id: "Ekstrak zip, buka chrome://extensions, aktifkan Mode Pengembang, dan klik Muat yang belum dibongkar.",

@@ -79,7 +79,7 @@ export const CLI_COMMANDS = [
       en: "Query daemon status, active PID, protocol version, and underlying hybrid engine versions.",
       id: "Mengecek status daemon, PID aktif, versi protokol, dan versi engine hybrid.",
     },
-    output: "{\n  version: '0.0.7',\n  protocol: 1,\n  pid: 23394,\n  engine: { name: 'hybrid(aria2+yt-dlp)', version: '1.37.0 + yt-dlp' }\n}",
+    output: "{\n  version: '0.0.8',\n  protocol: 1,\n  pid: 23394,\n  engine: { name: 'hybrid(aria2+yt-dlp)', version: '1.37.0 + yt-dlp' }\n}",
   },
   {
     command: "downnux add <URL> -c 16 -d ~/Downloads",
