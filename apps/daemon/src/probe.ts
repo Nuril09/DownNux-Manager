@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { type MediaSizeEstimates, type UrlProbeResult } from "@downnux/shared";
-import { isMediaSite } from "./engine/ytdlp.ts";
+import { isAudioOnlySite, isMediaSite } from "./engine/ytdlp.ts";
+import { formatDuration, isSpotifyUrl, resolveSpotifyUrl } from "./engine/spotify.ts";
 import { logger } from "./log.ts";
 
 const execFileAsync = promisify(execFile);
@@ -234,9 +235,88 @@ export async function probeUrl(
     };
   }
 
-  const isMedia = isMediaSite(url);
+  // 0.5 Spotify Track / Episode Metadata Probe (matches audio via YouTube)
+  if (isSpotifyUrl(url)) {
+    const customMusicDir = categoryDirs?.music;
+    const musicDir = customMusicDir && customMusicDir.trim() ? customMusicDir : path.join(baseDownloadDir, "Music");
 
-  // 1. YouTube / Social Video Probe via yt-dlp
+    try {
+      const resolved = await resolveSpotifyUrl(url);
+      if (!resolved.supported) {
+        return {
+          url,
+          filename: resolved.collection.name
+            ? `${resolved.collection.name.replace(/[\/\\?%*:|"<>]/g, "_").trim()}.mp3`
+            : "spotify-audio.mp3",
+          size: 0,
+          formattedSize: "Playlist / Album",
+          resumeSupported: false,
+          category: "music",
+          contentType: "audio/mpeg",
+          isMedia: true,
+          audioOnly: true,
+          sourceHint: "Spotify Collection",
+          warning: resolved.reason,
+          defaultDir: musicDir,
+        };
+      }
+
+      const track = resolved.track;
+      const cleanName = track.displayName.replace(/[\/\\?%*:|"<>]/g, "_").trim();
+      const durationSec = track.durationMs > 0 ? Math.round(track.durationMs / 1000) : 0;
+      const durationStr = formatDuration(track.durationMs);
+      const estMp3 = (kbps: number) => (durationSec > 0 ? Math.round(((kbps * 1000) / 8) * durationSec) : 0);
+      const est320 = estMp3(320);
+      const formattedSize = durationStr
+        ? `${durationStr}${est320 > 0 ? ` (~${formatBytes(est320)})` : ""}`
+        : "Spotify Audio";
+
+      return {
+        url,
+        filename: `${cleanName}.mp3`,
+        size: est320,
+        formattedSize,
+        resumeSupported: true,
+        category: "music",
+        contentType: "audio/mpeg",
+        isMedia: true,
+        audioOnly: true,
+        sourceHint: "Spotify Metadata -> YouTube Audio (MP3)",
+        defaultDir: musicDir,
+        audioDefaultDir: musicDir,
+        duration: durationSec || undefined,
+        mediaSizes: durationSec > 0
+          ? {
+              audio: {
+                "320": est320,
+                "192": estMp3(192),
+                "128": estMp3(128),
+              },
+            }
+          : undefined,
+      };
+    } catch (err) {
+      log.warn("Spotify probe error:", err);
+      return {
+        url,
+        filename: "spotify-audio.mp3",
+        size: 0,
+        formattedSize: "Spotify Audio",
+        resumeSupported: true,
+        category: "music",
+        contentType: "audio/mpeg",
+        isMedia: true,
+        audioOnly: true,
+        warning: (err as Error).message,
+        defaultDir: musicDir,
+      };
+    }
+  }
+
+  const isMedia = isMediaSite(url);
+  const audioOnly = isAudioOnlySite(url);
+
+  // 1. YouTube / Social Video & Audio Probe via yt-dlp
   if (isMedia) {
     const isWin = process.platform === "win32";
     const ytdlpExe = isWin ? "yt-dlp.exe" : "yt-dlp";
@@ -262,9 +342,11 @@ export async function probeUrl(
     }
 
     const customVideoDir = categoryDirs?.video;
-    const targetDir = customVideoDir && customVideoDir.trim() ? customVideoDir : path.join(baseDownloadDir, "Video");
     const customMusicDir = categoryDirs?.music;
     const audioDefaultDir = customMusicDir && customMusicDir.trim() ? customMusicDir : path.join(baseDownloadDir, "Music");
+    const targetDir = audioOnly
+      ? audioDefaultDir
+      : (customVideoDir && customVideoDir.trim() ? customVideoDir : path.join(baseDownloadDir, "Video"));
 
     try {
       const { stdout } = await execFileAsync(
@@ -281,21 +363,23 @@ export async function probeUrl(
 
       const parsed = JSON.parse(stdout) as YtDlpJsonInfo;
       const info = parsed.entries && parsed.entries.length > 0 && !parsed.formats ? parsed.entries[0]! : parsed;
-      const title = info.title?.trim() || "video";
-      const cleanTitle = title.replace(/[\/\\?%*:|"<>]/g, "_").trim() || "video";
-      const filename = `${cleanTitle}.mp4`;
+      const title = info.title?.trim() || (audioOnly ? "audio" : "video");
+      const cleanTitle = title.replace(/[\/\\?%*:|"<>]/g, "_").trim() || (audioOnly ? "audio" : "video");
+      const filename = `${cleanTitle}.${audioOnly ? "mp3" : "mp4"}`;
 
       const { duration, mediaSizes, defaultSize } = computeMediaSizes(info);
+      const effectiveSize = audioOnly ? (mediaSizes.audio?.["320"] || defaultSize) : defaultSize;
 
       return {
         url,
         filename,
-        size: defaultSize,
-        formattedSize: defaultSize > 0 ? formatBytes(defaultSize) : "Unknown size (stream)",
+        size: effectiveSize,
+        formattedSize: effectiveSize > 0 ? formatBytes(effectiveSize) : "Unknown size (stream)",
         resumeSupported: true,
-        category: "video",
-        contentType: "video/mp4",
+        category: audioOnly ? "music" : "video",
+        contentType: audioOnly ? "audio/mpeg" : "video/mp4",
         isMedia: true,
+        audioOnly,
         defaultDir: targetDir,
         audioDefaultDir,
         duration,
@@ -305,13 +389,14 @@ export async function probeUrl(
       log.warn("yt-dlp probe error:", err);
       return {
         url,
-        filename: "video.mp4",
+        filename: audioOnly ? "audio.mp3" : "video.mp4",
         size: 0,
         formattedSize: "Unknown size (stream)",
         resumeSupported: true,
-        category: "video",
-        contentType: "video/mp4",
+        category: audioOnly ? "music" : "video",
+        contentType: audioOnly ? "audio/mpeg" : "video/mp4",
         isMedia: true,
+        audioOnly,
         defaultDir: targetDir,
         audioDefaultDir,
       };

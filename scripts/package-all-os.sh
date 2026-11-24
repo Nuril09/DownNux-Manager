@@ -10,28 +10,26 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 TMP_STAGE="$ROOT_DIR/build/stage"
-VERSION="0.0.5"
+VERSION="$(node -p "JSON.parse(require('fs').readFileSync('$ROOT_DIR/package.json', 'utf8')).version")"
 
 echo "=== Packaging DownNux Manager Multiplatform Bundles v${VERSION} ==="
 mkdir -p "$DIST_DIR"
 rm -rf "$TMP_STAGE"
 mkdir -p "$TMP_STAGE"
 
-# 1. Ensure Linux .deb package exists
-if [ ! -f "$DIST_DIR/downnux-manager_${VERSION}_amd64.deb" ]; then
-  echo "[*] Building Debian package..."
-  bash "$ROOT_DIR/scripts/build-deb.sh"
-fi
+# 1. Build fresh Linux .deb package (also rebuilds standalone daemon & GUI)
+echo "[*] Building Debian package..."
+bash "$ROOT_DIR/scripts/build-deb.sh"
 
 # 2. Package Linux Portable (.tar.gz)
 echo "[*] Packaging Linux Portable bundle..."
 LINUX_STAGE="$TMP_STAGE/downnux-manager_${VERSION}_linux_x64"
-mkdir -p "$LINUX_STAGE/apps" "$LINUX_STAGE/scripts" "$LINUX_STAGE/packages"
-cp -r "$ROOT_DIR/apps/daemon" "$LINUX_STAGE/apps/"
-cp -r "$ROOT_DIR/apps/gui" "$LINUX_STAGE/apps/"
-cp -r "$ROOT_DIR/apps/extension" "$LINUX_STAGE/apps/"
-cp -r "$ROOT_DIR/apps/native-host" "$LINUX_STAGE/apps/"
-cp -r "$ROOT_DIR/packages" "$LINUX_STAGE/"
+mkdir -p "$LINUX_STAGE/apps/daemon/dist" "$LINUX_STAGE/apps/gui" "$LINUX_STAGE/apps/extension" "$LINUX_STAGE/apps/native-host/dist" "$LINUX_STAGE/scripts"
+cp -r "$ROOT_DIR/apps/daemon/dist/"* "$LINUX_STAGE/apps/daemon/dist/"
+cp -r "$ROOT_DIR/apps/gui/dist" "$LINUX_STAGE/apps/gui/"
+cp -r "$ROOT_DIR/apps/gui/public" "$LINUX_STAGE/apps/gui/"
+cp -r "$ROOT_DIR/apps/extension/"* "$LINUX_STAGE/apps/extension/"
+cp -r "$ROOT_DIR/apps/native-host/dist/"* "$LINUX_STAGE/apps/native-host/dist/"
 cp "$ROOT_DIR/scripts/serve-gui.mjs" "$LINUX_STAGE/scripts/"
 cp "$ROOT_DIR/scripts/downnux-desktop.py" "$LINUX_STAGE/scripts/"
 cp "$ROOT_DIR/package.json" "$LINUX_STAGE/"
@@ -48,7 +46,7 @@ echo " Starting DownNux Manager (Linux Portable)"
 echo "=========================================================="
 node scripts/serve-gui.mjs >/dev/null 2>&1 &
 GUI_PID=$!
-node apps/daemon/dist/main.mjs >/dev/null 2>&1 &
+node --no-warnings apps/daemon/dist/main.mjs >/dev/null 2>&1 &
 DAEMON_PID=$!
 
 cleanup() {
@@ -82,11 +80,11 @@ cp -r "$ROOT_DIR/apps/extension/"* "$WIN_STAGE/apps/extension/"
 cp "$ROOT_DIR/scripts/serve-gui.mjs" "$WIN_STAGE/scripts/"
 cp "$ROOT_DIR/package.json" "$WIN_STAGE/"
 
-cat > "$WIN_STAGE/start-downnux.bat" << 'EOF'
+cat > "$WIN_STAGE/start-downnux.bat" << EOF
 @echo off
 setlocal
 cd /d "%~dp0"
-title DownNux Manager v0.0.5
+title DownNux Manager v${VERSION}
 
 echo ==========================================================
 echo        DownNux Manager - High Speed Download Accelerator
@@ -94,7 +92,7 @@ echo ==========================================================
 echo [*] Starting GUI and Background Download Engine...
 
 start /b "" node scripts\serve-gui.mjs
-start /b "" node apps\daemon\dist\main.mjs
+start /b "" node --no-warnings apps\daemon\dist\main.mjs
 
 timeout /t 2 >nul
 start http://localhost:1420
@@ -105,28 +103,29 @@ echo.
 pause
 EOF
 
-cat > "$WIN_STAGE/README.txt" << 'EOF'
+cat > "$WIN_STAGE/README.txt" << EOF
 ==========================================================
-DownNux Manager - Windows Portable Edition (v0.0.5)
+DownNux Manager - Windows Portable Edition (v${VERSION})
 Developed by HoodTech <https://github.com/Nuril09/DownNux-Manager>
 ==========================================================
 
 Prerequisites:
-- Node.js (version 18 or newer) must be installed: https://nodejs.org
+- Node.js (version 22 or newer) must be installed: https://nodejs.org
 
 How to Run:
 1. Double click "start-downnux.bat".
 2. Your default web browser will open http://localhost:1420.
-3. Enjoy multi-threaded download speed and glassmorphism interface!
+3. Enjoy multi-threaded download speed, Spotify/YouTube audio extraction, and glassmorphism interface!
 
 Browser Extension Integration:
 1. Open Brave, Google Chrome, or Microsoft Edge.
 2. Navigate to "chrome://extensions" or "brave://extensions".
 3. Turn on "Developer mode" (top right).
 4. Click "Load unpacked" and select the "apps/extension" folder.
-5. The extension will automatically intercept downloads and show video sniffer buttons!
+5. The extension automatically captures downloads, video streams, and Spotify tracks!
 EOF
 
+rm -f "$DIST_DIR/downnux-manager_${VERSION}_windows_x64.zip"
 (cd "$TMP_STAGE" && zip -r -q "$DIST_DIR/downnux-manager_${VERSION}_windows_x64.zip" "downnux-manager_${VERSION}_windows_x64")
 echo "[✓] Built: $DIST_DIR/downnux-manager_${VERSION}_windows_x64.zip"
 
@@ -150,7 +149,7 @@ echo " Starting DownNux Manager for macOS"
 echo "=========================================================="
 node scripts/serve-gui.mjs >/dev/null 2>&1 &
 GUI_PID=$!
-node apps/daemon/dist/main.mjs >/dev/null 2>&1 &
+node --no-warnings apps/daemon/dist/main.mjs >/dev/null 2>&1 &
 DAEMON_PID=$!
 
 cleanup() {
@@ -165,14 +164,14 @@ wait $DAEMON_PID
 EOF
 chmod +x "$MAC_STAGE/start-downnux.command"
 
-cat > "$MAC_STAGE/README.txt" << 'EOF'
+cat > "$MAC_STAGE/README.txt" << EOF
 ==========================================================
-DownNux Manager - macOS Portable Edition (v0.0.5)
+DownNux Manager - macOS Portable Edition (v${VERSION})
 Developed by HoodTech <https://github.com/Nuril09/DownNux-Manager>
 ==========================================================
 
 Prerequisites:
-- Node.js (version 18 or newer): https://nodejs.org or 'brew install node'
+- Node.js (version 22 or newer): https://nodejs.org or 'brew install node'
 
 How to Run:
 1. Double click "start-downnux.command" (or run 'bash start-downnux.command' in Terminal).
@@ -182,11 +181,13 @@ Browser Extension:
 Load unpacked extension from the "apps/extension" folder in your browser's extension manager.
 EOF
 
+rm -f "$DIST_DIR/downnux-manager_${VERSION}_macos_universal.zip"
 (cd "$TMP_STAGE" && zip -r -q "$DIST_DIR/downnux-manager_${VERSION}_macos_universal.zip" "downnux-manager_${VERSION}_macos_universal")
 echo "[✓] Built: $DIST_DIR/downnux-manager_${VERSION}_macos_universal.zip"
 
 # 5. Package Browser Extension (.zip)
 echo "[*] Packaging Browser Extension..."
+rm -f "$DIST_DIR/downnux-extension_${VERSION}.zip"
 (cd "$ROOT_DIR/apps/extension" && zip -r -q "$DIST_DIR/downnux-extension_${VERSION}.zip" .)
 echo "[✓] Built: $DIST_DIR/downnux-extension_${VERSION}.zip"
 
@@ -194,6 +195,5 @@ echo "[✓] Built: $DIST_DIR/downnux-extension_${VERSION}.zip"
 rm -rf "$TMP_STAGE"
 
 echo ""
-echo "=== Summary of Multiplatform Release Files ==="
+echo "=== Summary of Multiplatform Release Files (v${VERSION}) ==="
 ls -lh "$DIST_DIR"/*${VERSION}*
-

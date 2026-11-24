@@ -346,7 +346,135 @@
     document.querySelectorAll("video").forEach((v) => createFloatingButton(v));
   }
 
+  // Spotify Web Player floating MP3 download pill (supports track pages & Now Playing bar)
+  function initSpotifyFloatingButton() {
+    if (!/(?:^|\.)spotify\.com$/i.test(location.hostname) || window.self !== window.top) return;
+
+    const TRACK_OR_EPISODE_RE = /\/(?:intl-[a-z]{2}(?:-[a-z]{2})?\/)?(track|episode)\/([a-zA-Z0-9]+)/i;
+
+    function detectSpotifyTrackUrl() {
+      const urlMatch = location.pathname.match(TRACK_OR_EPISODE_RE);
+      if (urlMatch) {
+        return `https://open.spotify.com/${urlMatch[1].toLowerCase()}/${urlMatch[2]}`;
+      }
+      const nowPlayingLink =
+        document.querySelector('[data-testid="now-playing-widget"] a[data-testid="context-item-link"][href*="/track/"]') ||
+        document.querySelector('[data-testid="now-playing-widget"] a[href*="/track/"]') ||
+        document.querySelector('[data-testid="now-playing-widget"] a[href*="/episode/"]');
+      if (nowPlayingLink) {
+        const href = nowPlayingLink.getAttribute("href") || "";
+        const m = href.match(TRACK_OR_EPISODE_RE);
+        if (m) return `https://open.spotify.com/${m[1].toLowerCase()}/${m[2]}`;
+      }
+      return null;
+    }
+
+    const host = document.createElement("div");
+    host.style.position = "fixed";
+    host.style.bottom = "96px";
+    host.style.right = "20px";
+    host.style.zIndex = "2147483646";
+    host.style.display = "none";
+    document.body.appendChild(host);
+
+    const shadow = host.attachShadow({ mode: "closed" });
+    const wrap = document.createElement("div");
+    wrap.className = "dn-sp-wrap";
+    wrap.innerHTML = `
+      <div class="dn-sp-group">
+        <button class="dn-sp-btn" title="Download Spotify audio via DownNux Manager">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>DownNux · MP3</span>
+        </button>
+        <div class="dn-sp-menu">
+          <div class="dn-sp-hdr">Spotify Audio Quality</div>
+          <button class="dn-sp-item" data-bitrate="320"><strong>320 kbps</strong><small>Studio MP3 + Cover Art</small></button>
+          <button class="dn-sp-item" data-bitrate="192"><strong>192 kbps</strong><small>High Quality MP3</small></button>
+          <button class="dn-sp-item" data-bitrate="128"><strong>128 kbps</strong><small>Compact MP3</small></button>
+        </div>
+      </div>
+    `;
+
+    const style = document.createElement("style");
+    style.textContent = `
+      .dn-sp-wrap { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
+      .dn-sp-group { position: relative; display: inline-block; }
+      .dn-sp-btn {
+        display: inline-flex; align-items: center; gap: 7px;
+        background: linear-gradient(135deg, #1db954, #169c46);
+        color: #09130c; border: 1px solid rgba(255,255,255,0.35);
+        border-radius: 999px; padding: 8px 14px; font-size: 12px; font-weight: 700;
+        cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.45); transition: transform 0.15s ease;
+      }
+      .dn-sp-btn:hover { transform: translateY(-1px) scale(1.02); }
+      .dn-sp-menu {
+        display: none; position: absolute; bottom: calc(100% + 8px); right: 0; width: 190px;
+        background: rgba(24, 26, 36, 0.96); color: #f0f3f6;
+        border: 1px solid rgba(255,255,255,0.14); border-radius: 10px;
+        padding: 6px; box-shadow: 0 14px 36px rgba(0,0,0,0.5);
+      }
+      .dn-sp-group.open .dn-sp-menu { display: block; }
+      .dn-sp-hdr { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ea4b5; padding: 4px 8px; font-weight: 700; }
+      .dn-sp-item {
+        width: 100%; display: flex; flex-direction: column; align-items: flex-start;
+        background: transparent; border: none; border-radius: 6px; padding: 6px 8px;
+        color: #f0f3f6; cursor: pointer; text-align: left;
+      }
+      .dn-sp-item:hover { background: rgba(29, 185, 84, 0.2); }
+      .dn-sp-item strong { font-size: 11px; }
+      .dn-sp-item small { font-size: 10px; color: #9ea4b5; }
+    `;
+    shadow.appendChild(style);
+    shadow.appendChild(wrap);
+
+    const group = wrap.querySelector(".dn-sp-group");
+    const mainBtn = wrap.querySelector(".dn-sp-btn");
+
+    mainBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      group.classList.toggle("open");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!host.contains(e.target)) group.classList.remove("open");
+    });
+
+    wrap.querySelectorAll(".dn-sp-item").forEach((item) => {
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        group.classList.remove("open");
+        const bitrate = item.getAttribute("data-bitrate") || "320";
+        const trackUrl = detectSpotifyTrackUrl();
+        if (!trackUrl) {
+          showToast("Buka halaman lagu atau putar lagu dulu di Spotify", true);
+          return;
+        }
+        chrome.runtime.sendMessage(
+          { type: "download-url", url: trackUrl, referrer: location.href, format: "audio", audioQuality: bitrate },
+          (res) => {
+            if (res?.ok) {
+              showToast(`Spotify Audio (${bitrate}k) ditambahkan ke DownNux`);
+            } else {
+              showToast(res?.error || "Gagal terhubung ke DownNux Manager", true);
+            }
+          },
+        );
+      });
+    });
+
+    const syncVisibility = () => {
+      host.style.display = detectSpotifyTrackUrl() ? "block" : "none";
+    };
+    syncVisibility();
+    setInterval(syncVisibility, 1500);
+  }
+
   scanVideos();
+  initSpotifyFloatingButton();
   const observer = new MutationObserver(() => scanVideos());
   observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
 })();

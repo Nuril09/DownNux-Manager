@@ -17,11 +17,11 @@ import { probeUrl } from "./probe.ts";
 const execFileAsync = promisify(execFile);
 
 const log = logger("daemon");
-let VERSION = "0.0.7";
+let VERSION = "0.0.8";
 try {
   const pkgUrl = new URL("../package.json", import.meta.url);
   if (fs.existsSync(pkgUrl)) {
-    VERSION = JSON.parse(fs.readFileSync(pkgUrl, "utf8")).version || "0.0.7";
+    VERSION = JSON.parse(fs.readFileSync(pkgUrl, "utf8")).version || "0.0.8";
   }
 } catch {
   // Bundled standalone fallback
@@ -134,7 +134,7 @@ async function main(): Promise<void> {
       return { ok: true } as const;
     },
     "app.checkUpdate": async () => {
-      const CURRENT_VERSION = VERSION || "0.0.7";
+      const CURRENT_VERSION = VERSION || "0.0.8";
       try {
         const res = await fetch("https://api.github.com/repos/Nuril09/DownNux-Manager/releases/latest", {
           headers: { "User-Agent": "DownNux-Manager-Updater" },

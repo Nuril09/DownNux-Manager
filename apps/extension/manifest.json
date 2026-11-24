@@ -2,11 +2,12 @@
   "manifest_version": 3,
   "name": "DownNux Manager — Browser Integration",
   "short_name": "DownNux",
-  "version": "0.0.7",
-  "description": "Capture downloads and video streams automatically for DownNux Manager by HoodTech.",
+  "version": "0.0.8",
+  "description": "Capture downloads, video streams, and audio tracks (YouTube, Spotify, SoundCloud, Bandcamp) for DownNux Manager by HoodTech.",
   "author": "HoodTech",
   "minimum_chrome_version": "116",
   "permissions": [
+    "activeTab",
     "downloads",
     "nativeMessaging",
     "cookies",
@@ -36,7 +37,7 @@
     }
   ],
   "action": {
-    "default_title": "Unduh",
+    "default_title": "DownNux Manager",
     "default_popup": "popup.html"
   },
   "icons": {

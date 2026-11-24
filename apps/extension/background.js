@@ -1,21 +1,30 @@
 // Service worker ekstensi DownNux Manager (MV3) by HoodTech.
-// Spike M0: ditulis sebagai JS biasa tanpa build. Dipindah ke WXT + TypeScript di M3.
 
 const HOST = "com.creativemichiz.downnux.native_host";
 const RPC_HTTP_URL = "http://127.0.0.1:44990/api/rpc";
 const ALLOWED_RPC_METHODS = new Set(["ping", "task.add", "task.list", "task.get", "task.pause", "task.resume"]);
 
+const AUDIO_PLATFORM_RE = /(?:spotify\.com|spotify\.link|spoti\.fi|soundcloud\.com|bandcamp\.com)/i;
+const SPOTIFY_URL_RE = /(?:^|\.)(?:spotify\.com|spotify\.link|spoti\.fi)$/i;
+const VIDEO_PLATFORM_RE = /youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i;
+
 const DEFAULTS = {
   captureEnabled: true,
-  // Ukuran minimum file yang ditangkap (byte). 0 = semua.
   minSizeBytes: 0,
-  // Host yang tidak ditangkap (download dibiarkan ke browser).
   excludedHosts: ["localhost"],
 };
 
 async function getSettings() {
   const s = await chrome.storage.local.get(DEFAULTS);
   return { ...DEFAULTS, ...s };
+}
+
+function isSpotifyHost(url) {
+  try {
+    return SPOTIFY_URL_RE.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -66,15 +75,21 @@ async function cookieHeaderFor(url) {
 }
 
 async function sendToApp({ url, referrer, filename, format, videoQuality, audioQuality }) {
-  const cookie = await cookieHeaderFor(url);
+  const isAudioSite = AUDIO_PLATFORM_RE.test(url);
+  const effectiveFormat = isAudioSite ? "audio" : format;
+  const effectiveAudioQuality = effectiveFormat === "audio" ? (audioQuality || "320") : audioQuality;
+
+  const cookie = isSpotifyHost(url) ? "" : await cookieHeaderFor(url);
   const headers = { userAgent: navigator.userAgent };
   if (cookie) headers.cookie = cookie;
   if (referrer) headers.referer = referrer;
-  if (format) headers.format = format;
-  if (videoQuality) headers.videoQuality = videoQuality;
-  if (audioQuality) headers.audioQuality = audioQuality;
+  if (effectiveFormat) headers.format = effectiveFormat;
+  if (videoQuality && effectiveFormat !== "audio") headers.videoQuality = videoQuality;
+  if (effectiveAudioQuality) headers.audioQuality = effectiveAudioQuality;
+
   const params = { url, headers, source: "browser" };
-  if (filename) params.filename = filename;
+  // Biarkan daemon menentukan nama file resmi "Artis - Judul.mp3" untuk link Spotify
+  if (filename && !isSpotifyHost(url)) params.filename = filename;
   return callDaemon("task.add", params);
 }
 
@@ -85,14 +100,13 @@ function notify(title, message) {
 // ---------------------------------------------------------------------------
 // Tangkap download otomatis
 
-// URL yang sengaja dibiarkan ke browser (mis. fallback saat aplikasi tidak berjalan).
 const passThrough = new Set();
 
 chrome.downloads.onCreated.addListener(async (item) => {
   const s = await getSettings();
   if (!s.captureEnabled) return;
   const url = item.finalUrl || item.url;
-  if (!/^https?:/i.test(url)) return; // blob:, data:, file: tidak bisa diteruskan
+  if (!/^https?:/i.test(url)) return;
   if (passThrough.delete(url)) return;
   if (item.byExtensionId === chrome.runtime.id) return;
   let host = "";
@@ -104,7 +118,6 @@ chrome.downloads.onCreated.addListener(async (item) => {
   if (s.excludedHosts.some((h) => host === h || host.endsWith("." + h))) return;
   if (s.minSizeBytes > 0 && item.fileSize > 0 && item.fileSize < s.minSizeBytes) return;
 
-  // Jeda dulu; batalkan hanya jika aplikasi berhasil menerima, supaya download tidak hilang.
   try {
     await chrome.downloads.pause(item.id);
   } catch {
@@ -132,26 +145,33 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
       id: "downnux-link",
       title: "Download with DownNux Manager",
-      contexts: ["link", "video", "audio", "image"],
+      contexts: ["link", "video", "audio", "image", "page"],
     });
   });
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  const url = info.linkUrl || info.srcUrl;
-  if (!url || !/^https?:/i.test(url)) {
+  const candidate = info.linkUrl || info.srcUrl || info.pageUrl || tab?.url;
+  if (!candidate || !/^https?:/i.test(candidate)) {
     notify("DownNux Manager", "This link cannot be downloaded directly (not http/https).");
     return;
   }
+  const isAudio = AUDIO_PLATFORM_RE.test(candidate);
   try {
-    await sendToApp({ url, referrer: info.pageUrl || tab?.url });
+    await sendToApp({
+      url: candidate,
+      referrer: info.pageUrl || tab?.url,
+      format: isAudio ? "audio" : undefined,
+      audioQuality: isAudio ? "320" : undefined,
+    });
+    notify("DownNux Manager", isAudio ? "Audio queued in DownNux Manager." : "Download queued in DownNux Manager.");
   } catch (err) {
     notify("DownNux Manager Not Connected", String(err.message || err));
   }
 });
 
 // ---------------------------------------------------------------------------
-// Deteksi media dari lalu lintas jaringan (PRD 6.6)
+// Deteksi media dari lalu lintas jaringan
 
 const MEDIA_TYPES = [
   { re: /^video\//i, kind: "video" },
@@ -171,7 +191,6 @@ function classify(url, contentType) {
   return "video";
 }
 
-// Potongan segmen HLS/DASH dan fragmen kecil tidak relevan untuk ditampilkan.
 const SEGMENT_RE = /\.(ts|m4s|m4f|aac)(\?|$)|\/(seg|segment|chunk|frag)[-_]?\d+/i;
 
 async function mediaFor(tabId) {
@@ -184,11 +203,10 @@ async function addMedia(tabId, entry) {
   const list = await mediaFor(tabId);
   if (list.some((m) => m.url === entry.url)) return;
   list.push(entry);
-  // Simpan 50 terakhir per tab supaya memori tidak tumbuh.
   const trimmed = list.slice(-50);
   await chrome.storage.session.set({ [key]: trimmed });
   await chrome.action.setBadgeText({ tabId, text: String(trimmed.length) });
-  await chrome.action.setBadgeBackgroundColor({ tabId, color: "#1a73e8" });
+  await chrome.action.setBadgeBackgroundColor({ tabId, color: "#6554c0" });
 }
 
 chrome.webRequest.onHeadersReceived.addListener(
@@ -200,7 +218,6 @@ chrome.webRequest.onHeadersReceived.addListener(
     if (!kind) return;
     if (SEGMENT_RE.test(details.url) && kind !== "hls" && kind !== "dash") return;
     const size = Number(header("content-length")) || 0;
-    // Abaikan potongan kecil (iklan pendek, thumbnail animasi, range parsial).
     if ((kind === "video" || kind === "audio") && details.statusCode === 206 && size < 64 * 1024) return;
     void addMedia(details.tabId, {
       url: details.url,
@@ -214,7 +231,6 @@ chrome.webRequest.onHeadersReceived.addListener(
   ["responseHeaders"],
 );
 
-// Bersihkan daftar media saat tab ditutup atau berpindah halaman.
 chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove(`media:${tabId}`));
 chrome.webNavigation?.onCommitted?.addListener((d) => {
   if (d.frameId === 0) chrome.storage.session.remove(`media:${d.tabId}`);
@@ -226,31 +242,33 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
 // ---------------------------------------------------------------------------
 // Pesan dari content script dan popup
 
-async function downloadVideo({ src, pageUrl, title, quality }, tabId) {
-  const isVideoPlatform = /youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(pageUrl);
-  
-  const isAudio = quality === "audio";
+async function downloadVideo({ src, pageUrl, title, quality, audioQuality }, tabId) {
+  const isAudioPlatform = AUDIO_PLATFORM_RE.test(pageUrl);
+  const isVideoPlatform = isAudioPlatform || VIDEO_PLATFORM_RE.test(pageUrl);
+
+  const isAudio = isAudioPlatform || quality === "audio";
   const videoQuality = isAudio ? undefined : (quality || "best");
-  const audioQuality = isAudio ? "320" : undefined;
+  const resolvedAudioQuality = isAudio ? (audioQuality || "320") : undefined;
 
   if (isVideoPlatform) {
-    const filename = title ? `${title.replace(/[\/\\?%*:|"<>]/g, "_")}.${isAudio ? "mp3" : "mp4"}` : undefined;
+    const filename =
+      !isSpotifyHost(pageUrl) && title
+        ? `${title.replace(/[\/\\?%*:|"<>]/g, "_")}.${isAudio ? "mp3" : "mp4"}`
+        : undefined;
     return sendToApp({
       url: pageUrl,
       referrer: pageUrl,
       filename,
       format: isAudio ? "audio" : "video",
       videoQuality,
-      audioQuality,
+      audioQuality: resolvedAudioQuality,
     });
   }
 
-  // 1) <video src> langsung (http/https) -> engine biasa.
   if (src && /^https?:/i.test(src)) {
     return sendToApp({ url: src, referrer: pageUrl, filename: title ? `${title}.mp4` : undefined });
   }
 
-  // 2) blob:/MSE -> cari hasil sniffing media jaringan.
   const media = await mediaFor(tabId);
   const direct = [...media].reverse().find((m) => m.kind === "video" && !SEGMENT_RE.test(m.url));
   const stream = [...media].reverse().find((m) => m.kind === "hls" || m.kind === "dash");
@@ -261,7 +279,6 @@ async function downloadVideo({ src, pageUrl, title, quality }, tabId) {
     return sendToApp({ url: stream.url, referrer: pageUrl, filename: title ? `${title}.mp4` : undefined });
   }
 
-  // Fallback terakhir: kirim URL halaman agar diproses oleh engine hybrid
   return sendToApp({
     url: pageUrl,
     referrer: pageUrl,
@@ -280,13 +297,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       case "media-list":
         return mediaFor(tabId);
       case "download-url":
-        return sendToApp({ url: msg.url, referrer: msg.referrer });
+        return sendToApp({
+          url: msg.url,
+          referrer: msg.referrer,
+          filename: msg.filename,
+          format: msg.format,
+          videoQuality: msg.videoQuality,
+          audioQuality: msg.audioQuality,
+        });
       default:
         throw new Error(`Pesan tidak dikenal: ${msg.type}`);
     }
   })()
     .then((result) => sendResponse({ ok: true, result }))
     .catch((err) => sendResponse({ ok: false, error: String(err.message || err) }));
-  return true; // balasan asinkron
+  return true;
 });
-

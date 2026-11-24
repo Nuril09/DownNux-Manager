@@ -313,6 +313,9 @@ export function App() {
         "128"?: number;
       };
     };
+    audioOnly?: boolean;
+    sourceHint?: string;
+    warning?: string;
   } | null>(null);
   const [isProbing, setIsProbing] = useState(false);
   const downloadFormatRef = useRef(downloadFormat);
@@ -329,14 +332,14 @@ export function App() {
         category: probeResult.category,
       };
     }
-    const rawBytes =
-      downloadFormat === "mp3"
-        ? (probeResult.mediaSizes?.audio?.[audioQuality] ?? 0)
-        : (probeResult.mediaSizes?.video?.[videoQuality] ?? probeResult.size);
+    const isAudio = Boolean(probeResult.audioOnly) || downloadFormat === "mp3";
+    const rawBytes = isAudio
+      ? (probeResult.mediaSizes?.audio?.[audioQuality] ?? 0)
+      : (probeResult.mediaSizes?.video?.[videoQuality] ?? probeResult.size);
     return {
       size: rawBytes,
       formattedSize: rawBytes > 0 ? `~${formatProbeBytes(rawBytes)}` : probeResult.formattedSize,
-      category: downloadFormat === "mp3" ? "music" : "video",
+      category: isAudio ? "music" : "video",
     };
   }, [probeResult, downloadFormat, videoQuality, audioQuality]);
 
@@ -509,13 +512,24 @@ export function App() {
     }
   };
 
-  const isMediaUrl = /youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(newUrl);
+  const isAudioOnlyUrl =
+    /(?:spotify\.com|spotify\.link|spoti\.fi|soundcloud\.com|bandcamp\.com)/i.test(newUrl) ||
+    Boolean(probeResult?.audioOnly);
+
+  const isMediaUrl =
+    isAudioOnlyUrl ||
+    /youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(newUrl);
 
   const handleUrlChange = (val: string) => {
     setNewUrl(val);
+    setAddError(null);
     try {
       const u = new URL(val);
-      if (/youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(u.hostname)) {
+      if (/(?:spotify\.com|spotify\.link|spoti\.fi|soundcloud\.com|bandcamp\.com)/i.test(u.hostname)) {
+        setDownloadFormat("mp3");
+        setNewFilename("");
+        setSaveDir("");
+      } else if (/youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(u.hostname)) {
         if (!newFilename || newFilename === "video.mp4" || newFilename === "audio.mp3") {
           setNewFilename("");
         }
@@ -551,7 +565,15 @@ export function App() {
         const json = await res.json();
         if (json.result) {
           setProbeResult(json.result);
-          const formatIsMp3 = downloadFormatRef.current === "mp3";
+          if (json.result.audioOnly) {
+            setDownloadFormat("mp3");
+          }
+          if (json.result.warning) {
+            setAddError(json.result.warning);
+          } else {
+            setAddError(null);
+          }
+          const formatIsMp3 = Boolean(json.result.audioOnly) || downloadFormatRef.current === "mp3";
           const probedFilename =
             json.result.isMedia && formatIsMp3
               ? (json.result.filename as string).replace(/\.mp4$/i, ".mp3")
@@ -788,6 +810,8 @@ export function App() {
     const finalFilename = newFilename ? newFilename.trim() : (defaultProbedName || undefined);
     const finalDir = saveDir ? saveDir.trim() : (defaultProbedDir || undefined);
 
+    const effectiveFormat = isAudioOnlyUrl ? "mp3" : downloadFormat;
+
     try {
       const res = await fetch("http://127.0.0.1:44990/api/rpc", {
         method: "POST",
@@ -800,9 +824,9 @@ export function App() {
             dir: finalDir,
             connections: newConnections,
             headers: {
-              format: downloadFormat === "mp3" ? "audio" : "video",
-              videoQuality: downloadFormat === "mp4" ? videoQuality : undefined,
-              audioQuality: downloadFormat === "mp3" ? audioQuality : undefined,
+              format: effectiveFormat === "mp3" ? "audio" : "video",
+              videoQuality: effectiveFormat === "mp4" ? videoQuality : undefined,
+              audioQuality: effectiveFormat === "mp3" ? audioQuality : undefined,
             },
             torrentBase64: torrentBase64 || undefined,
             start: startImmediately,
@@ -1016,7 +1040,7 @@ export function App() {
               className="text-[10px] font-bold text-[#6554c0] bg-[#edeaf9] dark:bg-[#6554c0]/20 dark:text-[#a79be8] px-2 py-0.5 rounded-full border border-[#d8d2f5] dark:border-[#4d4287] tracking-wide shadow-xs hover:border-[#6554c0] hover:scale-105 transition-all cursor-pointer flex items-center space-x-1"
               title={lang === "en" ? "Click to check for updates" : "Klik untuk periksa pembaruan"}
             >
-              <span>BETA 0.0.7</span>
+              <span>BETA 0.0.8</span>
               {updateInfo?.hasUpdate && (
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-ping" />
               )}
@@ -1991,7 +2015,7 @@ export function App() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="https://example.com/file.zip or magnet:?xt=... or YouTube URL"
+                    placeholder="https://example.com/file.zip, YouTube, Spotify Track, or magnet:?..."
                     value={newUrl}
                     onChange={(e) => handleUrlChange(e.target.value)}
                     className="w-full bg-[#f7f8fa] dark:bg-[#12131b] border border-[#e7e9ef] dark:border-[#2a2c3d] rounded-[6px] px-3 py-2 text-[#202631] dark:text-white focus:outline-none focus:border-[#6554c0] pr-8"
@@ -2037,6 +2061,14 @@ export function App() {
                       {estimatedProbeInfo.category}
                     </span>
                   </div>
+                  {probeResult.sourceHint && (
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-[#6e7685] dark:text-[#9ea4b5] font-medium">{lang === "en" ? "Audio Source:" : "Sumber Audio:"}</span>
+                      <span className="font-semibold text-[#15803d] dark:text-[#4ade80] text-[10px] bg-[#dcfce7] dark:bg-[#14532d]/40 px-2 py-0.5 rounded">
+                        {probeResult.sourceHint}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : null}
 
@@ -2087,29 +2119,31 @@ export function App() {
                   <div>
                     <label className="block text-[#6e7685] dark:text-[#9ea4b5] mb-1 font-medium">{lang === "en" ? "Format Preset:" : "Format Download:"}</label>
                     <div className="flex items-center space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDownloadFormat("mp4");
-                          if (/\.mp3$/i.test(newFilename)) {
-                            setNewFilename(newFilename.replace(/\.mp3$/i, ".mp4"));
-                          }
-                          if (
-                            probeResult?.isMedia &&
-                            probeResult.defaultDir &&
-                            (!saveDir || saveDir === probeResult.audioDefaultDir || saveDir === lastProbedDirRef.current)
-                          ) {
-                            setSaveDir(probeResult.defaultDir);
-                            lastProbedDirRef.current = probeResult.defaultDir;
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp4"
-                            ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
-                            : "bg-white dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b]"
-                          }`}
-                      >
-                        🎬 Video (MP4)
-                      </button>
+                      {!isAudioOnlyUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDownloadFormat("mp4");
+                            if (/\.mp3$/i.test(newFilename)) {
+                              setNewFilename(newFilename.replace(/\.mp3$/i, ".mp4"));
+                            }
+                            if (
+                              probeResult?.isMedia &&
+                              probeResult.defaultDir &&
+                              (!saveDir || saveDir === probeResult.audioDefaultDir || saveDir === lastProbedDirRef.current)
+                            ) {
+                              setSaveDir(probeResult.defaultDir);
+                              lastProbedDirRef.current = probeResult.defaultDir;
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp4"
+                              ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
+                              : "bg-white dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b]"
+                            }`}
+                        >
+                          🎬 Video (MP4)
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => {
@@ -2126,7 +2160,7 @@ export function App() {
                             lastProbedDirRef.current = probeResult.audioDefaultDir;
                           }
                         }}
-                        className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${downloadFormat === "mp3"
+                        className={`px-3 py-1.5 rounded-[6px] text-[11px] font-semibold border transition-all ${(isAudioOnlyUrl || downloadFormat === "mp3")
                             ? "bg-[#6554c0] text-white border-[#5a4ab0] shadow-sm"
                             : "bg-white dark:bg-[#1a1c29] text-[#202631] dark:text-white border-[#e7e9ef] dark:border-[#2a2c3d] hover:bg-[#f7f8fa] dark:hover:bg-[#25283b]"
                           }`}
@@ -2137,7 +2171,7 @@ export function App() {
                   </div>
 
                   {/* Resolution selector for Video */}
-                  {downloadFormat === "mp4" && (
+                  {!isAudioOnlyUrl && downloadFormat === "mp4" && (
                     <div className="bg-[#f7f8fa] dark:bg-[#1f2233] p-2.5 rounded-[8px] border border-[#e7e9ef] dark:border-[#2a2d40]">
                       <div className="text-[11px] font-medium text-[#6e7685] dark:text-[#9ea4b5] mb-1.5 flex items-center justify-between">
                         <span>{lang === "en" ? "Video Resolution:" : "Resolusi Video:"}</span>
@@ -2168,7 +2202,7 @@ export function App() {
                   )}
 
                   {/* Bitrate selector for Audio */}
-                  {downloadFormat === "mp3" && (
+                  {(isAudioOnlyUrl || downloadFormat === "mp3") && (
                     <div className="bg-[#f7f8fa] dark:bg-[#1f2233] p-2.5 rounded-[8px] border border-[#e7e9ef] dark:border-[#2a2d40]">
                       <div className="text-[11px] font-medium text-[#6e7685] dark:text-[#9ea4b5] mb-1.5 flex items-center justify-between">
                         <span>{lang === "en" ? "Audio Bitrate:" : "Kualitas Audio:"}</span>

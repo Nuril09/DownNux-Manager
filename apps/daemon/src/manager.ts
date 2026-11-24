@@ -431,7 +431,8 @@ export class DownloadManager extends EventEmitter<ManagerEvents> {
     } catch (err) {
       r.jobId = null;
       log.warn(`Gagal memulai ${t.id}`, err);
-      this.handleJobError(t, { code: "engine", message: (err as Error).message, kind: "transient" });
+      const kind = (err as { kind?: "fatal" | "transient" }).kind === "fatal" ? "fatal" : "transient";
+      this.handleJobError(t, { code: "engine", message: (err as Error).message, kind });
     }
   }
 

@@ -10,24 +10,36 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$ROOT_DIR/build/deb-pkg"
 DIST_DIR="$ROOT_DIR/dist"
-PKG_VERSION="0.0.5"
+PKG_VERSION="$(node -p "JSON.parse(require('fs').readFileSync('$ROOT_DIR/package.json', 'utf8')).version")"
 PKG_NAME="downnux-manager_${PKG_VERSION}_amd64"
 
-echo "=== Building Native Linux (.deb) Package for DownNux Manager ==="
+# Resolve esbuild binary dynamically
+if command -v esbuild >/dev/null 2>&1; then
+  ESBUILD="esbuild"
+elif [ -x "$ROOT_DIR/node_modules/.bin/esbuild" ]; then
+  ESBUILD="$ROOT_DIR/node_modules/.bin/esbuild"
+elif [ -x "$ROOT_DIR/node_modules/.pnpm/node_modules/.bin/esbuild" ]; then
+  ESBUILD="$ROOT_DIR/node_modules/.pnpm/node_modules/.bin/esbuild"
+else
+  ESBUILD=$(find "$ROOT_DIR/node_modules" -name esbuild -type f -perm /111 2>/dev/null | head -n 1)
+fi
+
+echo "=== Building Native Linux (.deb) Package for DownNux Manager v${PKG_VERSION} ==="
 
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR" "$DIST_DIR"
 
-# 1. Ensure GUI and Daemon are built
+# 1. Ensure GUI and Standalone Daemon are built
 echo "[*] Building GUI web bundle..."
 npm --prefix "$ROOT_DIR/apps/gui" run build
 
-echo "[*] Building background daemon & CLI..."
-ESBUILD="$ROOT_DIR/node_modules/.pnpm/@esbuild+linux-x64@0.28.2/node_modules/@esbuild/linux-x64/bin/esbuild"
+echo "[*] Building standalone background daemon & CLI..."
 mkdir -p "$ROOT_DIR/apps/daemon/dist"
 "$ESBUILD" "$ROOT_DIR/apps/daemon/src/main.ts" \
   --bundle --platform=node --format=esm --target=node22 \
-  --packages=external --outfile="$ROOT_DIR/apps/daemon/dist/main.mjs" \
+  --external:node:sqlite \
+  --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" \
+  --outfile="$ROOT_DIR/apps/daemon/dist/main.mjs" \
   --alias:@downnux/shared="$ROOT_DIR/packages/shared/src/index.ts" \
   --alias:@downnux/shared/node="$ROOT_DIR/packages/shared/src/node/index.ts"
 
@@ -45,16 +57,14 @@ mkdir -p "$ROOT_DIR/apps/native-host/dist"
   --alias:@downnux/shared="$ROOT_DIR/packages/shared/src/index.ts" \
   --alias:@downnux/shared/node="$ROOT_DIR/packages/shared/src/node/index.ts"
 
-cat > "$ROOT_DIR/apps/native-host/dist/downnux-native-host" <<EOF
-#!/bin/sh
-exec /usr/bin/node "/usr/lib/downnux-manager/apps/native-host/dist/host.mjs" "\$@"
-EOF
-chmod +x "$ROOT_DIR/apps/native-host/dist/downnux-native-host"
-
 # 2. Setup Directory Tree for .deb
 mkdir -p "$BUILD_DIR/DEBIAN"
 mkdir -p "$BUILD_DIR/usr/bin"
-mkdir -p "$BUILD_DIR/usr/lib/downnux-manager"
+mkdir -p "$BUILD_DIR/usr/lib/downnux-manager/apps/daemon/dist"
+mkdir -p "$BUILD_DIR/usr/lib/downnux-manager/apps/gui"
+mkdir -p "$BUILD_DIR/usr/lib/downnux-manager/apps/extension"
+mkdir -p "$BUILD_DIR/usr/lib/downnux-manager/apps/native-host/dist"
+mkdir -p "$BUILD_DIR/usr/lib/downnux-manager/scripts"
 mkdir -p "$BUILD_DIR/usr/share/applications"
 mkdir -p "$BUILD_DIR/usr/share/pixmaps"
 mkdir -p "$BUILD_DIR/usr/share/icons/hicolor/512x512/apps"
@@ -71,26 +81,38 @@ Depends: nodejs (>= 18.0.0), python3, python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2
 Recommends: aria2, ffmpeg
 Description: Professional, segmented multi-connection download manager for Linux
  DownNux Manager is a native Linux multi-connection download accelerator and manager.
- Features segmented parallel engine, background daemon, browser integration (Chrome, Brave, Firefox),
- video sniffing, and an authentic iOS glassmorphism interface.
+ Features segmented parallel engine, Spotify/YouTube audio & video extraction,
+ BitTorrent support, background daemon, and browser integration (Chrome, Brave, Firefox).
 EOF
 
-# 4. Copy Application Files into /usr/lib/downnux-manager
-cp -r "$ROOT_DIR/apps" "$BUILD_DIR/usr/lib/downnux-manager/"
-cp -r "$ROOT_DIR/packages" "$BUILD_DIR/usr/lib/downnux-manager/"
-cp -r "$ROOT_DIR/scripts" "$BUILD_DIR/usr/lib/downnux-manager/"
+# 4. Copy Clean Runtime Application Files into /usr/lib/downnux-manager
+cp -r "$ROOT_DIR/apps/daemon/dist/"* "$BUILD_DIR/usr/lib/downnux-manager/apps/daemon/dist/"
+cp -r "$ROOT_DIR/apps/gui/dist" "$BUILD_DIR/usr/lib/downnux-manager/apps/gui/"
+cp -r "$ROOT_DIR/apps/gui/public" "$BUILD_DIR/usr/lib/downnux-manager/apps/gui/"
+cp -r "$ROOT_DIR/apps/extension/"* "$BUILD_DIR/usr/lib/downnux-manager/apps/extension/"
+cp -r "$ROOT_DIR/apps/native-host/dist/"* "$BUILD_DIR/usr/lib/downnux-manager/apps/native-host/dist/"
+cat > "$BUILD_DIR/usr/lib/downnux-manager/apps/native-host/dist/downnux-native-host" <<'EOF'
+#!/bin/sh
+exec /usr/bin/node "/usr/lib/downnux-manager/apps/native-host/dist/host.mjs" "$@"
+EOF
+chmod 755 "$BUILD_DIR/usr/lib/downnux-manager/apps/native-host/dist/downnux-native-host"
+cp "$ROOT_DIR/scripts/serve-gui.mjs" "$BUILD_DIR/usr/lib/downnux-manager/scripts/"
+cp "$ROOT_DIR/scripts/downnux-desktop.py" "$BUILD_DIR/usr/lib/downnux-manager/scripts/"
 cp "$ROOT_DIR/package.json" "$BUILD_DIR/usr/lib/downnux-manager/"
 
-# Embed pre-compiled standalone helper tools if present
+# Embed standalone helper tools if present
 mkdir -p "$BUILD_DIR/usr/lib/downnux-manager/bin"
 if [ -f "$HOME/.local/bin/yt-dlp" ]; then
   cp "$HOME/.local/bin/yt-dlp" "$BUILD_DIR/usr/lib/downnux-manager/bin/"
+  chmod +x "$BUILD_DIR/usr/lib/downnux-manager/bin/yt-dlp"
 fi
 if [ -f "$HOME/.local/bin/ffmpeg" ]; then
   cp "$HOME/.local/bin/ffmpeg" "$BUILD_DIR/usr/lib/downnux-manager/bin/"
+  chmod +x "$BUILD_DIR/usr/lib/downnux-manager/bin/ffmpeg"
 fi
 if [ -f "$HOME/.local/lib/unduh-tools/aria2/bin/aria2c" ]; then
   cp "$HOME/.local/lib/unduh-tools/aria2/bin/aria2c" "$BUILD_DIR/usr/lib/downnux-manager/bin/"
+  chmod +x "$BUILD_DIR/usr/lib/downnux-manager/bin/aria2c"
 fi
 
 # 5. Create CLI and Native GUI Wrappers in /usr/bin
@@ -120,7 +142,7 @@ Icon=downnux
 Terminal=false
 Type=Application
 Categories=Network;FileTransfer;Utility;
-Keywords=download;manager;idm;accelerator;
+Keywords=download;manager;idm;accelerator;spotify;youtube;
 StartupWMClass=DownNux Manager
 EOF
 chmod 644 "$BUILD_DIR/usr/share/applications/downnux-manager.desktop"
@@ -130,7 +152,6 @@ cat > "$BUILD_DIR/DEBIAN/postinst" <<'EOF'
 #!/bin/sh
 set -e
 
-# Update desktop and icon databases
 if which update-desktop-database >/dev/null 2>&1; then
   update-desktop-database -q /usr/share/applications || true
 fi
@@ -150,4 +171,3 @@ dpkg-deb --build --root-owner-group "$BUILD_DIR" "$DIST_DIR/${PKG_NAME}.deb"
 
 echo "[✓] Successfully built .deb package:"
 ls -lh "$DIST_DIR/${PKG_NAME}.deb"
-

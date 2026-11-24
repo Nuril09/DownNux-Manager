@@ -3751,8 +3751,8 @@ var require_websocket_server = __commonJS({
 // apps/daemon/src/main.ts
 import fs11 from "node:fs";
 import path11 from "node:path";
-import { promisify as promisify2 } from "node:util";
-import { execFile as execFile2, spawn as spawn5 } from "node:child_process";
+import { promisify as promisify4 } from "node:util";
+import { execFile as execFile4, spawn as spawn5 } from "node:child_process";
 
 // packages/shared/src/constants.ts
 var APP_ID = "downnux";
@@ -8628,15 +8628,374 @@ var Aria2Engine = class extends EventEmitter {
 import { EventEmitter as EventEmitter3 } from "node:events";
 
 // apps/daemon/src/engine/ytdlp.ts
-import { spawn as spawn2, execFileSync } from "node:child_process";
+import { spawn as spawn2, execFile as execFile2, execFileSync } from "node:child_process";
+import { promisify as promisify2 } from "node:util";
 import fs4 from "node:fs";
 import os3 from "node:os";
 import path4 from "node:path";
 import crypto2 from "node:crypto";
 import { EventEmitter as EventEmitter2 } from "node:events";
-var log2 = logger("ytdlp");
+
+// apps/daemon/src/engine/spotify.ts
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+var execFileAsync = promisify(execFile);
+var log2 = logger("spotify");
+var SPOTIFY_HOST_RE = /(?:^|\.)(?:spotify\.com|spotify\.link|spoti\.fi)$/i;
+var SPOTIFY_PATH_RE = /^\/(?:intl-[a-z]{2}(?:-[a-z]{2})?\/)?(?:embed\/)?(track|episode|album|playlist|artist|show)\/([a-zA-Z0-9]+)/i;
+var CACHE_TTL_MS = 10 * 60 * 1e3;
+var resolveCache = /* @__PURE__ */ new Map();
+function isSpotifyUrl(rawUrl) {
+  try {
+    const u = new URL(rawUrl.trim());
+    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+    return SPOTIFY_HOST_RE.test(u.hostname);
+  } catch {
+    return false;
+  }
+}
+function parseSpotifyPath(rawUrl) {
+  try {
+    const u = new URL(rawUrl.trim());
+    const m = u.pathname.match(SPOTIFY_PATH_RE);
+    if (!m || !m[1] || !m[2]) return null;
+    return { kind: m[1].toLowerCase(), id: m[2] };
+  } catch {
+    return null;
+  }
+}
+function formatDuration(ms) {
+  if (!ms || ms <= 0) return "";
+  const totalSec = Math.round(ms / 1e3);
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+async function expandShortSpotifyUrl(rawUrl) {
+  try {
+    const u = new URL(rawUrl.trim());
+    if (!/(?:^|\.)(?:spotify\.link|spoti\.fi)$/i.test(u.hostname)) {
+      return rawUrl.trim();
+    }
+    const res = await fetch(u.toString(), {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+      },
+      signal: AbortSignal.timeout(8e3)
+    });
+    return res.url || rawUrl.trim();
+  } catch (err) {
+    log2.warn("Gagal memperluas short link Spotify:", err);
+    return rawUrl.trim();
+  }
+}
+function buildDisplayName(title, artists) {
+  const cleanTitle = title.trim();
+  const cleanArtists = artists.map((a) => a.trim()).filter(Boolean);
+  if (cleanArtists.length > 0) {
+    return `${cleanArtists.join(", ")} - ${cleanTitle}`;
+  }
+  return cleanTitle || "spotify-audio";
+}
+function buildSearchQuery(title, artists, kind) {
+  const cleanTitle = title.trim();
+  const cleanArtists = artists.map((a) => a.trim()).filter(Boolean);
+  if (kind === "episode") {
+    return [cleanArtists[0], cleanTitle, "podcast"].filter(Boolean).join(" ").trim();
+  }
+  if (cleanArtists.length > 0) {
+    return `${cleanArtists.slice(0, 2).join(" ")} - ${cleanTitle} official audio`;
+  }
+  return `${cleanTitle} audio`;
+}
+async function resolveSpotifyUrl(rawUrl) {
+  const expandedUrl = await expandShortSpotifyUrl(rawUrl);
+  const parsed = parseSpotifyPath(expandedUrl);
+  if (!parsed) {
+    throw Object.assign(
+      new Error("Link Spotify tidak dikenali. Gunakan link lagu (open.spotify.com/track/...) atau episode (open.spotify.com/episode/...)."),
+      { kind: "fatal" }
+    );
+  }
+  const cacheKey = `${parsed.kind}:${parsed.id}`;
+  const cached = resolveCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+    return cached.value;
+  }
+  const canonicalUrl = `https://open.spotify.com/${parsed.kind}/${parsed.id}`;
+  if (parsed.kind !== "track" && parsed.kind !== "episode") {
+    let name;
+    let trackCount;
+    try {
+      const embedRes = await fetch(`https://open.spotify.com/embed/${parsed.kind}/${parsed.id}`, {
+        signal: AbortSignal.timeout(8e3)
+      });
+      if (embedRes.ok) {
+        const html = await embedRes.text();
+        const m = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+        if (m?.[1]) {
+          const entity = JSON.parse(m[1])?.props?.pageProps?.state?.data?.entity;
+          name = entity?.name || entity?.title;
+          if (Array.isArray(entity?.trackList)) trackCount = entity.trackList.length;
+        }
+      }
+    } catch {
+    }
+    const label = parsed.kind === "playlist" ? "playlist" : parsed.kind === "album" ? "album" : parsed.kind;
+    const result2 = {
+      supported: false,
+      collection: {
+        kind: parsed.kind,
+        id: parsed.id,
+        canonicalUrl,
+        name,
+        trackCount
+      },
+      reason: `Link ${label} Spotify${name ? ` ("${name}")` : ""} belum didukung untuk unduhan massal. Salin link lagu (track) atau episode tunggalnya.`
+    };
+    resolveCache.set(cacheKey, { at: Date.now(), value: result2 });
+    return result2;
+  }
+  let title = "";
+  let artists = [];
+  let durationMs = 0;
+  let releaseYear;
+  let coverUrl;
+  try {
+    const embedRes = await fetch(`https://open.spotify.com/embed/${parsed.kind}/${parsed.id}`, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9"
+      },
+      signal: AbortSignal.timeout(9e3)
+    });
+    if (embedRes.ok) {
+      const html = await embedRes.text();
+      const nextMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+      if (nextMatch?.[1]) {
+        const data = JSON.parse(nextMatch[1]);
+        const entity = data?.props?.pageProps?.state?.data?.entity;
+        if (entity) {
+          title = String(entity.title || entity.name || "").trim();
+          if (Array.isArray(entity.artists)) {
+            artists = entity.artists.map((a) => String(a?.name || "").trim()).filter(Boolean);
+          } else if (typeof entity.subtitle === "string" && entity.subtitle.trim()) {
+            artists = [entity.subtitle.trim()];
+          }
+          if (typeof entity.duration === "number" && entity.duration > 0) {
+            durationMs = entity.duration;
+          }
+          const iso = entity.releaseDate?.isoString;
+          if (typeof iso === "string" && iso.length >= 4) {
+            releaseYear = iso.slice(0, 4);
+          }
+          coverUrl = entity.visualIdentity?.image?.[0]?.url || entity.coverArt?.sources?.[0]?.url || void 0;
+        }
+      }
+    }
+  } catch (err) {
+    log2.warn("Gagal membaca metadata embed Spotify, mencoba fallback oEmbed:", err);
+  }
+  if (!title) {
+    try {
+      const oembedRes = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(canonicalUrl)}`, {
+        signal: AbortSignal.timeout(7e3)
+      });
+      if (oembedRes.ok) {
+        const oembed = await oembedRes.json();
+        title = String(oembed.title || "").trim();
+        if (!coverUrl && oembed.thumbnail_url) {
+          coverUrl = oembed.thumbnail_url;
+        }
+      }
+    } catch (err) {
+      log2.warn("Gagal membaca metadata oEmbed Spotify:", err);
+    }
+  }
+  if (!title) {
+    throw Object.assign(
+      new Error("Tidak dapat membaca metadata lagu dari link Spotify ini. Pastikan link publik dan valid."),
+      { kind: "fatal" }
+    );
+  }
+  const displayName = buildDisplayName(title, artists);
+  const searchQuery = buildSearchQuery(title, artists, parsed.kind);
+  const result = {
+    supported: true,
+    track: {
+      kind: parsed.kind,
+      id: parsed.id,
+      canonicalUrl,
+      title,
+      artists,
+      displayName,
+      durationMs,
+      releaseYear,
+      coverUrl,
+      searchQuery
+    }
+  };
+  resolveCache.set(cacheKey, { at: Date.now(), value: result });
+  return result;
+}
+var PENALTY_KEYWORDS = [
+  "live",
+  "remix",
+  "cover",
+  "sped up",
+  "slowed",
+  "nightcore",
+  "8d",
+  "karaoke",
+  "instrumental",
+  "mashup",
+  "reaction",
+  "tutorial",
+  "guitar",
+  "piano cover",
+  "1 hour",
+  "10 hours"
+];
+function pickBestYoutubeCandidate(candidates, track) {
+  if (candidates.length === 0) return null;
+  const targetSec = track.durationMs > 0 ? Math.round(track.durationMs / 1e3) : 0;
+  const spotifyTitleLower = track.title.toLowerCase();
+  const primaryArtistLower = (track.artists[0] || "").toLowerCase();
+  let best = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const cand of candidates) {
+    const titleLower = cand.title.toLowerCase();
+    let score = 0;
+    if (targetSec > 0 && cand.durationSec > 0) {
+      const diff = Math.abs(cand.durationSec - targetSec);
+      if (diff <= 5) score += 60;
+      else if (diff <= 15) score += 45;
+      else if (diff <= 30) score += 25;
+      else if (diff <= 60) score += 5;
+      else score -= Math.min(120, diff * 0.5);
+    }
+    if (titleLower.includes("official audio")) score += 28;
+    else if (titleLower.includes("provided to youtube") || titleLower.includes("topic")) score += 24;
+    else if (titleLower.includes("audio")) score += 14;
+    else if (titleLower.includes("lyrics")) score += 10;
+    if (titleLower.includes("official video") || titleLower.includes("music video")) {
+      score -= 8;
+    }
+    if (spotifyTitleLower && titleLower.includes(spotifyTitleLower)) {
+      score += 20;
+    }
+    if (primaryArtistLower && titleLower.includes(primaryArtistLower)) {
+      score += 15;
+    }
+    for (const kw of PENALTY_KEYWORDS) {
+      if (titleLower.includes(kw) && !spotifyTitleLower.includes(kw)) {
+        score -= 35;
+      }
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = cand;
+    }
+  }
+  return best || candidates[0] || null;
+}
+async function findBestYoutubeUrlForSpotify(ytDlpBin, track) {
+  try {
+    const { stdout } = await execFileAsync(
+      ytDlpBin,
+      [
+        "--flat-playlist",
+        "--no-warnings",
+        "--print",
+        "%(id)s;;;%(title)s;;;%(duration)s",
+        `ytsearch5:${track.searchQuery}`
+      ],
+      { encoding: "utf8", timeout: 12e3, windowsHide: true }
+    );
+    const candidates = [];
+    for (const rawLine of stdout.split("\n")) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      const [id, title, durationStr] = line.split(";;;");
+      if (!id || id === "NA") continue;
+      const durationSec = Number(durationStr);
+      candidates.push({
+        id: id.trim(),
+        title: (title || "").trim(),
+        durationSec: Number.isFinite(durationSec) ? durationSec : 0
+      });
+    }
+    const best = pickBestYoutubeCandidate(candidates, track);
+    if (best) {
+      log2.info(`Spotify "${track.displayName}" cocok ke YouTube: ${best.id} (${best.title}, ${best.durationSec}s)`);
+      return `https://www.youtube.com/watch?v=${best.id}`;
+    }
+  } catch (err) {
+    log2.warn("Pencarian kandidat YouTube gagal, fallback ke ytsearch1:", err);
+  }
+  return `ytsearch1:${track.searchQuery}`;
+}
+
+// apps/daemon/src/engine/ytdlp.ts
+var execFileAsync2 = promisify2(execFile2);
+var log3 = logger("ytdlp");
+function isAudioOnlySite(url) {
+  return isSpotifyUrl(url) || /soundcloud\.com|bandcamp\.com/i.test(url);
+}
 function isMediaSite(url) {
-  return /youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(url);
+  return isAudioOnlySite(url) || /youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|twitter\.com|x\.com|instagram\.com|twitch\.tv|dailymotion\.com|reddit\.com|facebook\.com/i.test(url);
+}
+async function tagMp3WithSpotifyMetadata(ffmpegBin, mp3Path, track) {
+  const dir = path4.dirname(mp3Path);
+  const tmpOut = path4.join(dir, `.downnux-tag-${crypto2.randomUUID()}.mp3`);
+  let coverPath = null;
+  try {
+    if (track.coverUrl) {
+      try {
+        const res = await fetch(track.coverUrl, { signal: AbortSignal.timeout(4e3) });
+        if (res.ok) {
+          const buf = Buffer.from(await res.arrayBuffer());
+          if (buf.length > 0 && buf.length < 5 * 1024 * 1024) {
+            coverPath = path4.join(dir, `.downnux-cover-${crypto2.randomUUID()}.jpg`);
+            fs4.writeFileSync(coverPath, buf);
+          }
+        }
+      } catch {
+        coverPath = null;
+      }
+    }
+    const args = ["-y", "-i", mp3Path];
+    if (coverPath) {
+      args.push("-i", coverPath, "-map", "0:a", "-map", "1:v", "-c:a", "copy", "-c:v", "copy", "-disposition:v:0", "attached_pic");
+    } else {
+      args.push("-c", "copy");
+    }
+    args.push("-id3v2_version", "3", "-metadata", `title=${track.title}`);
+    if (track.artists.length > 0) {
+      args.push("-metadata", `artist=${track.artists.join(", ")}`);
+    }
+    if (track.releaseYear) {
+      args.push("-metadata", `date=${track.releaseYear}`);
+    }
+    args.push("-metadata", `comment=Matched via Spotify (${track.canonicalUrl})`, tmpOut);
+    await execFileAsync2(ffmpegBin, args, { timeout: 15e3, windowsHide: true });
+    if (fs4.existsSync(tmpOut) && fs4.statSync(tmpOut).size > 0) {
+      fs4.renameSync(tmpOut, mp3Path);
+    }
+  } catch (err) {
+    log3.warn("Gagal menyematkan metadata ID3 Spotify, mempertahankan file MP3 asli:", err);
+  } finally {
+    try {
+      if (fs4.existsSync(tmpOut)) fs4.unlinkSync(tmpOut);
+    } catch {
+    }
+    try {
+      if (coverPath && fs4.existsSync(coverPath)) fs4.unlinkSync(coverPath);
+    } catch {
+    }
+  }
 }
 var YtDlpEngine = class extends EventEmitter2 {
   name = "yt-dlp";
@@ -8707,27 +9066,48 @@ var YtDlpEngine = class extends EventEmitter2 {
   }
   async add(spec) {
     const jobId = `ytdlp-${crypto2.randomUUID()}`;
-    const isAudioOnly = spec.headers?.format === "audio" || spec.filename && spec.filename.endsWith(".mp3");
+    let spotifyTrack = null;
+    let downloadTargetUrl = spec.url;
+    if (isSpotifyUrl(spec.url)) {
+      const resolved = await resolveSpotifyUrl(spec.url);
+      if (!resolved.supported) {
+        throw Object.assign(new Error(resolved.reason), { kind: "fatal" });
+      }
+      spotifyTrack = resolved.track;
+      downloadTargetUrl = await findBestYoutubeUrlForSpotify(this.binaryPath, spotifyTrack);
+    }
+    const isAudioOnly = Boolean(spotifyTrack) || isAudioOnlySite(spec.url) || spec.headers?.format === "audio" || Boolean(spec.filename && /\.(mp3|m4a|flac|wav|ogg|opus)$/i.test(spec.filename));
     const videoQuality = spec.headers?.videoQuality || "best";
     const audioQuality = spec.headers?.audioQuality || "320";
     let resolvedFilename = spec.filename || "";
     if (!resolvedFilename || resolvedFilename === "video.mp4" || resolvedFilename === "audio.mp3") {
-      try {
-        const titleRes = execFileSync(this.binaryPath, [
-          "--js-runtimes",
-          `node:${process.execPath}`,
-          "--print",
-          "%(title)s",
-          "--no-playlist",
-          spec.url
-        ], { encoding: "utf8", timeout: 8e3, windowsHide: true }).trim();
-        if (titleRes) {
-          const cleanTitle = titleRes.replace(/[\/\\?%*:|"<>]/g, "_").trim();
-          resolvedFilename = `${cleanTitle}.${isAudioOnly ? "mp3" : "mp4"}`;
+      if (spotifyTrack) {
+        const cleanTitle = spotifyTrack.displayName.replace(/[\/\\?%*:|"<>]/g, "_").trim();
+        resolvedFilename = `${cleanTitle}.mp3`;
+      } else {
+        try {
+          const titleRes = execFileSync(this.binaryPath, [
+            "--js-runtimes",
+            `node:${process.execPath}`,
+            "--print",
+            "%(title)s",
+            "--no-playlist",
+            downloadTargetUrl
+          ], { encoding: "utf8", timeout: 8e3, windowsHide: true }).trim();
+          if (titleRes) {
+            const cleanTitle = titleRes.replace(/[\/\\?%*:|"<>]/g, "_").trim();
+            resolvedFilename = `${cleanTitle}.${isAudioOnly ? "mp3" : "mp4"}`;
+          }
+        } catch (err) {
+          log3.warn("Could not pre-fetch yt-dlp filename:", err);
         }
-      } catch (err) {
-        log2.warn("Could not pre-fetch yt-dlp filename:", err);
       }
+    } else if (isAudioOnly && !/\.(mp3|m4a|flac|wav|ogg|opus)$/i.test(resolvedFilename)) {
+      resolvedFilename = `${resolvedFilename.replace(/\.mp4$/i, "")}.mp3`;
+    }
+    try {
+      fs4.mkdirSync(spec.dir, { recursive: true });
+    } catch {
     }
     const initialStatus = {
       state: "active",
@@ -8753,17 +9133,20 @@ var YtDlpEngine = class extends EventEmitter2 {
       args.push("--ffmpeg-location", this.ffmpegPath);
     }
     if (isAudioOnly) {
-      args.push("-x", "--audio-format", "mp3");
-      if (audioQuality === "320") {
-        args.push("--audio-quality", "0");
-      } else if (audioQuality === "192") {
-        args.push("--audio-quality", "2");
-      } else if (audioQuality === "128") {
-        args.push("--audio-quality", "5");
-      } else {
-        args.push("--audio-quality", "0");
-      }
-      args.push("-o", resolvedFilename ? resolvedFilename : "%(title)s.%(ext)s");
+      const bitrateArg = audioQuality === "192" ? "192K" : audioQuality === "128" ? "128K" : "320K";
+      const outputTemplate = resolvedFilename ? `${resolvedFilename.replace(/\.(mp3|m4a|flac|wav|ogg|opus)$/i, "")}.%(ext)s` : "%(title)s.%(ext)s";
+      args.push(
+        "-f",
+        "bestaudio/best",
+        "-x",
+        "--audio-format",
+        "mp3",
+        "--audio-quality",
+        bitrateArg,
+        "--add-metadata",
+        "-o",
+        outputTemplate
+      );
     } else {
       let formatSelector = "bv*[vcodec^=avc]+ba[acodec^=mp4a]/bv*[vcodec^=avc]+ba/b[vcodec^=avc]/bv*+ba[acodec^=mp4a]/bv*+ba/b";
       let sortSpec = "vcodec:h264,acodec:m4a,res";
@@ -8794,8 +9177,8 @@ var YtDlpEngine = class extends EventEmitter2 {
         resolvedFilename ? resolvedFilename : "%(title)s.%(ext)s"
       );
     }
-    args.push(spec.url);
-    log2.info(`Spawning yt-dlp: ${this.binaryPath} ${spec.url}`);
+    args.push(downloadTargetUrl);
+    log3.info(`Spawning yt-dlp: ${this.binaryPath} ${downloadTargetUrl}`);
     const cp = spawn2(this.binaryPath, args, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
     this.processes.set(jobId, cp);
     let stdoutBuffer = "";
@@ -8805,10 +9188,14 @@ var YtDlpEngine = class extends EventEmitter2 {
       stdoutBuffer = lines.pop() || "";
       for (const line of lines) {
         const trimmed = line.trim();
-        const destMatch = trimmed.match(/(?:Destination|Merging formats into):\s*["']?([^"']+)["']?$/i);
-        if (destMatch && destMatch[1]) {
-          const filePath = destMatch[1].trim();
-          initialStatus.path = filePath;
+        const extractDest = trimmed.match(/\[(?:ExtractAudio|Merger)\]\s+(?:Destination|Merging formats into):\s*["']?([^"']+)["']?$/i);
+        if (extractDest && extractDest[1]) {
+          initialStatus.path = extractDest[1].trim();
+        } else {
+          const destMatch = trimmed.match(/(?:Destination|Merging formats into):\s*["']?([^"']+)["']?$/i);
+          if (destMatch && destMatch[1] && (!isAudioOnly || !initialStatus.path)) {
+            initialStatus.path = destMatch[1].trim();
+          }
         }
         if (trimmed.startsWith("P:")) {
           const content = trimmed.slice(2);
@@ -8834,9 +9221,26 @@ var YtDlpEngine = class extends EventEmitter2 {
     cp.on("close", (code) => {
       this.processes.delete(jobId);
       if (code === 0) {
-        initialStatus.state = "complete";
-        initialStatus.speed = 0;
-        if (initialStatus.totalBytes > 0) initialStatus.completedBytes = initialStatus.totalBytes;
+        void (async () => {
+          const finalPath = initialStatus.path || (resolvedFilename ? path4.join(spec.dir, resolvedFilename) : "");
+          if (spotifyTrack && this.ffmpegPath && finalPath && fs4.existsSync(finalPath)) {
+            await tagMp3WithSpotifyMetadata(this.ffmpegPath, finalPath, spotifyTrack);
+          }
+          if (finalPath && fs4.existsSync(finalPath)) {
+            try {
+              const stat = fs4.statSync(finalPath);
+              if (stat.size > 0) {
+                initialStatus.totalBytes = stat.size;
+                initialStatus.completedBytes = stat.size;
+              }
+            } catch {
+            }
+          } else if (initialStatus.totalBytes > 0) {
+            initialStatus.completedBytes = initialStatus.totalBytes;
+          }
+          initialStatus.state = "complete";
+          initialStatus.speed = 0;
+        })();
       } else {
         initialStatus.state = "error";
         initialStatus.speed = 0;
@@ -8990,7 +9394,7 @@ function unlinkQuiet(p) {
 }
 
 // apps/daemon/src/manager.ts
-var log3 = logger("manager");
+var log4 = logger("manager");
 function spawnDetached(bin, args, env) {
   try {
     const child = spawn3(bin, args, {
@@ -9000,11 +9404,11 @@ function spawnDetached(bin, args, env) {
       ...env ? { env } : {}
     });
     child.on("error", (err) => {
-      log3.debug(`Detached process (${bin}) gagal:`, err.message);
+      log4.debug(`Detached process (${bin}) gagal:`, err.message);
     });
     child.unref();
   } catch (err) {
-    log3.debug(`Gagal spawn (${bin}):`, err);
+    log4.debug(`Gagal spawn (${bin}):`, err);
   }
 }
 function sendDesktopNotification(title, body) {
@@ -9053,7 +9457,7 @@ function openPathNative(targetPath, select = false) {
       }
     }
   } catch (err) {
-    log3.warn(`Gagal membuka path (${targetPath}):`, err);
+    log4.warn(`Gagal membuka path (${targetPath}):`, err);
   }
 }
 var ManagerError = class extends Error {
@@ -9153,7 +9557,7 @@ var DownloadManager = class extends EventEmitter4 {
     this.tasks.set(t.id, t);
     this.rt.set(t.id, rt);
     this.store.upsert(t);
-    log3.info(`Tambah ${t.id} ${t.url}`);
+    log4.info(`Tambah ${t.id} ${t.url}`);
     if (s.notifyOnStart) {
       const title = s.language === "en" ? "DownNux Manager \xB7 Download Started" : "DownNux Manager \xB7 Unduhan Dimulai";
       const body = t.filename || "Starting download...";
@@ -9193,7 +9597,7 @@ var DownloadManager = class extends EventEmitter4 {
     await this.releaseJob(t);
     if (!keepPartial) this.deletePartial(t);
     this.setStatus(t, "canceled");
-    log3.info(`Batal ${t.id} (keepPartial=${keepPartial})`);
+    log4.info(`Batal ${t.id} (keepPartial=${keepPartial})`);
     this.schedule();
     return this.toPublic(t);
   }
@@ -9270,7 +9674,7 @@ var DownloadManager = class extends EventEmitter4 {
     this.store.upsert(t);
     this.emit("task", this.toPublic(t));
     this.schedule();
-    log3.info(`Repair / Restart task ${t.id} (${t.filename})`);
+    log4.info(`Repair / Restart task ${t.id} (${t.filename})`);
     return this.toPublic(t);
   }
   notifyCompletion(t) {
@@ -9347,8 +9751,9 @@ var DownloadManager = class extends EventEmitter4 {
       }
     } catch (err) {
       r.jobId = null;
-      log3.warn(`Gagal memulai ${t.id}`, err);
-      this.handleJobError(t, { code: "engine", message: err.message, kind: "transient" });
+      log4.warn(`Gagal memulai ${t.id}`, err);
+      const kind = err.kind === "fatal" ? "fatal" : "transient";
+      this.handleJobError(t, { code: "engine", message: err.message, kind });
     }
   }
   /** Lepaskan job engine dan timer retry, simpan file parsial. */
@@ -9397,7 +9802,7 @@ var DownloadManager = class extends EventEmitter4 {
         }
       }
     } catch (err) {
-      log3.warn("tick gagal", err);
+      log4.warn("tick gagal", err);
     } finally {
       this.ticking = false;
     }
@@ -9434,7 +9839,7 @@ var DownloadManager = class extends EventEmitter4 {
     if (s.numPieces !== void 0) r.numPieces = s.numPieces;
     if (s.bitfield !== void 0) r.bitfield = s.bitfield;
     if (s.followedBy && s.followedBy[0] && (s.state === "complete" || s.state === "active")) {
-      log3.info(`Magnet link metadata downloaded for ${t.id}, transitioning to payload GID ${s.followedBy[0]}`);
+      log4.info(`Magnet link metadata downloaded for ${t.id}, transitioning to payload GID ${s.followedBy[0]}`);
       r.jobId = s.followedBy[0];
       return;
     }
@@ -9456,7 +9861,7 @@ var DownloadManager = class extends EventEmitter4 {
         if (t.totalBytes > 0) t.completedBytes = t.totalBytes;
         this.restartCounts.delete(t.id);
         this.setStatus(t, "completed");
-        log3.info(`Selesai ${t.id} ${t.filename}`);
+        log4.info(`Selesai ${t.id} ${t.filename}`);
         this.notifyCompletion(t);
         this.schedule();
         return;
@@ -9476,7 +9881,7 @@ var DownloadManager = class extends EventEmitter4 {
     const r = this.runtime(t.id);
     r.speed = 0;
     r.activeConnections = 0;
-    log3.warn(`Error ${t.id} [${e.kind}] ${e.code}: ${e.message}`);
+    log4.warn(`Error ${t.id} [${e.kind}] ${e.code}: ${e.message}`);
     if (e.kind === "fatal") {
       t.error = { code: e.code, message: e.message };
       this.setStatus(t, "failed");
@@ -9519,7 +9924,7 @@ var DownloadManager = class extends EventEmitter4 {
     this.schedule();
   }
   onEngineRestarted() {
-    log3.warn("Engine dinyalakan ulang; memulai ulang download aktif.");
+    log4.warn("Engine dinyalakan ulang; memulai ulang download aktif.");
     for (const t of this.tasks.values()) {
       const r = this.runtime(t.id);
       if (r.jobId) {
@@ -9596,7 +10001,7 @@ var import_websocket = __toESM(require_websocket(), 1);
 var import_websocket_server = __toESM(require_websocket_server(), 1);
 
 // apps/daemon/src/server.ts
-var log4 = logger("ipc");
+var log5 = logger("ipc");
 var MAX_LINE = 1024 * 1024;
 var DEFAULT_HTTP_PORT = process.env.DOWNNUX_PORT ? Number(process.env.DOWNNUX_PORT) : process.env.UNDUH_HOME ? 0 : 44990;
 function detectFriendlyOsName() {
@@ -9662,9 +10067,9 @@ var IpcServer = class {
         } catch {
         }
         this.server = server;
-        log4.info(`Mendengarkan Unix socket di ${this.socketPath}`);
+        log5.info(`Mendengarkan Unix socket di ${this.socketPath}`);
       } catch (err) {
-        log4.warn("Tidak dapat mengaktifkan Unix domain socket, beralih ke HTTP/WebSocket:", err);
+        log5.warn("Tidak dapat mengaktifkan Unix domain socket, beralih ke HTTP/WebSocket:", err);
       }
     }
     const httpServer = http.createServer((req, res) => {
@@ -9732,7 +10137,7 @@ var IpcServer = class {
     });
     const wss = new import_websocket_server.default({ server: httpServer });
     wss.on("error", (e) => {
-      log4.warn("WebSocketServer error:", e.message);
+      log5.warn("WebSocketServer error:", e.message);
     });
     wss.on("connection", (ws) => {
       this.wsClients.add(ws);
@@ -9752,11 +10157,11 @@ var IpcServer = class {
     });
     await new Promise((resolve) => {
       httpServer.listen(DEFAULT_HTTP_PORT, "127.0.0.1", () => {
-        log4.info(`Mendengarkan Localhost HTTP/WS di 127.0.0.1:${DEFAULT_HTTP_PORT}`);
+        log5.info(`Mendengarkan Localhost HTTP/WS di 127.0.0.1:${DEFAULT_HTTP_PORT}`);
         resolve();
       });
       httpServer.on("error", (e) => {
-        log4.warn(`Gagal membuka HTTP/WS di port ${DEFAULT_HTTP_PORT}: ${e.message}`);
+        log5.warn(`Gagal membuka HTTP/WS di port ${DEFAULT_HTTP_PORT}: ${e.message}`);
         resolve();
       });
     });
@@ -9844,7 +10249,7 @@ function toRpcError(err) {
     return { code: "BAD_REQUEST", message: err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
   }
   if (err instanceof ManagerError) return { code: err.code, message: err.message };
-  log4.error("Error tak terduga saat memproses request", err);
+  log5.error("Error tak terduga saat memproses request", err);
   return { code: "INTERNAL", message: err?.message ?? String(err) };
 }
 function isAlive(socketPath) {
@@ -9861,7 +10266,7 @@ function isAlive(socketPath) {
 // apps/daemon/src/settings.ts
 import fs8 from "node:fs";
 import path8 from "node:path";
-var log5 = logger("settings");
+var log6 = logger("settings");
 var SettingsStore = class {
   current;
   file;
@@ -9891,7 +10296,7 @@ var SettingsStore = class {
       return Settings.parse(raw);
     } catch (err) {
       if (err.code !== "ENOENT") {
-        log5.warn(`settings.json tidak valid, memakai default: ${err.message}`);
+        log6.warn(`settings.json tidak valid, memakai default: ${err.message}`);
       }
       return Settings.parse({});
     }
@@ -9908,7 +10313,7 @@ var SettingsStore = class {
 import fs9 from "node:fs";
 import path9 from "node:path";
 import { spawn as spawn4 } from "node:child_process";
-var log6 = logger("scheduler");
+var log7 = logger("scheduler");
 var SchedulerStore = class {
   current;
   file;
@@ -10003,11 +10408,11 @@ var SchedulerEngine = class {
       for (let i = 0; i < Math.min(slotsAvailable, pending.length); i++) {
         const task = pending[i];
         if (!task) continue;
-        log6.info(`Scheduler mengaktifkan unduhan: ${task.filename || task.url}`);
+        log7.info(`Scheduler mengaktifkan unduhan: ${task.filename || task.url}`);
         try {
           this.manager.resume(task.id);
         } catch (err) {
-          log6.warn(`Scheduler gagal melanjutkan ${task.id}:`, err);
+          log7.warn(`Scheduler gagal melanjutkan ${task.id}:`, err);
         }
       }
     }
@@ -10020,7 +10425,7 @@ var SchedulerEngine = class {
   }
   async handleOnFinish(action) {
     if (action === "none") return;
-    log6.info(`Semua antrean unduhan selesai. Menjalankan aksi pasca-selesai: ${action}`);
+    log7.info(`Semua antrean unduhan selesai. Menjalankan aksi pasca-selesai: ${action}`);
     let bin = "";
     let args = [];
     if (process.platform === "win32") {
@@ -10050,20 +10455,20 @@ var SchedulerEngine = class {
     }
     if (bin) {
       const child = spawn4(bin, args, { stdio: "ignore", detached: true, windowsHide: true });
-      child.on("error", (err) => log6.warn(`Gagal menjalankan ${action}:`, err.message));
+      child.on("error", (err) => log7.warn(`Gagal menjalankan ${action}:`, err.message));
       child.unref();
     }
   }
 };
 
 // apps/daemon/src/probe.ts
-import { execFile } from "node:child_process";
+import { execFile as execFile3 } from "node:child_process";
 import fs10 from "node:fs";
 import os6 from "node:os";
 import path10 from "node:path";
-import { promisify } from "node:util";
-var execFileAsync = promisify(execFile);
-var log7 = logger("probe");
+import { promisify as promisify3 } from "node:util";
+var execFileAsync3 = promisify3(execFile3);
+var log8 = logger("probe");
 function estimateFormatBytes(fmt, duration) {
   if (fmt.filesize && fmt.filesize > 0) return fmt.filesize;
   if (fmt.filesize_approx && fmt.filesize_approx > 0) return fmt.filesize_approx;
@@ -10219,7 +10624,75 @@ async function probeUrl(url, baseDownloadDir, customHeaders, categoryDirs) {
       defaultDir: baseDownloadDir
     };
   }
+  if (isSpotifyUrl(url)) {
+    const customMusicDir = categoryDirs?.music;
+    const musicDir = customMusicDir && customMusicDir.trim() ? customMusicDir : path10.join(baseDownloadDir, "Music");
+    try {
+      const resolved = await resolveSpotifyUrl(url);
+      if (!resolved.supported) {
+        return {
+          url,
+          filename: resolved.collection.name ? `${resolved.collection.name.replace(/[\/\\?%*:|"<>]/g, "_").trim()}.mp3` : "spotify-audio.mp3",
+          size: 0,
+          formattedSize: "Playlist / Album",
+          resumeSupported: false,
+          category: "music",
+          contentType: "audio/mpeg",
+          isMedia: true,
+          audioOnly: true,
+          sourceHint: "Spotify Collection",
+          warning: resolved.reason,
+          defaultDir: musicDir
+        };
+      }
+      const track = resolved.track;
+      const cleanName = track.displayName.replace(/[\/\\?%*:|"<>]/g, "_").trim();
+      const durationSec = track.durationMs > 0 ? Math.round(track.durationMs / 1e3) : 0;
+      const durationStr = formatDuration(track.durationMs);
+      const estMp3 = (kbps) => durationSec > 0 ? Math.round(kbps * 1e3 / 8 * durationSec) : 0;
+      const est320 = estMp3(320);
+      const formattedSize = durationStr ? `${durationStr}${est320 > 0 ? ` (~${formatBytes(est320)})` : ""}` : "Spotify Audio";
+      return {
+        url,
+        filename: `${cleanName}.mp3`,
+        size: est320,
+        formattedSize,
+        resumeSupported: true,
+        category: "music",
+        contentType: "audio/mpeg",
+        isMedia: true,
+        audioOnly: true,
+        sourceHint: "Spotify Metadata -> YouTube Audio (MP3)",
+        defaultDir: musicDir,
+        audioDefaultDir: musicDir,
+        duration: durationSec || void 0,
+        mediaSizes: durationSec > 0 ? {
+          audio: {
+            "320": est320,
+            "192": estMp3(192),
+            "128": estMp3(128)
+          }
+        } : void 0
+      };
+    } catch (err) {
+      log8.warn("Spotify probe error:", err);
+      return {
+        url,
+        filename: "spotify-audio.mp3",
+        size: 0,
+        formattedSize: "Spotify Audio",
+        resumeSupported: true,
+        category: "music",
+        contentType: "audio/mpeg",
+        isMedia: true,
+        audioOnly: true,
+        warning: err.message,
+        defaultDir: musicDir
+      };
+    }
+  }
   const isMedia = isMediaSite(url);
+  const audioOnly = isAudioOnlySite(url);
   if (isMedia) {
     const isWin = process.platform === "win32";
     const ytdlpExe = isWin ? "yt-dlp.exe" : "yt-dlp";
@@ -10244,11 +10717,11 @@ async function probeUrl(url, baseDownloadDir, customHeaders, categoryDirs) {
       }
     }
     const customVideoDir = categoryDirs?.video;
-    const targetDir = customVideoDir && customVideoDir.trim() ? customVideoDir : path10.join(baseDownloadDir, "Video");
     const customMusicDir = categoryDirs?.music;
     const audioDefaultDir = customMusicDir && customMusicDir.trim() ? customMusicDir : path10.join(baseDownloadDir, "Music");
+    const targetDir = audioOnly ? audioDefaultDir : customVideoDir && customVideoDir.trim() ? customVideoDir : path10.join(baseDownloadDir, "Video");
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await execFileAsync3(
         ytDlpPath,
         [
           "--js-runtimes",
@@ -10262,35 +10735,38 @@ async function probeUrl(url, baseDownloadDir, customHeaders, categoryDirs) {
       );
       const parsed = JSON.parse(stdout);
       const info = parsed.entries && parsed.entries.length > 0 && !parsed.formats ? parsed.entries[0] : parsed;
-      const title = info.title?.trim() || "video";
-      const cleanTitle = title.replace(/[\/\\?%*:|"<>]/g, "_").trim() || "video";
-      const filename2 = `${cleanTitle}.mp4`;
+      const title = info.title?.trim() || (audioOnly ? "audio" : "video");
+      const cleanTitle = title.replace(/[\/\\?%*:|"<>]/g, "_").trim() || (audioOnly ? "audio" : "video");
+      const filename2 = `${cleanTitle}.${audioOnly ? "mp3" : "mp4"}`;
       const { duration, mediaSizes, defaultSize } = computeMediaSizes(info);
+      const effectiveSize = audioOnly ? mediaSizes.audio?.["320"] || defaultSize : defaultSize;
       return {
         url,
         filename: filename2,
-        size: defaultSize,
-        formattedSize: defaultSize > 0 ? formatBytes(defaultSize) : "Unknown size (stream)",
+        size: effectiveSize,
+        formattedSize: effectiveSize > 0 ? formatBytes(effectiveSize) : "Unknown size (stream)",
         resumeSupported: true,
-        category: "video",
-        contentType: "video/mp4",
+        category: audioOnly ? "music" : "video",
+        contentType: audioOnly ? "audio/mpeg" : "video/mp4",
         isMedia: true,
+        audioOnly,
         defaultDir: targetDir,
         audioDefaultDir,
         duration,
         mediaSizes
       };
     } catch (err) {
-      log7.warn("yt-dlp probe error:", err);
+      log8.warn("yt-dlp probe error:", err);
       return {
         url,
-        filename: "video.mp4",
+        filename: audioOnly ? "audio.mp3" : "video.mp4",
         size: 0,
         formattedSize: "Unknown size (stream)",
         resumeSupported: true,
-        category: "video",
-        contentType: "video/mp4",
+        category: audioOnly ? "music" : "video",
+        contentType: audioOnly ? "audio/mpeg" : "video/mp4",
         isMedia: true,
+        audioOnly,
         defaultDir: targetDir,
         audioDefaultDir
       };
@@ -10345,7 +10821,7 @@ async function probeUrl(url, baseDownloadDir, customHeaders, categoryDirs) {
       }
     }
   } catch (err) {
-    log7.warn("Direct probe failed:", err);
+    log8.warn("Direct probe failed:", err);
   }
   if (!filename) {
     try {
@@ -10398,13 +10874,13 @@ async function probeUrl(url, baseDownloadDir, customHeaders, categoryDirs) {
 }
 
 // apps/daemon/src/main.ts
-var execFileAsync2 = promisify2(execFile2);
-var log8 = logger("daemon");
-var VERSION = "0.0.7";
+var execFileAsync4 = promisify4(execFile4);
+var log9 = logger("daemon");
+var VERSION = "0.0.8";
 try {
   const pkgUrl = new URL("../package.json", import.meta.url);
   if (fs11.existsSync(pkgUrl)) {
-    VERSION = JSON.parse(fs11.readFileSync(pkgUrl, "utf8")).version || "0.0.7";
+    VERSION = JSON.parse(fs11.readFileSync(pkgUrl, "utf8")).version || "0.0.8";
   }
 } catch {
 }
@@ -10428,7 +10904,7 @@ async function main() {
   const shutdown = async (reason, pauseAll = false) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    log8.info(`Berhenti (${reason})...`);
+    log9.info(`Berhenti (${reason})...`);
     try {
       schedulerEngine.stop();
       if (pauseAll) await manager.pauseAll();
@@ -10437,7 +10913,7 @@ async function main() {
       await engine.stop();
       store.close();
     } catch (err) {
-      log8.error("Error saat berhenti", err);
+      log9.error("Error saat berhenti", err);
     }
     process.exit(0);
   };
@@ -10468,7 +10944,7 @@ async function main() {
       try {
         if (process.platform === "win32") {
           const psCmd = `Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; if($f.ShowDialog() -eq 'OK'){ $f.SelectedPath }`;
-          const { stdout: stdout2 } = await execFileAsync2("powershell", ["-NoProfile", "-Command", psCmd], {
+          const { stdout: stdout2 } = await execFileAsync4("powershell", ["-NoProfile", "-Command", psCmd], {
             windowsHide: true
           });
           const chosen2 = stdout2.trim();
@@ -10476,11 +10952,11 @@ async function main() {
         }
         if (process.platform === "darwin") {
           const appleScript = 'POSIX path of (choose folder with prompt "Pilih Folder Unduhan DownNux")';
-          const { stdout: stdout2 } = await execFileAsync2("osascript", ["-e", appleScript]);
+          const { stdout: stdout2 } = await execFileAsync4("osascript", ["-e", appleScript]);
           const chosen2 = stdout2.trim().replace(/\/$/, "");
           return { ok: Boolean(chosen2), path: chosen2 };
         }
-        const { stdout } = await execFileAsync2("zenity", [
+        const { stdout } = await execFileAsync4("zenity", [
           "--file-selection",
           "--directory",
           "--title=Pilih Folder Unduhan DownNux"
@@ -10494,7 +10970,7 @@ async function main() {
         const chosen = stdout.trim();
         return { ok: Boolean(chosen), path: chosen };
       } catch (err) {
-        log8.warn("Folder chooser canceled or error:", err);
+        log9.warn("Folder chooser canceled or error:", err);
         return { ok: false };
       }
     },
@@ -10512,7 +10988,7 @@ async function main() {
       return { ok: true };
     },
     "app.checkUpdate": async () => {
-      const CURRENT_VERSION = VERSION || "0.0.7";
+      const CURRENT_VERSION = VERSION || "0.0.8";
       try {
         const res = await fetch("https://api.github.com/repos/Nuril09/DownNux-Manager/releases/latest", {
           headers: { "User-Agent": "DownNux-Manager-Updater" }
@@ -10608,16 +11084,16 @@ async function main() {
     manager.init();
   } catch (err) {
     engineState.engineError = err.message || String(err);
-    log8.error("Engine gagal start (HTTP RPC tetap aktif untuk diagnostik):", err);
+    log9.error("Engine gagal start (HTTP RPC tetap aktif untuk diagnostik):", err);
   }
   await server.listen();
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
-  process.on("uncaughtException", (err) => log8.error("uncaughtException", err));
-  process.on("unhandledRejection", (err) => log8.error("unhandledRejection", err));
-  log8.info(`Daemon ${VERSION} siap (pid ${process.pid}, engineReady=${engineState.engineReady})`);
+  process.on("uncaughtException", (err) => log9.error("uncaughtException", err));
+  process.on("unhandledRejection", (err) => log9.error("unhandledRejection", err));
+  log9.info(`Daemon ${VERSION} siap (pid ${process.pid}, engineReady=${engineState.engineReady})`);
 }
 main().catch((err) => {
-  log8.error("Daemon gagal start", err);
+  log9.error("Daemon gagal start", err);
   process.exit(1);
 });

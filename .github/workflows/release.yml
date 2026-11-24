@@ -209,7 +209,7 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf aria2 ffmpeg
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf aria2 ffmpeg zip
       - name: Install pnpm
         run: npm install -g pnpm@10
       - name: Install dependencies & Build
@@ -250,6 +250,7 @@ jobs:
       - name: Build Linux Packages
         run: |
           pnpm tauri build --bundles deb,appimage
+          bash scripts/package-all-os.sh
       - name: Upload Linux Artifacts to Workflow
         uses: actions/upload-artifact@v4
         with:
@@ -257,6 +258,10 @@ jobs:
           path: |
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/appimage/*.AppImage
+            dist/downnux-manager_*_amd64.deb
+            dist/downnux-manager_*_linux_x64.tar.gz
+            dist/downnux-manager_*_windows_x64.zip
+            dist/downnux-manager_*_macos_universal.zip
       - name: Publish Linux Packages to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -264,6 +269,9 @@ jobs:
           files: |
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/appimage/*.AppImage
+            dist/downnux-manager_*_linux_x64.tar.gz
+            dist/downnux-manager_*_windows_x64.zip
+            dist/downnux-manager_*_macos_universal.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

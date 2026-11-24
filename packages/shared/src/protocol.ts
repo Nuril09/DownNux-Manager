@@ -78,6 +78,9 @@ export interface UrlProbeResult {
   audioDefaultDir?: string;
   duration?: number;
   mediaSizes?: MediaSizeEstimates;
+  audioOnly?: boolean;
+  sourceHint?: string;
+  warning?: string;
 }
 
 export interface MethodResults {
